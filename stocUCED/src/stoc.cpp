@@ -70,7 +70,6 @@ bool scenarios::read(string fname, char delimiter) {
 			if (!getline( iss, str, delimiter)) break;
 			record.push_back(str);
 		}
-		temp->vals.push_back(record );
 	}
 
 	return true;

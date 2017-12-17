@@ -8,8 +8,9 @@
 #include <algorithm>
 #include <cmath>
 #include <stdio.h>
-#include <string>
+#include <string.h>
 #include <dirent.h>
+#include <stdlib.h>
 
 #define MISCPRECISION 1e-4
 
