@@ -10,8 +10,7 @@ void instance::initialize(PowSys *powSys, scenarios *stoc) {
 	this->powSys = powSys;
 	this->stoc	 = stoc;
 	
-	solution.allocateMem(powSys->numGen, 14);
-	cout << "Semih: Fix solution mem alloc" << endl;
+	solution.allocateMem(powSys->numGen, (int)round(runParam.horizon/runParam.ED_resolution));
 }
 
 /*

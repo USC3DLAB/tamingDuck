@@ -46,6 +46,9 @@ int main(int argc, const char * argv[]) {
 	/*** TEST ***/
 	instance inst;
 	inst.initialize(&system, &scen);
+	
+	UCmodel model;
+	model.formulate(inst, DayAhead, Transmission, 0);
 	/*** TEST ***/
 	
 	// Switch based on the chosen setting

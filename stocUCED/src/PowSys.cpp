@@ -69,7 +69,7 @@ bool PowSys::readGeneratorData(string &inputDir) {
         
         // generator bus name
         getline(input, gen.connectedBusName, delimiter);
-        
+		
         // capacity
         input >> gen.maxCapacity;
         move_cursor(input, delimiter);
