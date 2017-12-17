@@ -12,8 +12,6 @@
 
 #include "PowSys.hpp"
 #include "stoc.hpp"
-#include "UCmodel.hpp"
-#include "EDmodel.hpp"
 #include "config.hpp"
 #include "solution.hpp"
 

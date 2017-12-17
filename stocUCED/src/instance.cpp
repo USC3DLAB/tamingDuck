@@ -9,6 +9,9 @@ instance::instance () {}
 void instance::initialize(PowSys *powSys, scenarios *stoc) {
 	this->powSys = powSys;
 	this->stoc	 = stoc;
+	
+	solution.allocateMem(powSys->numGen, 14);
+	cout << "Semih: Fix solution mem alloc" << endl;
 }
 
 /*
@@ -54,29 +57,3 @@ void instance::updateGenStatus(ProblemType prob_type, vector< vector<double> > &
 		}
 	}
 }*/
-
-// TODO: moved to a more general runType structure, which is now global
-//bool instance::readTimeParameters ( ) {
-//	ifstream input;
-//	string	 temp_str;
-//
-//	if ( open_file (input, instance_path + "config.txt") ) {
-//		input >> temp_str >> DA_nb_periods >> temp_str;
-//		input >> temp_str >> DA_resolution >> temp_str;
-//		input >> temp_str >> ST_nb_periods >> temp_str;
-//		input >> temp_str >> ST_resolution >> temp_str;
-//		input >> temp_str >> ED_nb_periods >> temp_str;
-//		input >> temp_str >> ED_resolution >> temp_str;
-//	}
-//	else
-//		return false;
-//
-//	input.close();
-//
-//	/* Make sure that the DA, ST and ED period lengths are consistent with one another. */
-//	if ( fmod(DA_nb_periods*DA_resolution, ST_nb_periods*ST_resolution) != 0 ||
-//			fmod(ED_nb_periods*DA_resolution, ED_nb_periods*ED_resolution) != 0 )
-//		return false;
-//
-//	return true;
-//}//END readTimeParameters()

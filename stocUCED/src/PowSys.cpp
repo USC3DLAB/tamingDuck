@@ -16,20 +16,26 @@ bool PowSys::readData(string inputDir) {
     
     // read generator data
     status = readGeneratorData(inputDir);
-    if (!status) return false;
-    
+	if (!status) goto finalize;
+	
     // read bus data
     status = readBusData(inputDir);
-    if (!status) return false;
+    if (!status) goto finalize;
     
     // read line data
     status = readLineData(inputDir);
-    if (!status) return false;
+    if (!status) goto finalize;
     
-    // finalize
+    // postprocess
     postprocessing();
-    
-    return true;
+	
+finalize:
+	if (status) {
+		printf("Power system has been parsed successfully.\n");
+	} else {
+		printf("Error: Power system could not be read.\n");
+	}
+    return status;
 }
 
 bool PowSys::readGeneratorData(string &inputDir) {
@@ -42,13 +48,15 @@ bool PowSys::readGeneratorData(string &inputDir) {
     
     // skip the headers
     move_cursor(input, eoline);
-    
+	
+	int genIndex = 0;
+	
     while (!input.eof()) {
         // create a generator
         Generator gen;
-        
-        // get generator id
-        input >> gen.id;
+		gen.id = genIndex++;
+		
+        // skip the provided generator id
         move_cursor(input, delimiter);
         
         // generator name
@@ -133,6 +141,7 @@ bool PowSys::readBusData(string &inputDir) {
     while (!input.eof()) {
         // create a bus
         Bus bus;
+		bus.id = busIndex;
         
         // bus name
         getline(input, bus.name, delimiter);
@@ -167,12 +176,15 @@ bool PowSys::readLineData(string &inputDir) {
     if (!status)  return false;
     
     // skip the headers
-    move_cursor(input, eoline);
-    
+    move_cursor(input, '\n');
+	
+	int lineIndex = 0;
+	
     // read the data
     while (!input.eof()) {
         // create a line
         Line line;
+		line.id = lineIndex++;
         
         // name
         getline(input, line.name, delimiter);
@@ -196,7 +208,7 @@ bool PowSys::readLineData(string &inputDir) {
                 
         // read susceptance
         input >> line.susceptance;
-        move_cursor(input, eoline);
+        move_cursor(input, '\n');
         
         // add the line to the list
         lines.push_back(line);

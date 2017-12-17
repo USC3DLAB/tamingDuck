@@ -37,16 +37,20 @@ int main(int argc, const char * argv[]) {
 	readRunfile (inputDir);
 
     /* Read the power system */
-    PowSys system;
+	PowSys system;
     system.readData(inputDir);
-	
-    /* checking scenario reader */
+
+	/* checking scenario reader */
     scenarios scen(inputDir, sysName);
+
+	/*** TEST ***/
+	instance inst;
+	inst.initialize(&system, &scen);
+	/*** TEST ***/
 	
 	// Switch based on the chosen setting
 	if ( setting == "DUC-DED" ) {
 		// Setup the problem instance
-		//instance inst (inputDir, sysName);
 
 //		if( setup_DUCDED(inst) ) {
 //			perror("Failed to complete the DUC-DED run.\n");

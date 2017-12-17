@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "Generator.hpp"
+#include "config.hpp"
 
 using namespace std;
 
@@ -25,12 +26,9 @@ public:
     Bus ();
 
     // bus identifiers
-    int id;
-    string name;
+	string name;	// provided by the data
+	int id;			// assigned by us
 
-    const double pi = 3.1451;
-    // TODO: duplicate, another copy is in intance.hpp
-    
     // bus characteristics
     int     regionId;
 

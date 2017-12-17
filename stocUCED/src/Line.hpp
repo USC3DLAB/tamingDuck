@@ -22,7 +22,8 @@ public:
     Line ();
     
     // line identifiers
-    string name;
+	string name;	// provided by the data
+	int id;			// assigned by us
     
     // line characteristics
     double minFlowLim;  // MWh

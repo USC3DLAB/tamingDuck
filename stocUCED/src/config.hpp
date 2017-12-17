@@ -38,4 +38,7 @@ enum ModelType {
 	Transmission
 };
 
+const double pi = 3.1451;
+const double loadShedPenaltyCoef = 1e5;
+
 #endif /* config_h */
