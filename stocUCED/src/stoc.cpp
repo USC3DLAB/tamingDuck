@@ -17,60 +17,89 @@
 #include <string.h>
 #include "stoc.hpp"
 
-int getContents (string dir, vector<string> &contents);
-int getDirs (string dir, vector<string> &subdirs);
-int getFiles (string dir, vector<string> &files);
-
 scenarios::scenarios() {}
 
 scenarios::~scenarios() {}
 
 scenarios::scenarios(string inputDir, string sysName) {
-	vector<string> rType, fType;
+
+	numStocProc = 0;
 
 	/* read all the random variable types: these are directories in the inputDir. */
+	vector<string> rType;
 	getDirs((inputDir + sysName), rType);
 	if ( rType.size() == 0 )
 		cout << "Warning: There are no random variables in the problem.\n";
 
 	/* Loop through all the random variables */
 	for ( unsigned int r = 0; r < rType.size(); r++ ) {
+		vector<string> fType;
 
 		getFiles((inputDir + sysName + "/" + rType[r]), fType);
 
 		if (fType.size() == 0 )
-			cout << "Warning: There are no forecast type data provided, setting default.\n";
+			cout << "Warning: There is no type data provided, setting default.\n";
 
 		/* Loop through all the forecast types */
 		for ( unsigned int f = 0; f < fType.size(); f++ ) {
-			read((inputDir + sysName + "/" + rType[r] + "/" + fType[f]), ',');
+			scenType temp;
+			temp = read((inputDir + sysName + "/" + rType[r] + "/" + fType[f]), ',', true, true);
+			temp.name = rType[r];
+			temp.type = fType[r];
+			stocProc.push_back(temp);
+			numStocProc++;
+			cout << "Successfully read " << (inputDir + sysName + "/" + rType[r] + "/" + fType[f]).c_str() << endl;
 		}
 	}
-}
+}//END scenario constructor
 
-bool scenarios::read(string fname, char delimiter) {
-	scenType *temp;
+scenType scenarios::read(string fname, char delimiter, bool readColNames, bool readRowNames) {
 	ifstream fptr;
-	string str;
+	scenType temp;
+	vector<string> tokens;
+	string line;
+	unsigned int n;
 
 	if ( !open_file(fptr, fname) )
-		return false;
+		return temp;
 
-	while (getline(fptr, str, delimiter))
-		temp->varNames.push_back(str);
-
-	size_t i = 0;
-	while (i < temp->varNames.size() - 1) {
-		if ( getline(fptr, str) ) break;
-
-		istringstream iss( str );
-		vector <string> record;
-
-		while (iss) {
-			if (!getline( iss, str, delimiter)) break;
-			record.push_back(str);
-		}
+	temp.numVars = temp.numT = 0;
+	if ( readColNames ) {
+		getline ( fptr, line );
+		tokens = split(line, delimiter);
+		for ( n = 1; n < tokens.size(); n++ )
+			temp.varNames.push_back(tokens[1]);
+		temp.numVars = tokens.size();
 	}
 
-	return true;
-}//read()
+	while ( getline(fptr, line) ) {
+		tokens = split(line, delimiter);
+
+		n = 0;
+		if ( readRowNames )
+			temp.rowNames.push_back(tokens[n++]);
+
+
+		{
+			vector<double> vec;
+			for ( n = 1; n < tokens.size(); n++ )
+				vec.push_back(atof(tokens[n].c_str()));
+			temp.vals.push_back(vec);
+		}
+
+		temp.numT++;
+	}
+
+	return temp;
+}
+
+/* The subroutine splits the line of type string along the delimiters into a vector of shorter strings */
+vector<string> split(string &line, char delimiter) {
+	stringstream ss(line);
+	string item;
+	vector<string> tokens;
+	while (getline(ss, item, delimiter)) {
+		tokens.push_back(item);
+	}
+	return tokens;
+}
