@@ -10,6 +10,7 @@
 #define config_h
 
 struct runType {
+	double 	baseTime;		// in minutes, the highest resolution period length
 	double	horizon;		// Total horizon in minutes
 	double	DA_horizon;		// in minutes
 	double	ST_horizon;		// in minutes

@@ -29,11 +29,11 @@ struct oneStocProc {
 };
 
 struct scenarioType{
-	vector<string> name;
-	int numOmega;
-	int T;
-	int cnt;
-	vector<vector<vector<double>>> vals;
+	vector<string> name;				// lists all the stochastic processes for which scenarios were generated
+	int numOmega;						// Number of random variables in the stochastic process
+	int T;								// Time horizon
+	int cnt;							// Number of scenarios
+	vector<vector<vector<double>>> vals;	// scenario/observations of random variables: dim1 (rows) - time, dim2 (columns) - random variables, and dim (3) outcomes.
 };
 
 class stocProcess {
