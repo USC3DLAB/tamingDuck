@@ -26,8 +26,8 @@ public:
     void setType (string typeName); // sets generator type given its name
     
     // generator identifiers
-    string name;
-    int id;
+	string name;	// provided by the data
+	int id;			// assigned by us
     
     // generator characteristics
     double maxCapacity;         // MW

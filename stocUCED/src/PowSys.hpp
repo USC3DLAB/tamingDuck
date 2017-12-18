@@ -44,13 +44,7 @@ private:
     void postprocessing ();
 
     // helpers
-    map<string, int> mapBusNameToIndex;
-    
-    const char delimiter = ',';	// delimiter
-    const char eoline = '\r';	// end of line delimiter
-    //TODO: it might make sense to make these global
-    
-
+    map<string, int> mapBusNameToIndex;    
 };
 
 #endif /* PowSys_hpp */

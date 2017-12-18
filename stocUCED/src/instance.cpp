@@ -6,77 +6,51 @@ extern runType runParam;
 
 instance::instance () {}
 
-void instance::initialize(PowSys *powSys, scenarios *stoc) {
+void instance::initialize(PowSys *powSys, scenarios *stoc, string inputDir) {
 	this->powSys = powSys;
 	this->stoc	 = stoc;
+	
+	solution.allocateMem(powSys->numGen, (int)round(runParam.horizon/runParam.ED_resolution));
+
+	readLoadData(inputDir + "Load/DA.csv", DA_load);
+	readLoadData(inputDir + "Load/ST.csv", ST_load);
+	readLoadData(inputDir + "Load/RT.csv", RT_load);
 }
 
-/*
-bool instance::getGenStatus(int gen, int period)
-{
-	if (period < 0)	return true;	// all generators are assumed to be online (for a long time) at t=0.
-
-	if (period >= gen_states[gen].size()) {
-		cout << "Generator status has not been determined yet!" << endl;
-		return false;
-	}
-
-	bool status = true;
-	for (int t=0; t<gen_states[gen].size(); t++) {
-		if ( (t+1) > period ) {
-			status = gen_states[gen][t];
-			break;
+bool instance::readLoadData(string filepath, vector<vector<double>> &load) {
+	ifstream input;
+	bool status = open_file(input, filepath);
+	if (!status) return false;
+	
+	string temp_str;
+	double temp_dbl;
+	
+	// read the headers
+	safeGetline(input, temp_str);
+	
+	// get the # of regions
+	int numRegion = (int)count(temp_str.begin(), temp_str.end(), delimiter);
+	load.resize(numRegion);
+	
+	// read the data
+	while (!input.eof()) {
+		// time stamp
+		getline(input, temp_str, delimiter);
+		
+		// regional data
+		int r;
+		for (r=0; r<numRegion-1; r++) {
+			input >> temp_dbl;
+			load[r].push_back(temp_dbl);
+			move_cursor(input, delimiter);
 		}
+		
+		// final column (separated from above to deal with eoline token)
+		input >> temp_dbl;
+		load[r].push_back(temp_dbl);
+		safeGetline(input, temp_str);
 	}
-
-	return status;
+	input.close();
+	
+	return true;
 }
-
-void instance::updateGenStatus(ProblemType prob_type, vector< vector<double> > &x)
-{
-	int nb_subhours = 60 / runParam.ST_resolution;
-
-	for (int g = 0; g < numGen; g++)
-	{
-		if (prob_type == DayAhead && dayahead_gen[g])	// if the problem was DA-UC, and this generator is a base-load gen, ...
-		{
-			for (int h = 0; h< runParam.DA_numPeriods; h++) {
-				for (int t=0; t<nb_subhours; t++) {
-					gen_states[g].push_back( round(x[g][h]) );
-				}
-			}
-		}
-		else if (prob_type == ShortTerm && !dayahead_gen[g])
-		{
-			for (int t = 0; t < runParam.ST_numPeriods; t++) {
-				gen_states[g].push_back( round(x[g][t]) );
-			}
-		}
-	}
-}*/
-
-// TODO: moved to a more general runType structure, which is now global
-//bool instance::readTimeParameters ( ) {
-//	ifstream input;
-//	string	 temp_str;
-//
-//	if ( open_file (input, instance_path + "config.txt") ) {
-//		input >> temp_str >> DA_nb_periods >> temp_str;
-//		input >> temp_str >> DA_resolution >> temp_str;
-//		input >> temp_str >> ST_nb_periods >> temp_str;
-//		input >> temp_str >> ST_resolution >> temp_str;
-//		input >> temp_str >> ED_nb_periods >> temp_str;
-//		input >> temp_str >> ED_resolution >> temp_str;
-//	}
-//	else
-//		return false;
-//
-//	input.close();
-//
-//	/* Make sure that the DA, ST and ED period lengths are consistent with one another. */
-//	if ( fmod(DA_nb_periods*DA_resolution, ST_nb_periods*ST_resolution) != 0 ||
-//			fmod(ED_nb_periods*DA_resolution, ED_nb_periods*ED_resolution) != 0 )
-//		return false;
-//
-//	return true;
-//}//END readTimeParameters()
