@@ -1,25 +1,27 @@
 #include "instance.hpp"
-
+#include "./stocProcess/stoc.hpp"
 
 extern runType runParam;
 
 instance::instance () {}
 
-bool instance::initialize(PowSys *powSys, stocProcess *stoc, string inputDir, string sysName) {
+bool instance::initialize(PowSys *powSys, StocProcess *stoc) {
 	this->powSys = powSys;
 	this->stoc	 = stoc;
 	
-	solution.allocateMem(powSys->numGen, (int)round(runParam.horizon/runParam.ED_resolution));
+	solution.allocateMem(powSys->numGen, (int)round(runParam.horizon/runParam.baseTime));
 
-	bool status;
-	status = readLoadData(inputDir + sysName + "/Load/DA.csv", DA_load);
-	if (!status)	return false;
-	
-	status = readLoadData(inputDir + sysName + "/Load/ST.csv", ST_load);
-	if (!status)	return false;
-	
-	status = readLoadData(inputDir + sysName + "/Load/RT.csv", RT_load);
-	if (!status)	return false;
+	observ = createScenarioList(stoc, {0,2}, 24, 10);
+
+//	bool status;
+//	status = readLoadData(inputDir + sysName + "/Load/DA.csv", DA_load);
+//	if (!status)	return false;
+//
+//	status = readLoadData(inputDir + sysName + "/Load/ST.csv", ST_load);
+//	if (!status)	return false;
+//
+//	status = readLoadData(inputDir + sysName + "/Load/RT.csv", RT_load);
+//	if (!status)	return false;
 	
 	return true;
 }

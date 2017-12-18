@@ -69,7 +69,7 @@ int getFiles (string dir, vector<string> &files) {
 	}
 
 	while ((dirp = readdir(dp)) != NULL) {
-		if ( dirp->d_type != DT_DIR )
+		if ( dirp->d_type != DT_DIR && dirp->d_name[0] != '.')
 			files.push_back(string(dirp->d_name));
 	}
 

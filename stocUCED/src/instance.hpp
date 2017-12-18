@@ -22,12 +22,14 @@ class instance {
 
 public:
     instance ();										
-	bool initialize (PowSys *powSys, stocProcess *stoc, string inputDir, string sysName);
+	bool initialize (PowSys *powSys, StocProcess *stoc);
 	
 	PowSys		*powSys;
-	stocProcess	*stoc;
+	StocProcess	*stoc;
 	Solution	solution;
 	
+	ScenarioType observ;
+
 	vector< vector<double> > DA_load;	// load forecast for the DA-UC problem
 	vector< vector<double> > ST_load;	// load forecast for the ST-UC problem
 	vector< vector<double> > RT_load;	// real-time load for the ED problem
