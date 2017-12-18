@@ -38,14 +38,14 @@ int main(int argc, const char * argv[]) {
 
     /* Read the power system */
 	PowSys system;
-    system.readData(inputDir);
+    system.readData(inputDir, sysName);
 
 	/* checking scenario reader */
     scenarios scen(inputDir, sysName);
 
 	/*** TEST ***/
 	instance inst;
-	inst.initialize(&system, &scen, inputDir);
+	inst.initialize(&system, &scen, inputDir, sysName);
 	
 	UCmodel DAmodel;
 	DAmodel.formulate(inst, DayAhead, Transmission, 0);
@@ -150,7 +150,7 @@ void readRunfile (string inputDir) {
 	/* Set default values for the run parameters */
 	runParam.horizon = 24*60;
 	runParam.DA_horizon = 24*60;	runParam.DA_resolution = 60; runParam.DA_frequency = 24*60;
-	runParam.ST_horizon = 24*60;	runParam.ST_resolution = 15; runParam.ST_frequency = 24*60;
+	runParam.ST_horizon = 3*60;		runParam.ST_resolution = 15; runParam.ST_frequency = 3*60;
 	runParam.ED_horizon = 60;		runParam.ED_resolution = 15; runParam.ED_frequency = 15;
 
 	/* Read the run parameters if a run file is included in the default folder */

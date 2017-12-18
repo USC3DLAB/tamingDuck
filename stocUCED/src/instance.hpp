@@ -22,7 +22,7 @@ class instance {
 
 public:
     instance ();										
-	void initialize (PowSys *powSys, scenarios *stoc, string inputDir);
+	bool initialize (PowSys *powSys, scenarios *stoc, string inputDir, string sysName);
 	
 	PowSys		*powSys;
 	scenarios	*stoc;

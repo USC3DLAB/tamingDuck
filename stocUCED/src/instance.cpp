@@ -6,15 +6,23 @@ extern runType runParam;
 
 instance::instance () {}
 
-void instance::initialize(PowSys *powSys, scenarios *stoc, string inputDir) {
+bool instance::initialize(PowSys *powSys, scenarios *stoc, string inputDir, string sysName) {
 	this->powSys = powSys;
 	this->stoc	 = stoc;
 	
 	solution.allocateMem(powSys->numGen, (int)round(runParam.horizon/runParam.ED_resolution));
 
-	readLoadData(inputDir + "Load/DA.csv", DA_load);
-	readLoadData(inputDir + "Load/ST.csv", ST_load);
-	readLoadData(inputDir + "Load/RT.csv", RT_load);
+	bool status;
+	status = readLoadData(inputDir + sysName + "/Load/DA.csv", DA_load);
+	if (!status)	return false;
+	
+	status = readLoadData(inputDir + sysName + "/Load/ST.csv", ST_load);
+	if (!status)	return false;
+	
+	status = readLoadData(inputDir + sysName + "/Load/RT.csv", RT_load);
+	if (!status)	return false;
+	
+	return true;
 }
 
 bool instance::readLoadData(string filepath, vector<vector<double>> &load) {

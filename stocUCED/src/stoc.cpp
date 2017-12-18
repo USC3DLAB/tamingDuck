@@ -45,7 +45,15 @@ scenarios::scenarios(string inputDir, string sysName) {
 			scenType temp;
 			temp = read((inputDir + sysName + "/" + rType[r] + "/" + fType[f]), ',', true, true);
 			temp.name = rType[r];
-			temp.type = fType[r];
+			
+			//FIXME: SEMIH has replaced this line
+			// temp.type = fType[r];
+			// with
+			// temp.type = fType[f];
+			// please confirm!
+			
+			temp.type = fType[f];
+			
 			stocProc.push_back(temp);
 			numStocProc++;
 			cout << "Successfully read " << (inputDir + sysName + "/" + rType[r] + "/" + fType[f]).c_str() << endl;

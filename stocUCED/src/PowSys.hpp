@@ -26,7 +26,7 @@ class PowSys {
 
 public:
     PowSys ();
-    bool readData (string inputDir);
+    bool readData (string inputDir, string sysName);
 
     int numGen;
     int numBus;
@@ -38,9 +38,9 @@ public:
 
 private:
     
-    bool readGeneratorData (string &inputDir);
-    bool readBusData (string &inputDir);
-    bool readLineData (string &inputDir);
+    bool readGeneratorData (string inputPath);
+    bool readBusData (string inputPath);
+    bool readLineData (string inputPath);
     void postprocessing ();
 
     // helpers

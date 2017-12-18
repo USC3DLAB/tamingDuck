@@ -10,20 +10,20 @@
 
 PowSys::PowSys () {}
 
-bool PowSys::readData(string inputDir) {
+bool PowSys::readData(string inputDir, string sysName) {
     
     bool status;
     
     // read generator data
-    status = readGeneratorData(inputDir);
+    status = readGeneratorData(inputDir + sysName);
 	if (!status) goto finalize;
 	
     // read bus data
-    status = readBusData(inputDir);
+    status = readBusData(inputDir + sysName);
     if (!status) goto finalize;
     
     // read line data
-    status = readLineData(inputDir);
+    status = readLineData(inputDir + sysName);
     if (!status) goto finalize;
     
     // postprocess
@@ -31,17 +31,17 @@ bool PowSys::readData(string inputDir) {
 	
 finalize:
 	if (status) {
-		printf("Power system has been parsed successfully.\n");
+		printf("Power system has been read successfully.\n");
 	} else {
 		printf("Error: Power system could not be read.\n");
 	}
     return status;
 }
 
-bool PowSys::readGeneratorData(string &inputDir) {
+bool PowSys::readGeneratorData(string inputPath) {
     // open file
     ifstream input;
-    bool status = open_file(input, inputDir + "Generators.csv");
+    bool status = open_file(input, inputPath + "/Generators.csv");
     if (!status)  return false;
 	
 	string temp_str;
@@ -125,11 +125,11 @@ bool PowSys::readGeneratorData(string &inputDir) {
     return true;
 }
 
-bool PowSys::readBusData(string &inputDir) {
+bool PowSys::readBusData(string inputPath) {
   
     // open file
     ifstream input;
-    bool status = open_file(input, inputDir + "Buses.csv");
+    bool status = open_file(input, inputPath + "/Buses.csv");
     if (!status)  return false;
 	
 	string temp_str;
@@ -169,12 +169,12 @@ bool PowSys::readBusData(string &inputDir) {
     return true;
 }
 
-bool PowSys::readLineData(string &inputDir) {
+bool PowSys::readLineData(string inputPath) {
     
     // open file
     ifstream input;
 
-    bool status = open_file(input, inputDir + "Lines.csv");
+    bool status = open_file(input, inputPath + "/Lines.csv");
     if (!status)  return false;
     
 	string temp_str;

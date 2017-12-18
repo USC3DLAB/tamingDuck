@@ -321,10 +321,10 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 		Generator *genPtr = &(inst.powSys->generators[g]);
 		
 		for (int t=0; t<numPeriods; t++) {
-			obj += genPtr->startupCost * s[g][t];											// start up cost
+			obj += genPtr->startupCost * s[g][t];							// start up cost
 			obj += minGenerationReq[g] * genPtr->variableCost * x[g][t];	// cost of producing minimum production amount
-			obj += genPtr->noLoadCost*periodLength/60.0 * x[g][t];							// no-load cost
-			obj += genPtr->variableCost * p_var[g][t];					// variable cost
+			obj += genPtr->noLoadCost*periodLength/60.0 * x[g][t];			// no-load cost
+			obj += genPtr->variableCost * p_var[g][t];						// variable cost
 		}
 	}
 	
