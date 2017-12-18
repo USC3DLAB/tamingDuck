@@ -22,10 +22,10 @@ struct scenType {
 	string	name;		// Type of random variable
 	string	type;		// A descriptor
 	vector<string> varNames;
-	int 	numL;		// Number of random variables
+	vector<string> rowNames;
+	int 	numVars;	// Number of random variables
 	int 	numT;		// Number of time periods
-	int 	cnt;		// Number of scenarios
-	vector <vector <vector <double> > > vals;	// A three-dimensional matrix with scenario values
+	vector <vector <double> > vals;	// A two-dimensional matrix with scenario values
 };
 
 class scenarios {
@@ -34,10 +34,15 @@ public:
 	scenarios();
 	~scenarios();
 	scenarios(string inputDir, string sysName);
-	bool read(string fname, char delimiter);
 
-	vector <scenType> scen;		// A vector of scenType with elements corresponding to each type of randomness
+	int numStocProc;
+	vector <scenType> stocProc;		// A vector of scenType with elements corresponding to each type of randomness
+
+private:
+	scenType read(string fname, char delimiter, bool readColNames, bool readRowNames);
 };
 
+void read(string fname, char delimiter, bool colNames, bool rowNames);
+vector<string> split(string &s, char delimiter);
 
 #endif /* STOC_HPP_ */
