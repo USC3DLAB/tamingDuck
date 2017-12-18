@@ -8,7 +8,6 @@
 
 #include "UCmodel.hpp"
 
-//TODO: Why is this runParam here?
 extern runType runParam;
 
 UCmodel::UCmodel () {
@@ -48,7 +47,7 @@ void UCmodel::preprocessing ()
 	periodLength = (probType == DayAhead) ? runParam.DA_resolution : runParam.ST_resolution;
 	
 	numTimePerPeriod = (int)round(periodLength) / runParam.ED_resolution;
-
+	
 	
 	// initialize the containers
 	minGenerationReq.resize(inst->powSys->numGen);		// minimum production requirements

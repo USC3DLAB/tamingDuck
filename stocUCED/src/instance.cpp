@@ -1,7 +1,6 @@
 #include "instance.hpp"
 #include "misc.hpp"
 
-// TODO: SMH: does this need to be in here?
 extern runType runParam;
 
 instance::instance () {}
