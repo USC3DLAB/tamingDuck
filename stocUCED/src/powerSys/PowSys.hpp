@@ -9,7 +9,7 @@
 #ifndef PowSys_hpp
 #define PowSys_hpp
 
-#include "misc.hpp"
+#include "../misc.hpp"
 
 #include "Generator.hpp"
 #include "Bus.hpp"

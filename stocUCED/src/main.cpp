@@ -12,8 +12,8 @@
 #include "solution.hpp"
 #include "UCmodel.hpp"
 #include "EDmodel.hpp"
-#include "PowSys.hpp"
-#include "stoc.hpp"
+#include "./powerSys/PowSys.hpp"
+#include "./stocProcess/stoc.hpp"
 #include <sstream>
 
 //#include "master.hpp"
@@ -41,13 +41,13 @@ int main(int argc, const char * argv[]) {
     system.readData(inputDir, sysName);
 
 	/* checking scenario reader */
-    scenarios scen(inputDir, sysName);
+    stocProcess stoc(inputDir, sysName);
 
-    observType observ = createObservList(scen, {1,3}, 24, 10);
+    scenarioType observ = createScenarioList(stoc, {1,3}, 24, 10);
 
 	/*** TEST ***/
 	instance inst;
-	inst.initialize(&system, &scen, inputDir, sysName);
+	inst.initialize(&system, &stoc, inputDir, sysName);
 	
 	UCmodel DAmodel;
 	DAmodel.formulate(inst, DayAhead, Transmission, 0);

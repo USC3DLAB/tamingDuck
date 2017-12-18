@@ -8,12 +8,12 @@
 #ifndef _INSTANCE_H_
 #define _INSTANCE_H_
 
-#include <iostream>
-#include <string>
-
-#include "PowSys.hpp"
-#include "stoc.hpp"
+#include "misc.hpp"
 #include "config.hpp"
+#include "./stocProcess/stoc.hpp"
+#include "./powerSys/PowSys.hpp"
+
+
 #include "solution.hpp"
 
 using namespace std;
@@ -22,10 +22,10 @@ class instance {
 
 public:
     instance ();										
-	bool initialize (PowSys *powSys, scenarios *stoc, string inputDir, string sysName);
+	bool initialize (PowSys *powSys, stocProcess *stoc, string inputDir, string sysName);
 	
 	PowSys		*powSys;
-	scenarios	*stoc;
+	stocProcess	*stoc;
 	Solution	solution;
 	
 	vector< vector<double> > DA_load;	// load forecast for the DA-UC problem

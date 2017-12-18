@@ -14,21 +14,21 @@
 
 /* This header file contains all classes and structures pertaining to the stochastic processes of interest */
 
-#include "misc.hpp"
+#include "../misc.hpp"
 
 using namespace std;
 
-struct scenType {
+struct oneStocProc {
 	string	name;				// Type of random variable
 	string	type;				// A descriptor
 	vector<string> varNames;	// Name of the variables
 	vector<string> rowNames;	// Name of the rows
 	int 	numVars;			// Number of random variables
 	int 	numT;				// Number of time periods
-	vector <vector <double> > vals;	// A two-dimensional matrix with scenario values
+	vector <vector <double> > vals;	// A two-dimensional matrix holding observation of the stochastic process
 };
 
-struct observType{
+struct scenarioType{
 	vector<string> name;
 	int numOmega;
 	int T;
@@ -36,21 +36,21 @@ struct observType{
 	vector<vector<vector<double>>> vals;
 };
 
-class scenarios {
+class stocProcess {
 
 public:
-	scenarios();
-	~scenarios();
-	scenarios(string inputDir, string sysName);
+	stocProcess();
+	~stocProcess();
+	stocProcess(string inputDir, string sysName);
 
 	int numStocProc;
-	vector <scenType> stocProc;		// A vector of scenType with elements corresponding to each type of randomness
+	vector <oneStocProc> sp;		// A vector of scenType with elements corresponding to each type of randomness
 
 private:
-	scenType read(string fname, char delimiter, bool readColNames, bool readRowNames);
+	oneStocProc read(string fname, char delimiter, bool readColNames, bool readRowNames);
 };
 
 void read(string fname, char delimiter, bool colNames, bool rowNames);
-observType createObservList(scenarios S, vector<int> S_indices, int T, int numVals);
+scenarioType createScenarioList(stocProcess S, vector<int> S_indices, int T, int numVals);
 
 #endif /* STOC_HPP_ */

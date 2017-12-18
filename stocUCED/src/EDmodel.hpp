@@ -27,7 +27,7 @@
 //	EDmodel();
 //	~EDmodel();
 //
-//	void formulate(instance &inst, int beginTime, solution soln);
+//	void formulate(instance &inst, int beginTime, Solution soln);
 //	bool solve();
 //
 //private:
