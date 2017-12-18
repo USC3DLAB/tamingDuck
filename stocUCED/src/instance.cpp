@@ -1,12 +1,12 @@
 #include "instance.hpp"
-#include "misc.hpp"
+
 
 // TODO: SMH: does this need to be in here?
 extern runType runParam;
 
 instance::instance () {}
 
-bool instance::initialize(PowSys *powSys, scenarios *stoc, string inputDir, string sysName) {
+bool instance::initialize(PowSys *powSys, stocProcess *stoc, string inputDir, string sysName) {
 	this->powSys = powSys;
 	this->stoc	 = stoc;
 	

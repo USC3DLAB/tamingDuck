@@ -14,7 +14,7 @@
 #include <vector>
 
 #include "Generator.hpp"
-#include "config.hpp"
+#include "../config.hpp"
 
 using namespace std;
 

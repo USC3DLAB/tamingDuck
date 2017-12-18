@@ -17,11 +17,11 @@
 #include <string.h>
 #include "stoc.hpp"
 
-scenarios::scenarios() {}
+stocProcess::stocProcess() {}
 
-scenarios::~scenarios() {}
+stocProcess::~stocProcess() {}
 
-scenarios::scenarios(string inputDir, string sysName) {
+stocProcess::stocProcess(string inputDir, string sysName) {
 
 	numStocProc = 0;
 
@@ -42,12 +42,12 @@ scenarios::scenarios(string inputDir, string sysName) {
 
 		/* Loop through all the forecast types */
 		for ( unsigned int f = 0; f < fType.size(); f++ ) {
-			scenType temp;
+			oneStocProc temp;
 			temp = read((inputDir + sysName + "/" + rType[r] + "/" + fType[f]), ',', true, true);
 			temp.name = rType[r];
 			temp.type = fType[f];
 
-			stocProc.push_back(temp);
+			sp.push_back(temp);
 			numStocProc++;
 			cout << "Successfully read " << (inputDir + sysName + "/" + rType[r] + "/" + fType[f]).c_str() << endl;
 		}
@@ -55,9 +55,9 @@ scenarios::scenarios(string inputDir, string sysName) {
 
 }//END scenario constructor
 
-scenType scenarios::read(string fname, char delimiter, bool readColNames, bool readRowNames) {
+oneStocProc stocProcess::read(string fname, char delimiter, bool readColNames, bool readRowNames) {
 	ifstream fptr;
-	scenType temp;
+	oneStocProc temp;
 	vector<string> tokens;
 	string line;
 	unsigned int n;
@@ -96,21 +96,21 @@ scenType scenarios::read(string fname, char delimiter, bool readColNames, bool r
 }//END scenarios::read
 
 /* This subroutine creates a list of _numVals_ observations for stochastic processes indexed by S_indices of time duration _T_ and returns a observType structure output. */
-observType createObservList(scenarios S, vector<int> S_indices, int T, int numVals) {
-	observType observ;
+scenarioType createScenarioList(stocProcess stoc, vector<int> S_indices, int T, int numVals) {
+	scenarioType observ;
 
 	/* Compute the number of observations that can be generated */
 	for ( unsigned int n = 0; n < S_indices.size(); n++ )
-		if ( S.stocProc[S_indices[n]].numT/T < numVals )
-			numVals = S.stocProc[S_indices[n]].numT/T;
+		if ( stoc.sp[S_indices[n]].numT/T < numVals )
+			numVals = stoc.sp[S_indices[n]].numT/T;
 
 	for ( int rep = 0; rep < numVals; rep++ ) {
 		vector<vector<double>> M;
 		for ( int t = 0; t < T; t++ ) {
 			vector <double> vec;
 			for ( unsigned int n = 0; n < S_indices.size(); n++ ) {
-				for ( unsigned int m = 0; m < S.stocProc[S_indices[n]].vals[t].size(); m++)
-					vec.push_back(S.stocProc[S_indices[n]].vals[t][m]);
+				for ( unsigned int m = 0; m < stoc.sp[S_indices[n]].vals[t].size(); m++)
+					vec.push_back(stoc.sp[S_indices[n]].vals[t][m]);
 				observ.T = T;
 			}
 			M.push_back(vec);
@@ -122,7 +122,7 @@ observType createObservList(scenarios S, vector<int> S_indices, int T, int numVa
 	observ.cnt = observ.vals.size();
 	observ.numOmega = observ.vals[0][0].size();
 	for ( unsigned int n = 0; n < S_indices.size(); n++ )
-		observ.name.push_back(S.stocProc[S_indices[n]].name);
+		observ.name.push_back(stoc.sp[S_indices[n]].name);
 
 	return observ;
 }//END createObservList()
