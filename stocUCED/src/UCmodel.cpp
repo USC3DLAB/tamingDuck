@@ -8,6 +8,7 @@
 
 #include "UCmodel.hpp"
 
+//TODO: Why is this runParam here?
 extern runType runParam;
 
 UCmodel::UCmodel () {
@@ -43,6 +44,9 @@ void UCmodel::preprocessing ()
 	
 	numPeriods	 = (probType == DayAhead) ? runParam.DA_numPeriods : runParam.ST_numPeriods;
 	periodLength = (probType == DayAhead) ? runParam.DA_resolution : runParam.ST_resolution;
+	
+	numSolnCompsPerPeriod = (int)round(periodLength) / runParam.ED_resolution;
+
 	
 	// initialize the containers
 	minGenerationReq.resize(inst->powSys->numGen);		// minimum production requirements
@@ -138,16 +142,13 @@ void UCmodel::preprocessing ()
  * parameters.
  * - Formulates the mathematical program.
  ****************************************************************************/
-void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelType, int beginPeriod) {
+void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin) {
 	
 	/* Initializations */
-	this->inst	 = &inst;
-	
-	//	// initialize model parameters
-	//	this->begin_hour = begin_hour;
-	//	this->prob_type  = prob_type;
-	//
-	//	int begin_period = begin_hour * 60/period_len;
+	this->inst		= &inst;
+	this->beginMin	= beginMin;
+	this->probType	= probType;
+
 
 	/* Prepare Model-Dependent Input Data */
 	preprocessing();
@@ -192,7 +193,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	// state constraints
 	for (int g=0; g<numGen; g++) {
 		// t=0: generators are assumed to be turned on
-		model.add( x[g][0] - getGenState(g, beginPeriod-1) == s[g][0] - z[g][0] );
+		model.add( x[g][0] - getGenState(g,-1) == s[g][0] - z[g][0] );
 	
 		// t>0
 		for (int t=1; t<numPeriods; t++) {
@@ -208,7 +209,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 			IloExpr lhs (env);
 			for (int i = t-minUpTimePeriods[g]+1; i<=t; i++) {
 				if (i-1 >= 0)	lhs += s[g][i-1];
-				else			lhs += max(0, getGenState(g, beginPeriod+i-1) - getGenState(g, beginPeriod+i-2));
+				else			lhs += max(0, getGenState(g,i-1) - getGenState(g,i-2));
 			}
 			model.add( lhs <= x[g][t-1] );
 			lhs.end();
@@ -223,11 +224,11 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 			IloExpr lhs (env);
 			for (int i = t-minDownTimePeriods[g]+1; i<=t; i++)  {
 				if (i-1 >= 0)	lhs += s[g][i-1];
-				else			lhs += max(0, getGenState(g, beginPeriod+i-1) - getGenState(g, beginPeriod+i-2));
+				else			lhs += max(0, getGenState(g,i-1) - getGenState(g,i-2));
 			}
 
 			if (t-minDownTimePeriods[g]-1 >= 0)	model.add( lhs <= 1 - x[g][t-minDownTimePeriods[g]-1] );
-			else								model.add( lhs <= 1 - getGenState(g, (beginPeriod+t-minDownTimePeriods[g]-1)));
+			else								model.add( lhs <= 1 - getGenState(g, (t-minDownTimePeriods[g]-1)));
 			lhs.end();
 		}
 	}
@@ -252,40 +253,21 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 			}
 		}
 	}
-	else
-	{
-		//TODO:
+	else {
 		/* All generators will produce in the ST-UC problem. Commitment
-		 * decisions of DA-UC generators will be read from file.
-		 */
+		 * decisions of DA-UC generators will be read from the solution. */
+		double genState;
+		for (int g=0; g<numGen; g++) {
+			Generator *genPtr = &(inst.powSys->generators[g]);
+			
+			if (genPtr->isBaseLoadGen) {
+				for (int t=0; t<numPeriods; t++) {
+					genState = getGenState(g, t);
+					x[g][t].setBounds(genState, genState);
+				}
+			}
+		}
 	}
-	//		ifstream input;
-	//		input.open("./DayAhead.sol");
-	//		if (input.fail()) {
-	//			cout << "Cannot find the DA-UC solution" << endl;
-	//		}
-	//
-	//		vector< vector<double> > DAUC_commitments;
-	//		resize_matrix(DAUC_commitments, inst.numGen, runParam.DA_numPeriods);
-	//
-	//		for (int g=0; g<inst.numGen; g++) {
-	//			input >> DAUC_commitments[g][0];	// will be overwritten
-	//			for (int t = 0; t < runParam.DA_numPeriods; t++) {
-	//				input >> DAUC_commitments[g][t];
-	//			}
-	//		}
-	//		input.close();
-	//
-	//		// read DA-UC generators' commitment decisions from file
-	//		for (int g=0; g<inst.numGen; g++) {
-	//			if (inst.dayahead_gen[g]) {
-	//				for (int t=0, hour=begin_hour; t<nb_periods; t++, hour=begin_hour+t*period_len/60) {
-	//					x[g][t].setBounds( DAUC_commitments[g][hour], DAUC_commitments[g][hour] );
-	//				}
-	//			}
-	//		}
-	//	}
-	//
 	
 	// capacity constraints
 	for (int g=0; g<numGen; g++) {
@@ -342,7 +324,8 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	
 	
 	/** Model-dependent obj function components, constraints **/
-	if (modelType == System) {
+	if (modelType == System)
+	{
 		IloNumVarArray L (env, numPeriods, 0, IloInfinity, ILOFLOAT);	// load shedding
 		
 		// aggregated-demand constraints
@@ -360,12 +343,13 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 			obj += loadShedPenaltyCoef * L[t];
 		}
 	}
-	else if (modelType == Transmission) {
+	else	// (modelType == Transmission)
+	{
 		IloArray< IloNumVarArray > L (env, numBus);		// load shedding
 		IloArray< IloNumVarArray > T (env, numBus);		// phase angles
 		IloArray< IloNumVarArray > F (env, numLine);	// flows
 
-		for (int b=0; b<numPeriods; b++) {
+		for (int b=0; b<numBus; b++) {
 			L[b] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
 			T[b] = IloNumVarArray(env, numPeriods, 0, 2*pi, ILOFLOAT);
 			
@@ -383,6 +367,8 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 			sprintf(buffer, "F_%d", l);
 			F[l].setNames(buffer);
 		}
+		
+		// TODO: No Load-shedding in buses with 0 load
 		
 		// DC-approximation to AC power flow
 		for (int l=0; l<numLine; l++) {
@@ -406,7 +392,6 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 				// production (iterate over connected generators)
 				for (int g=0; g<busPtr->connectedGenerators.size(); g++) {
 					expr += p[ busPtr->connectedGenerators[g]->id ][t];
-					cout << "Bus " << busPtr->id << " has " << busPtr->connectedGenerators[g]->name << " connected to it" << endl;
 				}
 				
 				// in/out flows (iterate over all arcs)
@@ -423,7 +408,8 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 				expr += L[b][t];
 				
 				// constraint
-				model.add( expr == demand[b][t] );
+				//TODO: set the demands
+				model.add( expr == 0.0 );
 				
 				// free up memory
 				expr.end();
@@ -437,11 +423,6 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 			}
 		}
 	}
-	else {
-		cout << "Invalid model number" << endl;
-		exit(-1);
-	}
-	
 	
 	/** Finalize **/
 	model.add( IloMinimize(env, obj) );
@@ -452,11 +433,28 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	cplex.setParam(IloCplex::EpGap, 1e-2);
 }
 
+/****************************************************************************
+ * solve
+ * - Solves the model and records the solution into inst->solution.
+ ****************************************************************************/
 bool UCmodel::solve() {
 	
 	bool status;
 	try {
 		status = cplex.solve();
+		
+		// record the solution
+		if (status) {
+			for (int g=0; g<numGen; g++) {
+				Generator *genPtr = &(inst->powSys->generators[g]);
+				
+				if ( (probType == DayAhead && genPtr->isBaseLoadGen) || (probType == ShortTerm && !genPtr->isBaseLoadGen) ) {
+					for (int t=0; t<numPeriods; t++) {
+						setGenState(g,t, cplex.getValue(x[g][t]));
+					}
+				}
+			}
+		}
 	}
 	catch (IloException &e) {
 		cout << e << endl;
@@ -507,65 +505,45 @@ bool UCmodel::solve() {
 //		return false;
 //	}
 //}
-//
-//void UCmodel::exportModel()
-//{
-//	cplex.exportModel("mip.lp");
-//}
-//
-//void UCmodel::printSolution ()
-//{
-//	char filename[256];
-//
-//	// TODO: Undo after the instance class is updated.
-////	if (prob_type == DayAhead) {
-////		sprintf(filename, "%sDayAhead.sol", inst->getName().c_str());
-////	} else {
-////		sprintf(filename, "%sShortTerm%d.sol", inst->getName().c_str(), begin_hour);
-////	}
-//
-//	ofstream output;
-//	output.open(filename);
-//
-//	for (int g=0; g<inst->numGen; g++) {
-//		output << g << "\t";
-//		for (int t=0; t<nb_periods; t++) {
-//			output << round(soln.x[g][t]) << "\t";
-//		}
-//		output << endl;
-//	}
-//
-//	output.close ();
-//}
-//
-//void UCmodel::updateSoln (solution &soln)
-//{
-//	int nb_subhours = 60 / runParam.ST_resolution;
-//
-//	for (int g=0; g<inst->numGen; g++)
-//	{
-//		if (prob_type == DayAhead && inst->dayahead_gen[g])	// if the problem was DA-UC, and this generator is a base-load gen, ...
-//		{
-//			for (int h = 0; h < runParam.DA_numPeriods; h++) {
-//				for (int t=0; t<nb_subhours; t++) {
-//					soln.x[g][ begin_hour*60/runParam.DA_resolution + h*nb_subhours + t ] = round(this->soln.x[g][h]);
-//					soln.s[g][ begin_hour*60/runParam.DA_resolution + h*nb_subhours + t ] = round(this->soln.s[g][h]);
-//					soln.z[g][ begin_hour*60/runParam.DA_resolution + h*nb_subhours + t ] = round(this->soln.z[g][h]);
-//				}
-//			}
-//		}
-//		else if (prob_type == ShortTerm && !inst->dayahead_gen[g])
-//		{
-//			for (int t = 0; t < runParam.ST_numPeriods; t++) {
-//				soln.x[g][ begin_hour*nb_subhours + t ] = round(this->soln.x[g][t]);
-//				soln.s[g][ begin_hour*nb_subhours + t ] = round(this->soln.s[g][t]);
-//				soln.z[g][ begin_hour*nb_subhours + t ] = round(this->soln.z[g][t]);
-//			}
-//		}
-//	}
-//}
-//*/
 
+/****************************************************************************
+ * getGenState
+ * - Converts the model period, into the desired component of the Solution
+ * object. Returns the recorded status of the generator.
+ ****************************************************************************/
 bool UCmodel::getGenState(int genId, int period) {
-	return 1;
+	// which Solution component is requested?
+	int reqSolnComp = beginMin/runParam.ED_resolution + period*numSolnCompsPerPeriod;
+	
+	// return the requested generator state
+	if (reqSolnComp < 0) {										// all generators are assumed to be online, for a long time, at t=0.
+		return true;
+	}
+	else if (reqSolnComp < inst->solution.x[genId].size()) {	// return the corresponding solution
+		return round(inst->solution.x[genId][reqSolnComp]);
+	}
+	else {														// error
+		cout << "Error: You cannot access a solution component that is beyond the planning horizon" << endl;
+		exit(-1);
+	}
+}
+
+/****************************************************************************
+ * setGenState
+ * - Fills the (genId, correspondingComponent) of the Solution.x object.
+ ****************************************************************************/
+void UCmodel::setGenState(int genId, int period, double value) {
+	// which Solution component is being set?
+	int solnComp = beginMin/runParam.ED_resolution + period*numSolnCompsPerPeriod;
+	
+	// set the solution
+	if (solnComp >= 0 && solnComp < inst->solution.x[genId].size()) {
+		for (int t=solnComp; t<solnComp+numSolnCompsPerPeriod; t++) {
+			inst->solution.x[genId][t] = value;
+		}
+	}
+	else {
+		cout << "Error: Setting generator state out of the bounds of the horizon" << endl;
+		exit(-1);
+	}
 }

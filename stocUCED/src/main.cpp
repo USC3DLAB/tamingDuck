@@ -47,8 +47,13 @@ int main(int argc, const char * argv[]) {
 	instance inst;
 	inst.initialize(&system, &scen);
 	
-	UCmodel model;
-	model.formulate(inst, DayAhead, Transmission, 0);
+	UCmodel DAmodel;
+	DAmodel.formulate(inst, DayAhead, Transmission, 0);
+	DAmodel.solve();
+	
+	UCmodel STmodel;
+	STmodel.formulate(inst, ShortTerm, Transmission, 30);
+	STmodel.solve();
 	/*** TEST ***/
 	
 	// Switch based on the chosen setting

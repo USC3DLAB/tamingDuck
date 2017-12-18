@@ -24,14 +24,7 @@ public:
 
 	void formulate (instance &inst, ProblemType prob_type, ModelType model_type, int first_hour);
 	bool solve ();
-/*	void exportModel ();
-	void printSolution ();
-
-	void updateSoln (solution &soln);
-
-//	Solution soln;
-//	vector<solution> solnPool;
-*/
+	
 private:
 	/* cplex objects */
 	IloEnv		env;
@@ -44,33 +37,30 @@ private:
 	instance*	inst;
 	ProblemType probType;
 	
-	bool getGenState(int genId, int period);
-	
-	/* model-dependent components */
-	void preprocessing ();
-	
-	vector<vector<double>> expCapacity;	// expected generator capacity
-	vector<double>	minGenerationReq;	// minimum production requirements
-	vector<int>		minUpTimePeriods;	// minimum uptime in periods
-	vector<int>		minDownTimePeriods;	// minimum downtime in periods
-	
-	/* for convenience */
-	int numGen;
-	int numBus;
+	int	beginMin;				// t=0 in the model corresponds to this minute in the planning horizon
+	int numSolnCompsPerPeriod;	// this many components in Solution object will be set by a single-period decision of the UCmodel
+
+	int numGen;					// copied from instance->PowSys for convenience
+	int numBus;					// ..
 	int numLine;
 	int numPeriods;
+	
+	double periodLength;		// in minutes
 
-	double periodLength; // minutes
+	void preprocessing ();		// see the implementation
+
+	bool getGenState(int genId, int period);				// reads from Solution.x
+	void setGenState(int genId, int period, double value);	// writes to Solution.x
+	
+	vector<vector<double>> expCapacity;	// expected generator capacity
+	vector<double>	minGenerationReq;	// minimum production requirements (obeying assumptions)
+	vector<int>		minUpTimePeriods;	// minimum uptime in periods (obeying assumptions)
+	vector<int>		minDownTimePeriods;	// minimum downtime in periods (obeying assumptions)
 	
 	/* miscellaneous */
 	char buffer[30];
 	 
 	 //TODO: Clean up these
-//	int	begin_hour;
-
-	
-
-	
 	vector< vector<double> >	demand;
 	vector<double>				aggregated_demand;
 };

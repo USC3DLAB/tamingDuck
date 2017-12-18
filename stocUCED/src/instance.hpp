@@ -25,8 +25,9 @@ public:
 	
 	PowSys		*powSys;
 	scenarios	*stoc;
+	Solution	solution;
 	
-	Solution solution;
+	// TODO: I think runParam should be here
 };
 
 #endif
