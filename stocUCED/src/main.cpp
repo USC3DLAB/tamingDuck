@@ -25,7 +25,7 @@ runType runParam;
 void readRunfile (string inputDir);
 void parseCmdLine(int argc, const char *argv[], string &inputDir, string &sysName, string &setting);
 
-int setup_DUCDED(instance &inst);
+int setup_DUCDED(PowSys &powSys, StocProcess &stocProc);
 
 int main(int argc, const char * argv[]) {
 	string inputDir, sysName, setting;
@@ -41,30 +41,16 @@ int main(int argc, const char * argv[]) {
     system.readData(inputDir, sysName);
 
 	/* checking scenario reader */
-    stocProcess stoc(inputDir, sysName);
-
-    scenarioType observ = createScenarioList(stoc, {1,3}, 24, 10);
-
-	/*** TEST ***/
-	instance inst;
-	inst.initialize(&system, &stoc, inputDir, sysName);
+    StocProcess stoc(inputDir, sysName);
 	
-	UCmodel DAmodel;
-	DAmodel.formulate(inst, DayAhead, Transmission, 0);
-	DAmodel.solve();
 	
-	UCmodel STmodel;
-	STmodel.formulate(inst, ShortTerm, Transmission, 0);
-	STmodel.solve();
 	/*** TEST ***/
 	
 	// Switch based on the chosen setting
 	if ( setting == "DUC-DED" ) {
-		// Setup the problem instance
-
-//		if( setup_DUCDED(inst) ) {
-//			perror("Failed to complete the DUC-DED run.\n");
-//		}
+		if( setup_DUCDED(system, stoc) ) {
+			perror("Failed to complete the DUC-DED run.\n");
+		}
 	}
 	else if ( setting == "DUC-SED" ) {
 

@@ -18,7 +18,7 @@
 
 using namespace std;
 
-struct oneStocProc {
+struct OneStocProc {
 	string	name;				// Type of random variable
 	string	type;				// A descriptor
 	vector<string> varNames;	// Name of the variables
@@ -28,7 +28,7 @@ struct oneStocProc {
 	vector <vector <double> > vals;	// A two-dimensional matrix holding observation of the stochastic process
 };
 
-struct scenarioType{
+struct ScenarioType{
 	vector<string> name;				// lists all the stochastic processes for which scenarios were generated
 	int numOmega;						// Number of random variables in the stochastic process
 	int T;								// Time horizon
@@ -36,21 +36,21 @@ struct scenarioType{
 	vector<vector<vector<double>>> vals;	// scenario/observations of random variables: dim1 (rows) - time, dim2 (columns) - random variables, and dim (3) outcomes.
 };
 
-class stocProcess {
+class StocProcess {
 
 public:
-	stocProcess();
-	~stocProcess();
-	stocProcess(string inputDir, string sysName);
+	StocProcess();
+	~StocProcess();
+	StocProcess(string inputDir, string sysName);
 
 	int numStocProc;
-	vector <oneStocProc> sp;		// A vector of scenType with elements corresponding to each type of randomness
+	vector <OneStocProc> sp;		// A vector of scenType with elements corresponding to each type of randomness
 
 private:
-	oneStocProc read(string fname, char delimiter, bool readColNames, bool readRowNames);
+	OneStocProc read(string fname, char delimiter, bool readColNames, bool readRowNames);
 };
 
 void read(string fname, char delimiter, bool colNames, bool rowNames);
-scenarioType createScenarioList(stocProcess S, vector<int> S_indices, int T, int numVals);
+ScenarioType createScenarioList(StocProcess *S, vector<int> S_indices, int T, int numVals);
 
 #endif /* STOC_HPP_ */
