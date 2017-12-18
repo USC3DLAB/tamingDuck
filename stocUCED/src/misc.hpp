@@ -2,6 +2,7 @@
 #define _MISC_H
 
 #include <iostream>
+#include <sstream>
 #include <iomanip>
 #include <fstream>
 #include <vector>
@@ -11,6 +12,8 @@
 #include <string.h>
 #include <dirent.h>
 #include <stdlib.h>
+#include <map>
+#include <climits>
 
 #define MISCPRECISION 1e-4
 
@@ -22,6 +25,8 @@ istream& safeGetline(istream& is, string& t);
 int getDirs (string dir, vector<string> &subdirs);
 int getFiles (string dir, vector<string> &files);
 int getContents (string dir, vector<string> &contents);
+
+vector<string> splitString(string &line, char delimiter);
 
 bool open_file (ifstream &file, string filename);
 void move_cursor (ifstream &file, char character);
