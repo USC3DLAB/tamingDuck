@@ -19,13 +19,21 @@
 using namespace std;
 
 struct scenType {
-	string	name;		// Type of random variable
-	string	type;		// A descriptor
-	vector<string> varNames;
-	vector<string> rowNames;
-	int 	numVars;	// Number of random variables
-	int 	numT;		// Number of time periods
+	string	name;				// Type of random variable
+	string	type;				// A descriptor
+	vector<string> varNames;	// Name of the variables
+	vector<string> rowNames;	// Name of the rows
+	int 	numVars;			// Number of random variables
+	int 	numT;				// Number of time periods
 	vector <vector <double> > vals;	// A two-dimensional matrix with scenario values
+};
+
+struct observType{
+	vector<string> name;
+	int numOmega;
+	int T;
+	int cnt;
+	vector<vector<vector<double>>> vals;
 };
 
 class scenarios {
@@ -43,6 +51,6 @@ private:
 };
 
 void read(string fname, char delimiter, bool colNames, bool rowNames);
-vector<string> split(string &s, char delimiter);
+observType createObservList(scenarios S, vector<int> S_indices, int T, int numVals);
 
 #endif /* STOC_HPP_ */

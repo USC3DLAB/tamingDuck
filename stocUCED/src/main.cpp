@@ -43,6 +43,8 @@ int main(int argc, const char * argv[]) {
 	/* checking scenario reader */
     scenarios scen(inputDir, sysName);
 
+    observType observ = createObservList(scen, {1,3}, 24, 10);
+
 	/*** TEST ***/
 	instance inst;
 	inst.initialize(&system, &scen, inputDir, sysName);

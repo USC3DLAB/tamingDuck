@@ -9,16 +9,11 @@
 #ifndef PowSys_hpp
 #define PowSys_hpp
 
-#include <stdio.h>
-#include <vector>
-#include <fstream>
-#include <string>
-#include <map>
+#include "misc.hpp"
 
 #include "Generator.hpp"
 #include "Bus.hpp"
 #include "Line.hpp"
-#include "misc.hpp"
 
 using namespace std;
 
