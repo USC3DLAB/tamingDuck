@@ -22,7 +22,7 @@ public:
 	UCmodel ();
 	~UCmodel();
 
-	void formulate (instance &inst, ProblemType prob_type, ModelType model_type, int first_hour);
+	void formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin);
 	bool solve ();
 	
 private:
