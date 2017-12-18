@@ -15,7 +15,6 @@
 #include "stoc.hpp"
 #include "config.hpp"
 #include "solution.hpp"
-#include "Load.hpp"
 
 using namespace std;
 
@@ -29,11 +28,14 @@ public:
 	scenarios	*stoc;
 	Solution	solution;
 	
-	Load		DA_load;	// load forecast for the DA-UC problem
-	Load		ST_load;	// load forecast for the ST-UC problem
-	Load		RT_load;	// real-time load for the ED problem
+	vector< vector<double> > DA_load;	// load forecast for the DA-UC problem
+	vector< vector<double> > ST_load;	// load forecast for the ST-UC problem
+	vector< vector<double> > RT_load;	// real-time load for the ED problem
 	
 	// TODO: I think runParam should be here
+
+private:
+	bool readLoadData (string filepath, vector<vector<double>> &load);
 };
 
 #endif

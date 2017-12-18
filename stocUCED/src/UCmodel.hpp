@@ -36,9 +36,11 @@ private:
 	/* data */
 	instance*	inst;
 	ProblemType probType;
+	ModelType	modelType;
 	
 	int	beginMin;				// t=0 in the model corresponds to this minute in the planning horizon
-	int numSolnCompsPerPeriod;	// this many components in Solution object will be set by a single-period decision of the UCmodel
+	int numTimePerPeriod;		// e.g., this many components in Solution object will be set by a single-period decision of the UCmodel
+								// it returns, the how many ED periods are there, in a single UC period.
 
 	int numGen;					// copied from instance->PowSys for convenience
 	int numBus;					// ..
@@ -52,16 +54,17 @@ private:
 	bool getGenState(int genId, int period);				// reads from Solution.x
 	void setGenState(int genId, int period, double value);	// writes to Solution.x
 	
-	vector<vector<double>> expCapacity;	// expected generator capacity
 	vector<double>	minGenerationReq;	// minimum production requirements (obeying assumptions)
 	vector<int>		minUpTimePeriods;	// minimum uptime in periods (obeying assumptions)
 	vector<int>		minDownTimePeriods;	// minimum downtime in periods (obeying assumptions)
+
+	vector<vector<double>> expCapacity;	// expected generator capacity
+	vector<vector<double>> busLoad;		// load at each bus and period
+	vector<double>		   sysLoad;		// aggregated load at each period
 	
 	/* miscellaneous */
 	char buffer[30];
 	 
 	 //TODO: Clean up these
-	vector< vector<double> >	demand;
-	vector<double>				aggregated_demand;
 };
 #endif /* UCmodel_hpp */

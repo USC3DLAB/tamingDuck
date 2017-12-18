@@ -15,7 +15,6 @@
 #include "PowSys.hpp"
 #include "stoc.hpp"
 #include <sstream>
-#include "Load.hpp"
 
 //#include "master.hpp"
 

@@ -28,6 +28,8 @@ UCmodel::~UCmodel() {
  *   minUpTimePeriods
  *   minDownTimePeriods
  *   expCapacity
+ *   busLoads
+ *   aggLoads
  * - If it is a DA-UC problem, sets the capacity and minGenerationReq to 0
  * for generators which must be scheduled at ST-UC.
  *
@@ -45,7 +47,7 @@ void UCmodel::preprocessing ()
 	numPeriods	 = (probType == DayAhead) ? runParam.DA_numPeriods : runParam.ST_numPeriods;
 	periodLength = (probType == DayAhead) ? runParam.DA_resolution : runParam.ST_resolution;
 	
-	numSolnCompsPerPeriod = (int)round(periodLength) / runParam.ED_resolution;
+	numTimePerPeriod = (int)round(periodLength) / runParam.ED_resolution;
 
 	
 	// initialize the containers
@@ -53,7 +55,13 @@ void UCmodel::preprocessing ()
 	minUpTimePeriods.resize(inst->powSys->numGen);		// minimum uptime in periods
 	minDownTimePeriods.resize(inst->powSys->numGen);	// minimum downtime in periods
 	resize_matrix(expCapacity, numGen, numPeriods);		// mean generator capacities
+	if (modelType == System) {
+		sysLoad.resize(numPeriods);						// aggregated system load
+	} else {
+		resize_matrix(busLoad, numBus, numPeriods);		// individual bus loads
+	}
 
+	
 	// minGenerationReq & Assumption 1
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
@@ -101,40 +109,37 @@ void UCmodel::preprocessing ()
 			}
 		}
 	}
+	
+	// load calculations
+	if (modelType == System) {
+		fill( sysLoad.begin(), sysLoad.end(), 0.0 );		// initialize to 0
+		for (int t=0; t<numPeriods; t++) {
+			for (int r=0; r<inst->DA_load.size(); r++) {
+				for (int d=0; d<numTimePerPeriod; d++) {
+					sysLoad[t] += (probType == DayAhead) ? inst->DA_load[r][t*numTimePerPeriod+d] : inst->ST_load[r][t*numTimePerPeriod+d];
+				}
+			}
+		}
+	}
+	else {
+		double temp;
+		
+		for (int b=0; b<numBus; b++) {
+			Bus *busPtr = &(inst->powSys->buses[b]);
+			
+			int r = busPtr->regionId-1;
+			for (int t=0; t<numPeriods; t++)
+			{
+				busLoad[b][t] = 0.0;
+				for (int d=0; d<numTimePerPeriod; d++) {
+					temp = (probType == DayAhead) ? inst->DA_load[r][t*numTimePerPeriod+d] : inst->ST_load[r][t*numTimePerPeriod+d];
+					temp *= busPtr->loadPercentage;
+					busLoad[b][t] += temp;
+				}
+			}
+		}
+	}
 }
-
-	//	aggregated_demand.resize(nb_periods);
-//
-//	resize_matrix(demand,   inst->numBus, nb_periods);
-//	resize_matrix(capacity, inst->numGen, nb_periods);
-//
-//	// set basic parameters
-//	int begin_period = begin_hour * 60 / period_len;
-//
-//	/* Calculate demand for each 'period' and at each 'bus'
-//	 *
-//	for (int b=0; b<inst->numBus; b++) {
-//		for (int t=0; t<nb_periods; t++)
-//		{
-//			if ( prob_type == DayAhead) {
-//				demand[b][t] = inst->load_perHour   [ inst->bus_regionId[b] ][begin_period+t] * inst->bus_loadPerc[b];
-//			} else {
-//				demand[b][t] = inst->load_perSubHour[ inst->bus_regionId[b] ][begin_period+t] * inst->bus_loadPerc[b];
-//			}
-//		}
-//	}
-//
-//	// Calculate aggregated demand for each period
-//	fill( aggregated_demand.begin(), aggregated_demand.end(), 0.0 );	// initialize to 0
-//	for (int r=0; r<inst->load_perHour.size(); r++) {
-//		for (int t=0; t<nb_periods; t++) {
-//			if ( prob_type == DayAhead ) {
-//				aggregated_demand[t] += inst->load_perHour   [r][begin_period+t];
-//			} else {
-//				aggregated_demand[t] += inst->load_perSubHour[r][begin_period+t];
-//			}
-//		}
-//	}
 
 /****************************************************************************
  * formulate
@@ -148,6 +153,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	this->inst		= &inst;
 	this->beginMin	= beginMin;
 	this->probType	= probType;
+	this->modelType = modelType;
 
 
 	/* Prepare Model-Dependent Input Data */
@@ -335,7 +341,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 				expr += p[g][t];
 			}
 			expr += L[t];
-			model.add( IloRange (env, aggregated_demand[t], expr) );
+			model.add( IloRange (env, sysLoad[t], expr) );
 		}
 		
 		// load-shedding penalties
@@ -368,7 +374,12 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 			F[l].setNames(buffer);
 		}
 		
-		// TODO: No Load-shedding in buses with 0 load
+		// No Load-shedding in buses with 0 load
+		for (int b=0; b<numBus; b++) {
+			for (int t=0; t<numPeriods; t++) {
+				if (busLoad[b][t] < EPSzero) L[b][t].setUB(0);
+			}
+		}
 		
 		// DC-approximation to AC power flow
 		for (int l=0; l<numLine; l++) {
@@ -408,8 +419,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 				expr += L[b][t];
 				
 				// constraint
-				//TODO: set the demands
-				model.add( expr == 0.0 );
+				model.add( expr == busLoad[b][t] );
 				
 				// free up memory
 				expr.end();
@@ -513,7 +523,7 @@ bool UCmodel::solve() {
  ****************************************************************************/
 bool UCmodel::getGenState(int genId, int period) {
 	// which Solution component is requested?
-	int reqSolnComp = beginMin/runParam.ED_resolution + period*numSolnCompsPerPeriod;
+	int reqSolnComp = beginMin/runParam.ED_resolution + period*numTimePerPeriod;
 	
 	// return the requested generator state
 	if (reqSolnComp < 0) {										// all generators are assumed to be online, for a long time, at t=0.
@@ -534,11 +544,11 @@ bool UCmodel::getGenState(int genId, int period) {
  ****************************************************************************/
 void UCmodel::setGenState(int genId, int period, double value) {
 	// which Solution component is being set?
-	int solnComp = beginMin/runParam.ED_resolution + period*numSolnCompsPerPeriod;
+	int solnComp = beginMin/runParam.ED_resolution + period*numTimePerPeriod;
 	
 	// set the solution
 	if (solnComp >= 0 && solnComp < inst->solution.x[genId].size()) {
-		for (int t=solnComp; t<solnComp+numSolnCompsPerPeriod; t++) {
+		for (int t=solnComp; t<solnComp+numTimePerPeriod; t++) {
 			inst->solution.x[genId][t] = value;
 		}
 	}
