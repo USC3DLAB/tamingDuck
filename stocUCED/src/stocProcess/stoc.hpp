@@ -21,7 +21,8 @@ using namespace std;
 struct oneStocProc {
 	string	name;				// Type of random variable
 	string	type;				// A descriptor
-	vector<string> varNames;	// Name of the variables
+	map<string, int> mapVarNamesToIndex;	// Name of the variables
+	
 	vector<string> rowNames;	// Name of the rows
 	int 	numVars;			// Number of random variables
 	int 	numT;				// Number of time periods

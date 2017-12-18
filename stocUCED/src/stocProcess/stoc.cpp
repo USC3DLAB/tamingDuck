@@ -69,9 +69,26 @@ oneStocProc stocProcess::read(string fname, char delimiter, bool readColNames, b
 	if ( readColNames ) {
 		getline ( fptr, line );
 		tokens = splitString(line, delimiter);
-		for ( n = 1; n < tokens.size(); n++ )
-			temp.varNames.push_back(tokens[1]);
-		temp.numVars = temp.varNames.size();
+		for ( n = 1; n < tokens.size(); n++ ) {
+			cout << "First token=" << tokens[n] << " " << n << endl;
+			if (tokens[n].length() > 2) tokens[n].erase(0, 1);									// remove the first \"
+			cout << "Second token=" << tokens[n] << " " << n << endl;
+			if (tokens[n].length() > 2) tokens[n].erase(tokens[n].end()-1, tokens[n].end());	// remove the last \"
+			cout << "Third token=" << tokens[n] << " " << n << endl;
+			//TODO: Harshaaaa
+			
+			temp.mapVarNamesToIndex.insert( pair<string, int> (tokens[n], n-1) );
+			cout << temp.mapVarNamesToIndex[tokens[n]] << endl;
+			
+			auto it = temp.mapVarNamesToIndex.find(tokens[n]);
+			cout << it->first << " " << it->second << endl;
+			
+			it = temp.mapVarNamesToIndex.find("hasan");
+			if (it == temp.mapVarNamesToIndex.end()) {
+				cout << "Hasan is not here" << endl;
+			}
+		}
+		temp.numVars = temp.mapVarNamesToIndex.size();
 	}
 
 	while ( getline(fptr, line) ) {

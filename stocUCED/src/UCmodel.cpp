@@ -85,7 +85,7 @@ void UCmodel::preprocessing ()
 	// expected capacity
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
-		
+				
 		if (genPtr->type == Generator::WIND || genPtr->type == Generator::SOLAR) {
 			/* random supply */
 			// TODO: Get the expectation of the random supply
