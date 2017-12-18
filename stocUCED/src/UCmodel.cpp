@@ -243,7 +243,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	for (int g=0; g<numGen; g++) {
 		if ( inst.powSys->generators[g].isMustRun ) {
 			for (int t=0; t<numPeriods; t++) {
-				x[g][t].setLB(1);
+				x[g][t].setBounds(1, 1);
 			}
 		}
 	}
@@ -321,10 +321,10 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 		Generator *genPtr = &(inst.powSys->generators[g]);
 		
 		for (int t=0; t<numPeriods; t++) {
-			obj += genPtr->startupCost * s[g][t];							// start up cost
+			obj += genPtr->startupCost * s[g][t];											// start up cost
 			obj += minGenerationReq[g] * genPtr->variableCost * x[g][t];	// cost of producing minimum production amount
-			obj += genPtr->noLoadCost*periodLength/60.0 * x[g][t];			// no-load cost
-			obj += genPtr->variableCost * p_var[g][t];						// variable cost
+			obj += genPtr->noLoadCost*periodLength/60.0 * x[g][t];							// no-load cost
+			obj += genPtr->variableCost * p_var[g][t];					// variable cost
 		}
 	}
 	
@@ -440,7 +440,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	
 	cplex.extract(model);
 	cplex.setParam(IloCplex::Threads, 1);
-	cplex.setParam(IloCplex::EpGap, 1e-2);
+	cplex.setParam(IloCplex::EpGap, 1e-1);
 }
 
 /****************************************************************************
@@ -454,7 +454,7 @@ bool UCmodel::solve() {
 		status = cplex.solve();
 		
 		// record the solution
-		if (status) {
+		if (status) {			
 			for (int g=0; g<numGen; g++) {
 				Generator *genPtr = &(inst->powSys->generators[g]);
 				
@@ -472,49 +472,6 @@ bool UCmodel::solve() {
 	
 	return status;
 }
-
-//bool UCmodel::solve () {
-//	try{
-//		bool status = cplex.solve();
-//
-//		cout << "Optimization is completed with status " << cplex.getCplexStatus() << endl;
-//
-//		// if the problem has a solution, record it
-//		if (status) {
-//			soln.allocateMem(inst->numGen, nb_periods);
-//
-//			for (int g=0; g<inst->numGen; g++) {
-//				for (int t=0; t<nb_periods; t++) {
-//					soln.s[g][t] = cplex.getValue(s[g][t]);
-//					soln.x[g][t] = cplex.getValue(x[g][t]);
-//					soln.z[g][t] = cplex.getValue(z[g][t]);
-//				}
-//			}
-//
-//			solnPool.resize( cplex.getSolnPoolNsolns() );
-//			for (int sol=0; sol<cplex.getSolnPoolNsolns(); sol++) {
-//				solnPool[sol].allocateMem(inst->numGen, nb_periods);
-//
-//				for (int g=0; g<inst->numGen; g++) {
-//					for (int t=0; t<nb_periods; t++) {
-//						solnPool[sol].s[g][t] = cplex.getValue(s[g][t], sol);
-//						solnPool[sol].x[g][t] = cplex.getValue(x[g][t], sol);
-//						solnPool[sol].z[g][t] = cplex.getValue(z[g][t], sol);
-//					}
-//				}
-//			}
-//
-//			// update generator status for rolling horizon
-//			inst->updateGenStatus(prob_type, soln.x);
-//		}
-//
-//		return status;
-//	}
-//	catch (IloException &e) {
-//		cout << e << endl;
-//		return false;
-//	}
-//}
 
 /****************************************************************************
  * getGenState

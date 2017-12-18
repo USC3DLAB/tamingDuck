@@ -64,7 +64,5 @@ private:
 	
 	/* miscellaneous */
 	char buffer[30];
-	 
-	 //TODO: Clean up these
 };
 #endif /* UCmodel_hpp */

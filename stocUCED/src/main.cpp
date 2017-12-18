@@ -52,7 +52,7 @@ int main(int argc, const char * argv[]) {
 	DAmodel.solve();
 	
 	UCmodel STmodel;
-	STmodel.formulate(inst, ShortTerm, Transmission, 30);
+	STmodel.formulate(inst, ShortTerm, Transmission, 0);
 	STmodel.solve();
 	/*** TEST ***/
 	
@@ -150,7 +150,7 @@ void readRunfile (string inputDir) {
 	/* Set default values for the run parameters */
 	runParam.horizon = 24*60;
 	runParam.DA_horizon = 24*60;	runParam.DA_resolution = 60; runParam.DA_frequency = 24*60;
-	runParam.ST_horizon = 3*60;		runParam.ST_resolution = 15; runParam.ST_frequency = 3*60;
+	runParam.ST_horizon = 24*60;	runParam.ST_resolution = 15; runParam.ST_frequency = 24*60;
 	runParam.ED_horizon = 60;		runParam.ED_resolution = 15; runParam.ED_frequency = 15;
 
 	/* Read the run parameters if a run file is included in the default folder */
