@@ -15,6 +15,7 @@
 #include "PowSys.hpp"
 #include "stoc.hpp"
 #include <sstream>
+#include "Load.hpp"
 
 //#include "master.hpp"
 
@@ -45,7 +46,7 @@ int main(int argc, const char * argv[]) {
 
 	/*** TEST ***/
 	instance inst;
-	inst.initialize(&system, &scen);
+	inst.initialize(&system, &scen, inputDir);
 	
 	UCmodel DAmodel;
 	DAmodel.formulate(inst, DayAhead, Transmission, 0);

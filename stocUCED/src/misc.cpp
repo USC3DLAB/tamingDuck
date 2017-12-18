@@ -1,5 +1,44 @@
 #include "misc.hpp"
 
+/****************************************************************************
+ * safeGetline
+ * - Works the same as getline, however, can handle issues where the end of
+ * line tokens might be either '\n', '\r', or '\n\r'.
+ * - Source: https://stackoverflow.com/questions/6089231/getting-std-ifstream-to-handle-lf-cr-and-crlf
+ *****************************************************************************/
+istream& safeGetline(istream& is, string& t)
+{
+	t.clear();
+	
+	// The characters in the stream are read one-by-one using a std::streambuf.
+	// That is faster than reading them one-by-one using the std::istream.
+	// Code that uses streambuf this way must be guarded by a sentry object.
+	// The sentry object performs various tasks,
+	// such as thread synchronization and updating the stream state.
+	
+	std::istream::sentry se(is, true);
+	std::streambuf* sb = is.rdbuf();
+	
+	for(;;) {
+		int c = sb->sbumpc();
+		switch (c) {
+			case '\n':
+				return is;
+			case '\r':
+				if(sb->sgetc() == '\n')
+					sb->sbumpc();
+				return is;
+			case std::streambuf::traits_type::eof():
+				// Also handle the case when the last line has no line ending
+				if(t.empty())
+					is.setstate(std::ios::eofbit);
+				return is;
+			default:
+				t += (char)c;
+		}
+	}
+}
+
 /* The subroutines lists all the sub-directories of a directory */
 int getDirs (string dir, vector<string> &subdirs) {
 	DIR *dp;

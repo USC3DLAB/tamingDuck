@@ -17,6 +17,8 @@
 using namespace std;
 
 // Commonly used functions
+istream& safeGetline(istream& is, string& t);
+
 int getDirs (string dir, vector<string> &subdirs);
 int getFiles (string dir, vector<string> &files);
 int getContents (string dir, vector<string> &contents);

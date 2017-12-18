@@ -43,14 +43,15 @@ bool PowSys::readGeneratorData(string &inputDir) {
     ifstream input;
     bool status = open_file(input, inputDir + "Generators.csv");
     if (!status)  return false;
-    
-    // read file
-    
-    // skip the headers
-    move_cursor(input, eoline);
+	
+	string temp_str;
+	
+	// skip the headers
+	safeGetline(input, temp_str);
 	
 	int genIndex = 0;
 	
+	// read the data
     while (!input.eof()) {
         // create a generator
         Generator gen;
@@ -112,8 +113,8 @@ bool PowSys::readGeneratorData(string &inputDir) {
         
         // day-ahead generator?
         input >> gen.isBaseLoadGen;
-        move_cursor(input, eoline);
-        
+		safeGetline(input, temp_str);
+		
         // add the generator to the list
         generators.push_back(gen);
     }
@@ -130,11 +131,12 @@ bool PowSys::readBusData(string &inputDir) {
     ifstream input;
     bool status = open_file(input, inputDir + "Buses.csv");
     if (!status)  return false;
-    
+	
+	string temp_str;
+	
     // skip the headers
-    move_cursor(input, '\n');
-    //TODO: These endline tokens will be future cause of problem
-    
+	safeGetline(input, temp_str);
+	
     int busIndex = 0;
     
     // read data
@@ -152,7 +154,7 @@ bool PowSys::readBusData(string &inputDir) {
        
         // load percentage
         input >> bus.loadPercentage;
-        move_cursor(input, '\n');
+		safeGetline(input, temp_str);	// finalize reading
         
         // add bus to the list
         buses.push_back(bus);
@@ -175,8 +177,10 @@ bool PowSys::readLineData(string &inputDir) {
     bool status = open_file(input, inputDir + "Lines.csv");
     if (!status)  return false;
     
-    // skip the headers
-    move_cursor(input, '\n');
+	string temp_str;
+	
+	// skip the headers
+	safeGetline(input, temp_str);
 	
 	int lineIndex = 0;
 	
@@ -208,8 +212,8 @@ bool PowSys::readLineData(string &inputDir) {
                 
         // read susceptance
         input >> line.susceptance;
-        move_cursor(input, '\n');
-        
+		safeGetline(input, temp_str);
+		
         // add the line to the list
         lines.push_back(line);
     }
