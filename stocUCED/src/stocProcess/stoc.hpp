@@ -29,8 +29,10 @@ struct OneStocProc {
 	vector <vector <double> > vals;	// A two-dimensional matrix holding observation of the stochastic process
 };
 
-struct ScenarioType{
+struct ScenarioType{					// set of scenarios
 	vector<string> name;				// lists all the stochastic processes for which scenarios were generated
+	map<string, int> mapVarNamesToIndex;
+	
 	int numOmega;						// Number of random variables in the stochastic process
 	int T;								// Time horizon
 	int cnt;							// Number of scenarios

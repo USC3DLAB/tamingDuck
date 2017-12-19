@@ -30,13 +30,14 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc) {
 	instance inst;
 	inst.initialize(&powSys, &stocProc);
 
-	for (int rep = 0; rep < inst.observ.cnt; rep++) {
+	//TODO: what's this cnt?
+	for (int rep = 0; rep < inst.DA_observ.cnt; rep++) {
 		/* allocate memory to hold solutions */
 		Solution soln;
 		soln.allocateMem(powSys.numGen, runParam.DA_horizon/runParam.baseTime);
 
 		/* Long-term unit commitment */
-		for ( h = 0; h < runParam.DA_numSolves; n++ ) {
+		for ( h = 0; h < runParam.DA_numSolves; h++ ) {
 			UCmodel DAmodel;
 			DAmodel.formulate(inst, DayAhead, Transmission, 0);
 			DAmodel.solve();

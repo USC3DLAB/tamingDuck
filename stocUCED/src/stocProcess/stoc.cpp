@@ -70,25 +70,25 @@ OneStocProc StocProcess::read(string fname, char delimiter, bool readColNames, b
 		getline ( fptr, line );
 		tokens = splitString(line, delimiter);
 		for ( n = 1; n < tokens.size(); n++ ) {
-			cout << "First token=" << tokens[n] << " " << n << endl;
+			//cout << "First token=" << tokens[n] << " " << n << endl;
 			if (tokens[n].length() > 2) tokens[n].erase(0, 1);									// remove the first \"
-			cout << "Second token=" << tokens[n] << " " << n << endl;
+			//cout << "Second token=" << tokens[n] << " " << n << endl;
 			if (tokens[n].length() > 2) tokens[n].erase(tokens[n].end()-1, tokens[n].end());	// remove the last \"
-			cout << "Third token=" << tokens[n] << " " << n << endl;
+			//cout << "Third token=" << tokens[n] << " " << n << endl;
 			//TODO: Harshaaaa
 			
 			temp.mapVarNamesToIndex.insert( pair<string, int> (tokens[n], n-1) );
-			cout << temp.mapVarNamesToIndex[tokens[n]] << endl;
+			//cout << temp.mapVarNamesToIndex[tokens[n]] << endl;
 			
-			auto it = temp.mapVarNamesToIndex.find(tokens[n]);
-			cout << it->first << " " << it->second << endl;
+			//auto it = temp.mapVarNamesToIndex.find(tokens[n]);
+			//cout << it->first << " " << it->second << endl;
 			
-			it = temp.mapVarNamesToIndex.find("hasan");
-			if (it == temp.mapVarNamesToIndex.end()) {
-				cout << "Hasan is not here" << endl;
-			}
+			//it = temp.mapVarNamesToIndex.find("hasan");
+			//if (it == temp.mapVarNamesToIndex.end()) {
+			//	cout << "Hasan is not here" << endl;
+			//}
 		}
-		temp.numVars = temp.mapVarNamesToIndex.size();
+		temp.numVars = (int)temp.mapVarNamesToIndex.size();
 	}
 
 	while ( getline(fptr, line) ) {
@@ -138,8 +138,12 @@ ScenarioType createScenarioList(StocProcess *stoc, vector<int> S_indices, int T,
 	observ.T = T;
 	observ.cnt = observ.vals.size();
 	observ.numOmega = observ.vals[0][0].size();
-	for ( unsigned int n = 0; n < S_indices.size(); n++ )
+	for ( unsigned int n = 0; n < S_indices.size(); n++ ) {
 		observ.name.push_back(stoc->sp[S_indices[n]].name);
+		observ.mapVarNamesToIndex.insert( stoc->sp[S_indices[n]].mapVarNamesToIndex.begin(), stoc->sp[S_indices[n]].mapVarNamesToIndex.end() );
+	}
+	
+	
 
 	return observ;
 }//END createObservList()

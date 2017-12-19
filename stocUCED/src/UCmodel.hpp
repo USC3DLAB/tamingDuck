@@ -39,7 +39,7 @@ private:
 	ModelType	modelType;
 	
 	int	beginMin;				// t=0 in the model corresponds to this minute in the planning horizon
-	int numTimePerPeriod;		// e.g., this many components in Solution object will be set by a single-period decision of the UCmodel
+	int numBaseTimePerPeriod;	// e.g., this many components in Solution object will be set by a single-period decision of the UCmodel
 								// it returns, the how many ED periods are there, in a single UC period.
 
 	int numGen;					// copied from instance->PowSys for convenience

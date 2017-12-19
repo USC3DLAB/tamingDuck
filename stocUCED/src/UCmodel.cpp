@@ -46,7 +46,7 @@ void UCmodel::preprocessing ()
 	numPeriods	 = (probType == DayAhead) ? runParam.DA_numPeriods : runParam.ST_numPeriods;
 	periodLength = (probType == DayAhead) ? runParam.DA_resolution : runParam.ST_resolution;
 	
-	numTimePerPeriod = (int)round(periodLength) / runParam.ED_resolution;
+	numBaseTimePerPeriod = (int)round(periodLength) / runParam.ED_resolution;
 	
 	
 	// initialize the containers
@@ -83,15 +83,24 @@ void UCmodel::preprocessing ()
 	}
 	
 	// expected capacity
+	auto observPtr = (probType == DayAhead) ? &(inst->DA_observ.mapVarNamesToIndex) : &(inst->ST_observ.mapVarNamesToIndex);
+	
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
-				
-		if (genPtr->type == Generator::WIND || genPtr->type == Generator::SOLAR) {
+
+		auto it = observPtr->find(genPtr->name);
+		
+		//cout << genPtr->name << "\t" << genPtr->type << "\t" << endl;
+		
+		if ( it != observPtr->end() ) {
 			/* random supply */
-			// TODO: Get the expectation of the random supply
-			fill(expCapacity[g].begin(), expCapacity[g].end(), genPtr->maxCapacity*periodLength/60.0);
-		}
-		else {
+			for (int t=0; t<numPeriods; t++) {
+				expCapacity[g][t] = 0.0;
+				for (int subPeriod=0; subPeriod<numBaseTimePerPeriod; subPeriod++) {
+					expCapacity[g][t] += inst->DA_observ.vals[t*numBaseTimePerPeriod + subPeriod][it->second][0];
+				}
+			}
+		} else {
 			/* deterministic supply */
 			fill(expCapacity[g].begin(), expCapacity[g].end(), genPtr->maxCapacity*periodLength/60.0);
 		}
@@ -114,8 +123,8 @@ void UCmodel::preprocessing ()
 		fill( sysLoad.begin(), sysLoad.end(), 0.0 );		// initialize to 0
 		for (int t=0; t<numPeriods; t++) {
 			for (int r=0; r<inst->DA_load.size(); r++) {
-				for (int d=0; d<numTimePerPeriod; d++) {
-					sysLoad[t] += (probType == DayAhead) ? inst->DA_load[r][t*numTimePerPeriod+d] : inst->ST_load[r][t*numTimePerPeriod+d];
+				for (int d=0; d<numBaseTimePerPeriod; d++) {
+					sysLoad[t] += (probType == DayAhead) ? inst->DA_load[r][t*numBaseTimePerPeriod+d] : inst->ST_load[r][t*numBaseTimePerPeriod+d];
 				}
 			}
 		}
@@ -130,8 +139,8 @@ void UCmodel::preprocessing ()
 			for (int t=0; t<numPeriods; t++)
 			{
 				busLoad[b][t] = 0.0;
-				for (int d=0; d<numTimePerPeriod; d++) {
-					temp = (probType == DayAhead) ? inst->DA_load[r][t*numTimePerPeriod+d] : inst->ST_load[r][t*numTimePerPeriod+d];
+				for (int d=0; d<numBaseTimePerPeriod; d++) {
+					temp = (probType == DayAhead) ? inst->DA_load[r][t*numBaseTimePerPeriod+d] : inst->ST_load[r][t*numBaseTimePerPeriod+d];
 					temp *= busPtr->loadPercentage;
 					busLoad[b][t] += temp;
 				}
@@ -479,7 +488,7 @@ bool UCmodel::solve() {
  ****************************************************************************/
 bool UCmodel::getGenState(int genId, int period) {
 	// which Solution component is requested?
-	int reqSolnComp = beginMin/runParam.ED_resolution + period*numTimePerPeriod;
+	int reqSolnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
 	
 	// return the requested generator state
 	if (reqSolnComp < 0) {										// all generators are assumed to be online, for a long time, at t=0.
@@ -500,11 +509,11 @@ bool UCmodel::getGenState(int genId, int period) {
  ****************************************************************************/
 void UCmodel::setGenState(int genId, int period, double value) {
 	// which Solution component is being set?
-	int solnComp = beginMin/runParam.ED_resolution + period*numTimePerPeriod;
+	int solnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
 	
 	// set the solution
 	if (solnComp >= 0 && solnComp < inst->solution.x[genId].size()) {
-		for (int t=solnComp; t<solnComp+numTimePerPeriod; t++) {
+		for (int t=solnComp; t<solnComp+numBaseTimePerPeriod; t++) {
 			inst->solution.x[genId][t] = value;
 		}
 	}

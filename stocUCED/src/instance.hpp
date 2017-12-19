@@ -28,7 +28,9 @@ public:
 	StocProcess	*stoc;
 	Solution	solution;
 	
-	ScenarioType observ;
+	ScenarioType DA_observ;
+	ScenarioType ST_observ;
+	ScenarioType RT_observ;
 
 	vector< vector<double> > DA_load;	// load forecast for the DA-UC problem
 	vector< vector<double> > ST_load;	// load forecast for the ST-UC problem
