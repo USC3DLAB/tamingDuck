@@ -89,7 +89,7 @@ void UCmodel::preprocessing ()
 		Generator *genPtr = &(inst->powSys->generators[g]);
 
 		auto it = observPtr->mapVarNamesToIndex.find(genPtr->name);
-		if ( it != observPtr->mapVarNamesToIndex.end() ) {			
+		if ( it != observPtr->mapVarNamesToIndex.end() ) {
 			/* random supply */
 			for (int t=0; t<numPeriods; t++) {
 				expCapacity[g][t] = 0.0;
