@@ -15,6 +15,7 @@
 #include "./powerSys/PowSys.hpp"
 #include "./stocProcess/stoc.hpp"
 #include <sstream>
+#include "SUC_master.hpp"
 
 //#include "master.hpp"
 
@@ -44,7 +45,10 @@ int main(int argc, const char * argv[]) {
     StocProcess stoc(inputDir, sysName);
 	
 	
-	/*** TEST ***/
+	/*** Begin: Semih's Removeable Test-Content ***/
+	SUCmaster master;
+	/*** End: Semih's Removeable Test-Content ***/
+	
 	
 	// Switch based on the chosen setting
 	if ( setting == "DUC-DED" ) {

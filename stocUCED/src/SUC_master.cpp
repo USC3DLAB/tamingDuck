@@ -11,10 +11,10 @@
 extern runType runParam;
 
 IloCplex::Callback LazySepCallback(IloEnv env, SUCmaster & me) {
-	return (IloCplex::Callback(new(env) LazySepCallbackI(env, me)));
+	return (IloCplex::Callback(new(env) SUCmaster::LazySepCallbackI(env, me)));
 }
 
-void LazySepCallbackI::main()
+void SUCmaster::LazySepCallbackI::main()
 {
 	// get the solution
 	vector< vector<bool> > state;

@@ -18,9 +18,7 @@
 #include "misc.hpp"
 
 class SUCmaster {
-	
-	friend class LazySepCallbackI;
-	
+
 public:
 	SUCmaster ();
 	~SUCmaster();
@@ -31,13 +29,21 @@ public:
 //    void warmStart (Solution &soln);
 //    void warmStart (vector<Solution> &soln);
 	
+	/* Lazy-constraint callback */
+	class LazySepCallbackI : public IloCplex::LazyConstraintCallbackI {
+		SUCmaster & me;
+	public:
+		IloCplex::CallbackI* duplicateCallback() const { return (new(getEnv()) LazySepCallbackI(*this)); }
+		LazySepCallbackI(IloEnv env, SUCmaster &xx) : IloCplex::LazyConstraintCallbackI(env), me(xx) {}
+		void main();
+	};
+
 private:
 	IloEnv		env;
 	IloModel	model;
 	IloCplex	cplex;
 	
 	IloArray<IloNumVarArray> s, x, z;
-	
 	IloNumVar	eta;	// exp value of the 2nd-stage subproblem
 	
 	instance*	inst;
@@ -53,14 +59,6 @@ private:
 	double periodLength;
 };
 
-// Lazy-constraint callback
-class LazySepCallbackI : public IloCplex::LazyConstraintCallbackI {
-	SUCmaster & me;
-public:
-	IloCplex::CallbackI* duplicateCallback() const { return (new(getEnv()) LazySepCallbackI(*this)); }
-	LazySepCallbackI(IloEnv env, SUCmaster &xx) : IloCplex::LazyConstraintCallbackI(env), me(xx) {}
-	void main();
-};
 
 
 #endif /* master_hpp */
