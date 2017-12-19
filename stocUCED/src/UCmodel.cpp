@@ -97,7 +97,7 @@ void UCmodel::preprocessing ()
 			for (int t=0; t<numPeriods; t++) {
 				expCapacity[g][t] = 0.0;
 				for (int subPeriod=0; subPeriod<numBaseTimePerPeriod; subPeriod++) {
-					expCapacity[g][t] += inst->DA_observ.vals[t*numBaseTimePerPeriod + subPeriod][it->second][0];
+					expCapacity[g][t] += inst->DA_observ.vals[0][t*numBaseTimePerPeriod + subPeriod][it->second];
 				}
 			}
 		} else {
