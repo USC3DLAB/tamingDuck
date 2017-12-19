@@ -119,9 +119,9 @@ void UCmodel::preprocessing ()
 	if (modelType == System) {
 		fill( sysLoad.begin(), sysLoad.end(), 0.0 );		// initialize to 0
 		for (int t=0; t<numPeriods; t++) {
-			for (int r=0; r<inst->DA_load.size(); r++) {
+			for (int r=0; r<inst->DA_load.numOmega; r++) {
 				for (int d=0; d<numBaseTimePerPeriod; d++) {
-					sysLoad[t] += (probType == DayAhead) ? inst->DA_load[r][t*numBaseTimePerPeriod+d] : inst->ST_load[r][t*numBaseTimePerPeriod+d];
+					sysLoad[t] += (probType == DayAhead) ? inst->DA_load.vals[0][t*numBaseTimePerPeriod+d][r] : inst->ST_load.vals[0][t*numBaseTimePerPeriod+d][r];
 				}
 			}
 		}
@@ -137,7 +137,7 @@ void UCmodel::preprocessing ()
 			{
 				busLoad[b][t] = 0.0;
 				for (int d=0; d<numBaseTimePerPeriod; d++) {
-					temp = (probType == DayAhead) ? inst->DA_load[r][t*numBaseTimePerPeriod+d] : inst->ST_load[r][t*numBaseTimePerPeriod+d];
+					temp = (probType == DayAhead) ? inst->DA_load.vals[0][t*numBaseTimePerPeriod+d][r] : inst->ST_load.vals[0][t*numBaseTimePerPeriod+d][r];
 					temp *= busPtr->loadPercentage;
 					busLoad[b][t] += temp;
 				}

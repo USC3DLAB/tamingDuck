@@ -32,9 +32,9 @@ public:
 	ScenarioType ST_observ;
 	ScenarioType RT_observ;
 
-	vector< vector<double> > DA_load;	// load forecast for the DA-UC problem
-	vector< vector<double> > ST_load;	// load forecast for the ST-UC problem
-	vector< vector<double> > RT_load;	// real-time load for the ED problem
+	ScenarioType DA_load;	// load forecast for the DA-UC problem
+	ScenarioType ST_load;	// load forecast for the ST-UC problem
+	ScenarioType RT_load;	// real-time load for the ED problem
 
 private:
 	bool readLoadData (string filepath, vector<vector<double>> &load);

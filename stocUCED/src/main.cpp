@@ -144,16 +144,17 @@ void readRunfile (string inputDir) {
 	runParam.DA_horizon = 24*60;	runParam.DA_resolution = 60; runParam.DA_frequency = 24*60;
 	runParam.ST_horizon = 3*60;		runParam.ST_resolution = 15; runParam.ST_frequency = 3*60;
 	runParam.ED_horizon = 60;		runParam.ED_resolution = 15; runParam.ED_frequency = 15;
-
+	runParam.numRep = 1;
+	
 	/* Read the run parameters if a run file is included in the default folder */
 	if ( open_file(fptr, (inputDir + "runParameters.txt")) ) {
 		while ( getline(fptr, line) ) {
 			istringstream iss(line);
 			if ( iss >> field1 >> field2 >> field3) {
 				/* Convert all numbers into minutes */
-				 if ( field3 != "minutes" )
+				 if ( field3 == "hours" )
 					temp = (double) atof(field2.c_str()) * 60.0;
-				else
+				 else
 					temp = (double) atof(field2.c_str());
 
 				 if ( field1 == "horizon" )
@@ -176,6 +177,8 @@ void readRunfile (string inputDir) {
 					 runParam.ED_resolution = temp;
 				 else if ( field1 == "ED_time_frequency" )
 					 runParam.ED_frequency = temp;
+				 else if ( field1 == "numRep" )
+					 runParam.numRep = temp;
 				 else {
 					 perror("Warning:: Unidentified run parameter in the file.\n");
 				 }

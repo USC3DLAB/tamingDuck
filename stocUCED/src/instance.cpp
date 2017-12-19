@@ -11,16 +11,63 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc) {
 	
 	solution.allocateMem(powSys->numGen, runParam.numPeriods);
 
+	/* Get the random realizations */
+	vector<string> randName (2);
+	randName[0] = "Wind";
+	randName[1] = "Solar";
 
-	/* TODO: 
-	 (1) Generalize the input format 
-	 (2) 24 should be replaced with however time periods are needed
-	 (3) Nb of scenarios
-	 */
-	DA_observ = createScenarioList(stoc, stoc->mapTypeToIndex["DA"], runParam.numPeriods, runParam.numRep);
-	ST_observ = createScenarioList(stoc, stoc->mapTypeToIndex["ST"], runParam.numPeriods, runParam.numRep);
-	RT_observ = createScenarioList(stoc, stoc->mapTypeToIndex["RT"], runParam.numPeriods, runParam.numRep);
+	vector<int> indices;
+	for (auto it=stoc->mapTypeToIndex["DA"].begin(); it != stoc->mapTypeToIndex["DA"].end(); ++it) {
+		if ( find(randName.begin(), randName.end(), stoc->sp[*it].name) != randName.end() ) {	// if the name is found, push it into the list of indices
+			indices.push_back(*it);
+		}
+	}
+	DA_observ = createScenarioList(stoc, indices, runParam.numPeriods, runParam.numRep);
+	
+	indices.clear();
+	for (auto it=stoc->mapTypeToIndex["ST"].begin(); it != stoc->mapTypeToIndex["ST"].end(); ++it) {
+		if ( find(randName.begin(), randName.end(), stoc->sp[*it].name) != randName.end() ) {	// if the name is found, push it into the list of indices
+			indices.push_back(*it);
+		}
+	}
+	ST_observ = createScenarioList(stoc, indices, runParam.numPeriods, runParam.numRep);
+	
+	indices.clear();
+	for (auto it=stoc->mapTypeToIndex["RT"].begin(); it != stoc->mapTypeToIndex["RT"].end(); ++it) {
+		if ( find(randName.begin(), randName.end(), stoc->sp[*it].name) != randName.end() ) {	// if the name is found, push it into the list of indices
+			indices.push_back(*it);
+		}
+	}
+	RT_observ = createScenarioList(stoc, indices, runParam.numPeriods, runParam.numRep);
 
+	/* Get the deterministic realizations */
+	vector<string> detName (2);
+	detName[0] = "Load";
+
+	indices.clear();
+	for (auto it=stoc->mapTypeToIndex["DA"].begin(); it != stoc->mapTypeToIndex["DA"].end(); ++it) {
+		if ( find(detName.begin(), detName.end(), stoc->sp[*it].name) != detName.end() ) {	// if the name is found, push it into the list of indices
+			indices.push_back(*it);
+		}
+	}
+	DA_load = createScenarioList(stoc, indices, runParam.numPeriods, runParam.numRep);
+
+	indices.clear();
+	for (auto it=stoc->mapTypeToIndex["ST"].begin(); it != stoc->mapTypeToIndex["ST"].end(); ++it) {
+		if ( find(detName.begin(), detName.end(), stoc->sp[*it].name) != detName.end() ) {	// if the name is found, push it into the list of indices
+			indices.push_back(*it);
+		}
+	}
+	ST_load = createScenarioList(stoc, indices, runParam.numPeriods, runParam.numRep);
+
+	indices.clear();
+	for (auto it=stoc->mapTypeToIndex["RT"].begin(); it != stoc->mapTypeToIndex["RT"].end(); ++it) {
+		if ( find(detName.begin(), detName.end(), stoc->sp[*it].name) != detName.end() ) {	// if the name is found, push it into the list of indices
+			indices.push_back(*it);
+		}
+	}
+	RT_load = createScenarioList(stoc, indices, runParam.numPeriods, runParam.numRep);
+	
 //	bool status;
 //	status = readLoadData(inputDir + sysName + "/Load/DA.csv", DA_load);
 //	if (!status)	return false;
