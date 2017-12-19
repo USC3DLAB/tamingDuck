@@ -9,12 +9,7 @@
  *
  */
 
-#include <dirent.h>
-#include <stdio.h>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <string.h>
+#include "../misc.hpp"
 #include "stoc.hpp"
 
 StocProcess::StocProcess() {}
@@ -45,7 +40,7 @@ StocProcess::StocProcess(string inputDir, string sysName) {
 			OneStocProc temp;
 			temp = read((inputDir + sysName + "/" + rType[r] + "/" + fType[f]), ',', true, true);
 			temp.name = rType[r];
-			temp.type = fType[f];
+			temp.type = fType[f].substr(0, fType[f].find_last_of("."));
 
 			sp.push_back(temp);
 			numStocProc++;
@@ -59,38 +54,30 @@ OneStocProc StocProcess::read(string fname, char delimiter, bool readColNames, b
 	ifstream fptr;
 	OneStocProc temp;
 	vector<string> tokens;
-	string line;
+	string line, str;
 	unsigned int n;
 
+	/* open the file */
 	if ( !open_file(fptr, fname) )
 		return temp;
 
+	/* read the column names if they exist */
 	temp.numVars = temp.numT = 0;
 	if ( readColNames ) {
 		getline ( fptr, line );
 		tokens = splitString(line, delimiter);
 		for ( n = 1; n < tokens.size(); n++ ) {
-			//cout << "First token=" << tokens[n] << " " << n << endl;
-			if (tokens[n].length() > 2) tokens[n].erase(0, 1);									// remove the first \"
-			//cout << "Second token=" << tokens[n] << " " << n << endl;
-			if (tokens[n].length() > 2) tokens[n].erase(tokens[n].end()-1, tokens[n].end());	// remove the last \"
-			//cout << "Third token=" << tokens[n] << " " << n << endl;
-			//TODO: Harshaaaa
-			
+			unsigned int first = tokens[n].find_first_of('"');
+			unsigned int last = tokens[n].find_last_of('"');
+			if ( first != std::string::npos && last != std::string::npos )
+				tokens[n] = tokens[n].substr(first+1, last-1);
+
 			temp.mapVarNamesToIndex.insert( pair<string, int> (tokens[n], n-1) );
-			//cout << temp.mapVarNamesToIndex[tokens[n]] << endl;
-			
-			//auto it = temp.mapVarNamesToIndex.find(tokens[n]);
-			//cout << it->first << " " << it->second << endl;
-			
-			//it = temp.mapVarNamesToIndex.find("hasan");
-			//if (it == temp.mapVarNamesToIndex.end()) {
-			//	cout << "Hasan is not here" << endl;
-			//}
 		}
-		temp.numVars = (int)temp.mapVarNamesToIndex.size();
+		temp.numVars = (int) temp.mapVarNamesToIndex.size();
 	}
 
+	/* read the data */
 	while ( getline(fptr, line) ) {
 		tokens = splitString(line, delimiter);
 
@@ -142,8 +129,8 @@ ScenarioType createScenarioList(StocProcess *stoc, vector<int> S_indices, int T,
 		observ.name.push_back(stoc->sp[S_indices[n]].name);
 		observ.mapVarNamesToIndex.insert( stoc->sp[S_indices[n]].mapVarNamesToIndex.begin(), stoc->sp[S_indices[n]].mapVarNamesToIndex.end() );
 	}
-	
-	
+
+
 
 	return observ;
 }//END createObservList()

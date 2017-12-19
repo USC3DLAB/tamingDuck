@@ -11,7 +11,7 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc) {
 	
 	solution.allocateMem(powSys->numGen, (int)round(runParam.horizon/runParam.baseTime));
 
-	
+
 	DA_observ = createScenarioList(stoc, {0,2}, 24, 10);
 	ST_observ = createScenarioList(stoc, {1,3}, 24, 10);	//TODO: fix this later
 	RT_observ = createScenarioList(stoc, {1,3}, 24, 10);

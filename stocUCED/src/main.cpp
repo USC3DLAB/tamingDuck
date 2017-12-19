@@ -14,11 +14,6 @@
 #include "EDmodel.hpp"
 #include "./powerSys/PowSys.hpp"
 #include "./stocProcess/stoc.hpp"
-#include <sstream>
-
-//#include "master.hpp"
-
-// TODO: I have changed a few *.h to *.hpp to separate the C files of SD from the cpp files here.
 
 runType runParam;
 

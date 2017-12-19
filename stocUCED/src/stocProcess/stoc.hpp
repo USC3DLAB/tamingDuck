@@ -21,7 +21,7 @@ using namespace std;
 struct OneStocProc {
 	string	name;							// Type of random variable
 	string	type;							// A descriptor
-	map<string, int> mapVarNamesToIndex;	// Name of the variables
+	map<string, int> mapVarNamesToIndex;	// Name of variables and corresponding indices
 	vector<string> rowNames;				// Name of the rows
 	int 	numVars;						// Number of random variables
 	int 	numT;							// Number of time periods
@@ -30,7 +30,7 @@ struct OneStocProc {
 
 struct ScenarioType{						// set of scenarios
 	vector<string> name;					// lists all the stochastic processes for which scenarios were generated
-	map<string, int> mapVarNamesToIndex;
+	map<string, int> mapVarNamesToIndex;	//
 	int numOmega;							// Number of random variables in the stochastic process
 	int T;									// Time horizon
 	int cnt;								// Number of scenarios
