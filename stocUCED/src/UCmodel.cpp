@@ -83,21 +83,18 @@ void UCmodel::preprocessing ()
 	}
 	
 	// expected capacity
-	auto observPtr = (probType == DayAhead) ? &(inst->DA_observ.mapVarNamesToIndex) : &(inst->ST_observ.mapVarNamesToIndex);
+	auto observPtr = (probType == DayAhead) ? &(inst->DA_observ) : &(inst->ST_observ);
 	
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 
-		auto it = observPtr->find(genPtr->name);
-		
-		//cout << genPtr->name << "\t" << genPtr->type << "\t" << endl;
-		
-		if ( it != observPtr->end() ) {
+		auto it = observPtr->mapVarNamesToIndex.find(genPtr->name);
+		if ( it != observPtr->mapVarNamesToIndex.end() ) {			
 			/* random supply */
 			for (int t=0; t<numPeriods; t++) {
 				expCapacity[g][t] = 0.0;
 				for (int subPeriod=0; subPeriod<numBaseTimePerPeriod; subPeriod++) {
-					expCapacity[g][t] += inst->DA_observ.vals[0][t*numBaseTimePerPeriod + subPeriod][it->second];
+					expCapacity[g][t] += observPtr->vals[0][t*numBaseTimePerPeriod + subPeriod][it->second];
 				}
 			}
 		} else {
