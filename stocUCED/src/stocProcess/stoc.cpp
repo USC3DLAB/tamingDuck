@@ -41,8 +41,16 @@ StocProcess::StocProcess(string inputDir, string sysName) {
 			temp = read((inputDir + sysName + "/" + rType[r] + "/" + fType[f]), ',', true, true);
 			temp.name = rType[r];
 			temp.type = fType[f].substr(0, fType[f].find_last_of("."));
-
+			
 			sp.push_back(temp);
+			
+			// check if the key exists, create a new key, if it doesn't exist
+			auto it = mapTypeToIndex.find(temp.type);
+			if (it == mapTypeToIndex.end()) { mapTypeToIndex.insert( pair<string, vector<int>> (temp.type, vector<int> ())); }
+
+			vector<int> *vecPtr = &(mapTypeToIndex[temp.type]);
+			vecPtr->push_back(numStocProc);
+			
 			numStocProc++;
 			cout << "Successfully read " << (inputDir + sysName + "/" + rType[r] + "/" + fType[f]).c_str() << endl;
 		}

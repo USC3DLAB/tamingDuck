@@ -205,6 +205,8 @@ void readRunfile (string inputDir) {
 
 	/* Set the base time */
 	runParam.baseTime = runParam.ED_resolution;
+	
+	runParam.numPeriods = (int)round(runParam.horizon/runParam.baseTime);
 
 	fptr.close();
 

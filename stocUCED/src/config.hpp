@@ -9,6 +9,22 @@
 #ifndef config_h
 #define config_h
 
+enum ProblemType {
+	DayAhead,
+	ShortTerm
+};
+
+enum ModelType {
+	System,
+	Transmission
+};
+
+enum SettingType {
+	DUC_DED,
+	DUC_SED,
+	SUC_SED
+};
+
 struct runType {
 	double 	baseTime;		// in minutes, the highest resolution period length
 	double	horizon;		// Total horizon in minutes
@@ -18,6 +34,7 @@ struct runType {
 	int		DA_numPeriods;	// Number of periods for a given frequency
 	int		ST_numPeriods;
 	int		ED_numPeriods;
+	int		numPeriods;		// Total # of periods
 	double	DA_resolution;	// in minutes
 	double	ST_resolution;	// in minutes
 	double	ED_resolution;	// in minutes
@@ -27,16 +44,11 @@ struct runType {
 	int 	DA_numSolves;	// Number of times DA problem is solved
 	int		ST_numSolves;	// Number of times ST problem needs to be solved within the horizon of DA
 	int		ED_numSolves;	// Number of times ED problem needs to be solved within the horizon of ED
-};
-
-enum ProblemType {
-	DayAhead,
-	ShortTerm
-};
-
-enum ModelType {
-	System,
-	Transmission
+	
+	SettingType settingType;
+	
+	int		numRep;			// Number of replications
+	
 };
 
 const double pi = 3.1451;

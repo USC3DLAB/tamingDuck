@@ -9,12 +9,17 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc) {
 	this->powSys = powSys;
 	this->stoc	 = stoc;
 	
-	solution.allocateMem(powSys->numGen, (int)round(runParam.horizon/runParam.baseTime));
+	solution.allocateMem(powSys->numGen, runParam.numPeriods);
 
 
-	DA_observ = createScenarioList(stoc, {0,2}, 24, 10);
-	ST_observ = createScenarioList(stoc, {1,3}, 24, 10);	//TODO: fix this later
-	RT_observ = createScenarioList(stoc, {1,3}, 24, 10);
+	/* TODO: 
+	 (1) Generalize the input format 
+	 (2) 24 should be replaced with however time periods are needed
+	 (3) Nb of scenarios
+	 */
+	DA_observ = createScenarioList(stoc, stoc->mapTypeToIndex["DA"], runParam.numPeriods, runParam.numRep);
+	ST_observ = createScenarioList(stoc, stoc->mapTypeToIndex["ST"], runParam.numPeriods, runParam.numRep);
+	RT_observ = createScenarioList(stoc, stoc->mapTypeToIndex["RT"], runParam.numPeriods, runParam.numRep);
 
 //	bool status;
 //	status = readLoadData(inputDir + sysName + "/Load/DA.csv", DA_load);

@@ -45,7 +45,8 @@ public:
 	StocProcess(string inputDir, string sysName);
 
 	int numStocProc;
-	vector <OneStocProc> sp;		// A vector of scenType with elements corresponding to each type of randomness
+	vector <OneStocProc> sp;		// A vector of scenType with elements corresponding to each type of randomness	
+	map<string, vector<int>> mapTypeToIndex;
 
 private:
 	OneStocProc read(string fname, char delimiter, bool readColNames, bool readRowNames);
