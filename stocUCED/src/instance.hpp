@@ -33,8 +33,8 @@ public:
 	vector<string> detElems;		// list of deterministic elements in the model
 	vector<string> stocElems;		// list of stochastic elements in the model
 
-	vector<ScenarioType> detObserv; // Deterministic observations.
-	vector<ScenarioType> stocObsev; // Stochastic observations.
+	vector<ScenarioType> detObserv;  // Deterministic observations.
+	vector<ScenarioType> stocObserv; // Stochastic observations.
 
 private:
 	bool readLoadData (string filepath, vector<vector<double>> &load);

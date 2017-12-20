@@ -39,7 +39,7 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc) {
 	inst.initialize(&powSys, &stocProc, detElems, stocElems);
 
 	//TODO: what's this cnt?
-	for (int rep = 0; rep < inst.DA_observ.cnt; rep++) {
+	for (int rep = 0; rep < runParam.numRep; rep++) {
 		/* allocate memory to hold solutions */
 		Solution soln;
 		soln.allocateMem(powSys.numGen, runParam.DA_horizon/runParam.baseTime);

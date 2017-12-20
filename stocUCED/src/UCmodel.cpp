@@ -83,7 +83,7 @@ void UCmodel::preprocessing ()
 	}
 	
 	// expected capacity
-	auto observPtr = (probType == DayAhead) ? &(inst->DA_observ) : &(inst->ST_observ);
+	auto observPtr = (probType == DayAhead) ? &(inst->stocObserv[0]) : &(inst->stocObserv[1]);
 	
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
@@ -117,17 +117,19 @@ void UCmodel::preprocessing ()
 	
 	// load calculations
 	if (modelType == System) {
+		auto it = (probType == DayAhead) ? &(inst->detObserv[0]) : &(inst->detObserv[1]);
+		
 		fill( sysLoad.begin(), sysLoad.end(), 0.0 );		// initialize to 0
 		for (int t=0; t<numPeriods; t++) {
-			for (int r=0; r<inst->DA_load.numVars; r++) {
+			for (int r=0; r<it->numVars; r++) {
 				for (int d=0; d<numBaseTimePerPeriod; d++) {
-					sysLoad[t] += (probType == DayAhead) ? inst->DA_load.vals[0][t*numBaseTimePerPeriod+d][r] : inst->ST_load.vals[0][t*numBaseTimePerPeriod+d][r];
+					sysLoad[t] += it->vals[0][t*numBaseTimePerPeriod+d][r];
 				}
 			}
 		}
 	}
 	else {
-		double temp;
+		auto it = (probType == DayAhead) ? &(inst->detObserv[0]) : &(inst->detObserv[1]);
 		
 		for (int b=0; b<numBus; b++) {
 			Bus *busPtr = &(inst->powSys->buses[b]);
@@ -137,9 +139,7 @@ void UCmodel::preprocessing ()
 			{
 				busLoad[b][t] = 0.0;
 				for (int d=0; d<numBaseTimePerPeriod; d++) {
-					temp = (probType == DayAhead) ? inst->DA_load.vals[0][t*numBaseTimePerPeriod+d][r] : inst->ST_load.vals[0][t*numBaseTimePerPeriod+d][r];
-					temp *= busPtr->loadPercentage;
-					busLoad[b][t] += temp;
+					busLoad[b][t] += it->vals[0][t*numBaseTimePerPeriod+d][r] * busPtr->loadPercentage;
 				}
 			}
 		}

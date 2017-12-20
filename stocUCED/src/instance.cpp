@@ -14,12 +14,13 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, vector<string> stoc
 	this->stocElems = stocElems;
 	
 	// TODO: Move this initialization to a better place.
+	// SMH: How about the constructor? or just hardcode it in the header file?
 	this->hierarchy = {"DA", "ST", "RT"};
 
 	/* Allocate memory for solution matrices */
 	solution.allocateMem(powSys->numGen, runParam.numPeriods);
 
-	/* Setup all the deterministic observations necessary */
+	/* Setup all the deterministic observations */
 	for ( int l = 0; l < (int) this->hierarchy.size(); l++ ) {
 		for ( int n = 0; n < (int) detElems.size(); n++ ) {
 			vector<int> indices;
@@ -33,7 +34,7 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, vector<string> stoc
 		}
 	}
 
-	/* Setup all the stochastic observations necessary */
+	/* Setup all the stochastic observations */
 	for ( int l = 0; l < (int) this->hierarchy.size(); l++ ) {
 		for ( int n = 0; n < (int) detElems.size(); n++ ) {
 			vector<int> indices;
@@ -43,7 +44,7 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, vector<string> stoc
 				}
 			}
 			ScenarioType temp = createScenarioList(stoc, indices, runParam.numPeriods, runParam.numRep);
-			this->stocObsev.push_back(temp);
+			this->stocObserv.push_back(temp);
 		}
 	}
 
