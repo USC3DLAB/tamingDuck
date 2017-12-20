@@ -44,25 +44,25 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc) {
 		Solution soln;
 		soln.allocateMem(powSys.numGen, runParam.DA_horizon/runParam.baseTime);
 
-		/* Long-term unit commitment */
-		for ( h = 0; h < runParam.DA_numSolves; h++ ) {
-			UCmodel DAmodel;
-			DAmodel.formulate(inst, DayAhead, Transmission, 0);
-			DAmodel.solve();
-
-			/* Short-term unit commitment */
-			for ( t = 0; t < runParam.ST_numSolves; t++ ) {
-				UCmodel STmodel;
-				STmodel.formulate(inst, ShortTerm, Transmission, 0);
-				STmodel.solve();
-
-				/* Economic dispatch */
-				for ( n = 0; n < runParam.ED_numSolves; n++ ) {
-					EDmodel DED;
-					DED.formulate(inst, 0, soln);
-				}
-			}
-		}
+//		/* Long-term unit commitment */
+//		for ( h = 0; h < runParam.DA_numSolves; h++ ) {
+//			UCmodel DAmodel;
+//			DAmodel.formulate(inst, DayAhead, Transmission, 0);
+//			DAmodel.solve();
+//
+//			/* Short-term unit commitment */
+//			for ( t = 0; t < runParam.ST_numSolves; t++ ) {
+//				UCmodel STmodel;
+//				STmodel.formulate(inst, ShortTerm, Transmission, 0);
+//				STmodel.solve();
+//
+//				/* Economic dispatch */
+//				for ( n = 0; n < runParam.ED_numSolves; n++ ) {
+//					EDmodel DED;
+//					DED.formulate(inst, 0, soln);
+//				}
+//			}
+//		}
 	}
 
 	return 0;
