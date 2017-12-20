@@ -119,7 +119,7 @@ void UCmodel::preprocessing ()
 	if (modelType == System) {
 		fill( sysLoad.begin(), sysLoad.end(), 0.0 );		// initialize to 0
 		for (int t=0; t<numPeriods; t++) {
-			for (int r=0; r<inst->DA_load.numOmega; r++) {
+			for (int r=0; r<inst->DA_load.numVars; r++) {
 				for (int d=0; d<numBaseTimePerPeriod; d++) {
 					sysLoad[t] += (probType == DayAhead) ? inst->DA_load.vals[0][t*numBaseTimePerPeriod+d][r] : inst->ST_load.vals[0][t*numBaseTimePerPeriod+d][r];
 				}

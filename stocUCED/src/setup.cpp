@@ -26,9 +26,17 @@ extern runType runParam;
 int setup_DUCDED(PowSys &powSys, StocProcess &stocProc) {
 	int h, t, n;
 
+	// TODO: Move this initialization to a better place.
+	vector<string> detElems (2);
+	detElems[0] = "Load";
+
+	vector<string> stocElems (2);
+	stocElems[0] = "Solar";
+	stocElems[1] = "Wind";
+
 	/* Create an instance */
 	instance inst;
-	inst.initialize(&powSys, &stocProc);
+	inst.initialize(&powSys, &stocProc, detElems, stocElems);
 
 	//TODO: what's this cnt?
 	for (int rep = 0; rep < inst.DA_observ.cnt; rep++) {

@@ -22,22 +22,23 @@ class instance {
 
 public:
     instance ();										
-	bool initialize (PowSys *powSys, StocProcess *stoc);
+	bool initialize (PowSys *powSys, StocProcess *stoc, vector<string> stocElems, vector<string> detElems);
 	
 	PowSys		*powSys;
 	StocProcess	*stoc;
 	Solution	solution;
-	
-	ScenarioType DA_observ;
-	ScenarioType ST_observ;
-	ScenarioType RT_observ;
 
-	ScenarioType DA_load;	// load forecast for the DA-UC problem
-	ScenarioType ST_load;	// load forecast for the ST-UC problem
-	ScenarioType RT_load;	// real-time load for the ED problem
+	vector<string> hierarchy;		// Hierarchy of information/data flow. Example, "DA", "ST", "RT".
+	
+	vector<string> detElems;		// list of deterministic elements in the model
+	vector<string> stocElems;		// list of stochastic elements in the model
+
+	vector<ScenarioType> detObserv; // Deterministic observations.
+	vector<ScenarioType> stocObsev; // Stochastic observations.
 
 private:
 	bool readLoadData (string filepath, vector<vector<double>> &load);
+	void summary();
 };
 
 #endif

@@ -132,13 +132,9 @@ ScenarioType createScenarioList(StocProcess *stoc, vector<int> S_indices, int T,
 
 	observ.T = T;
 	observ.cnt = observ.vals.size();
-	observ.numOmega = observ.vals[0][0].size();
-	for ( unsigned int n = 0; n < S_indices.size(); n++ ) {
-		observ.name.push_back(stoc->sp[S_indices[n]].name);
+	observ.numVars = observ.vals[0][0].size();
+	for ( unsigned int n = 0; n < S_indices.size(); n++ )
 		observ.mapVarNamesToIndex.insert( stoc->sp[S_indices[n]].mapVarNamesToIndex.begin(), stoc->sp[S_indices[n]].mapVarNamesToIndex.end() );
-	}
-
-
 
 	return observ;
 }//END createObservList()

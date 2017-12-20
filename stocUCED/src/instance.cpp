@@ -5,79 +5,48 @@ extern runType runParam;
 
 instance::instance () {}
 
-bool instance::initialize(PowSys *powSys, StocProcess *stoc) {
-	this->powSys = powSys;
-	this->stoc	 = stoc;
+bool instance::initialize(PowSys *powSys, StocProcess *stoc, vector<string> stocElems, vector<string> detElems) {
+
+	/* Initialize instance elements */
+	this->powSys    = powSys;
+	this->stoc	    = stoc;
+	this->detElems  = detElems;
+	this->stocElems = stocElems;
 	
+	// TODO: Move this initialization to a better place.
+	this->hierarchy = {"DA", "ST", "RT"};
+
+	/* Allocate memory for solution matrices */
 	solution.allocateMem(powSys->numGen, runParam.numPeriods);
 
-	/* Get the random realizations */
-	vector<string> randName (2);
-	randName[0] = "Wind";
-	randName[1] = "Solar";
+	/* Setup all the deterministic observations necessary */
+	for ( int l = 0; l < (int) this->hierarchy.size(); l++ ) {
+		for ( int n = 0; n < (int) detElems.size(); n++ ) {
+			vector<int> indices;
+			for (auto it=stoc->mapTypeToIndex[this->hierarchy[l]].begin(); it != stoc->mapTypeToIndex[this->hierarchy[l]].end(); ++it) {
+				if ( find(detElems.begin(), detElems.end(), stoc->sp[*it].name) != detElems.end() ) {	// if the name is found, push it into the list of indices
+					indices.push_back(*it);
+				}
+			}
+			ScenarioType temp = createScenarioList(stoc, indices, runParam.numPeriods, runParam.numRep);
+			this->detObserv.push_back(temp);
+		}
+	}
 
-	vector<int> indices;
-	for (auto it=stoc->mapTypeToIndex["DA"].begin(); it != stoc->mapTypeToIndex["DA"].end(); ++it) {
-		if ( find(randName.begin(), randName.end(), stoc->sp[*it].name) != randName.end() ) {	// if the name is found, push it into the list of indices
-			indices.push_back(*it);
+	/* Setup all the stochastic observations necessary */
+	for ( int l = 0; l < (int) this->hierarchy.size(); l++ ) {
+		for ( int n = 0; n < (int) detElems.size(); n++ ) {
+			vector<int> indices;
+			for (auto it=stoc->mapTypeToIndex[this->hierarchy[l]].begin(); it != stoc->mapTypeToIndex[this->hierarchy[l]].end(); ++it) {
+				if ( find(detElems.begin(), detElems.end(), stoc->sp[*it].name) != detElems.end() ) {	// if the name is found, push it into the list of indices
+					indices.push_back(*it);
+				}
+			}
+			ScenarioType temp = createScenarioList(stoc, indices, runParam.numPeriods, runParam.numRep);
+			this->stocObsev.push_back(temp);
 		}
 	}
-	DA_observ = createScenarioList(stoc, indices, runParam.numPeriods, runParam.numRep);
-	
-	indices.clear();
-	for (auto it=stoc->mapTypeToIndex["ST"].begin(); it != stoc->mapTypeToIndex["ST"].end(); ++it) {
-		if ( find(randName.begin(), randName.end(), stoc->sp[*it].name) != randName.end() ) {	// if the name is found, push it into the list of indices
-			indices.push_back(*it);
-		}
-	}
-	ST_observ = createScenarioList(stoc, indices, runParam.numPeriods, runParam.numRep);
-	
-	indices.clear();
-	for (auto it=stoc->mapTypeToIndex["RT"].begin(); it != stoc->mapTypeToIndex["RT"].end(); ++it) {
-		if ( find(randName.begin(), randName.end(), stoc->sp[*it].name) != randName.end() ) {	// if the name is found, push it into the list of indices
-			indices.push_back(*it);
-		}
-	}
-	RT_observ = createScenarioList(stoc, indices, runParam.numPeriods, runParam.numRep);
 
-	/* Get the deterministic realizations */
-	vector<string> detName (2);
-	detName[0] = "Load";
-
-	indices.clear();
-	for (auto it=stoc->mapTypeToIndex["DA"].begin(); it != stoc->mapTypeToIndex["DA"].end(); ++it) {
-		if ( find(detName.begin(), detName.end(), stoc->sp[*it].name) != detName.end() ) {	// if the name is found, push it into the list of indices
-			indices.push_back(*it);
-		}
-	}
-	DA_load = createScenarioList(stoc, indices, runParam.numPeriods, runParam.numRep);
-
-	indices.clear();
-	for (auto it=stoc->mapTypeToIndex["ST"].begin(); it != stoc->mapTypeToIndex["ST"].end(); ++it) {
-		if ( find(detName.begin(), detName.end(), stoc->sp[*it].name) != detName.end() ) {	// if the name is found, push it into the list of indices
-			indices.push_back(*it);
-		}
-	}
-	ST_load = createScenarioList(stoc, indices, runParam.numPeriods, runParam.numRep);
-
-	indices.clear();
-	for (auto it=stoc->mapTypeToIndex["RT"].begin(); it != stoc->mapTypeToIndex["RT"].end(); ++it) {
-		if ( find(detName.begin(), detName.end(), stoc->sp[*it].name) != detName.end() ) {	// if the name is found, push it into the list of indices
-			indices.push_back(*it);
-		}
-	}
-	RT_load = createScenarioList(stoc, indices, runParam.numPeriods, runParam.numRep);
-	
-//	bool status;
-//	status = readLoadData(inputDir + sysName + "/Load/DA.csv", DA_load);
-//	if (!status)	return false;
-//
-//	status = readLoadData(inputDir + sysName + "/Load/ST.csv", ST_load);
-//	if (!status)	return false;
-//
-//	status = readLoadData(inputDir + sysName + "/Load/RT.csv", RT_load);
-//	if (!status)	return false;
-	
 	return true;
 }
 
@@ -118,3 +87,12 @@ bool instance::readLoadData(string filepath, vector<vector<double>> &load) {
 	
 	return true;
 }
+
+//void instance::summary() {
+//
+//	cout << "------------------------------------------------------------------------------------------------------------------------------" << endl;
+//	cout << "Power system           : " << powSys->name << endl;
+//	cout << "Deterministic elements : " << detElems << endl;
+//	cout << "Stocastic elements     : " << stocElems << endl;
+//
+//}// summary()

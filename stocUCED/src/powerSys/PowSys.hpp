@@ -23,6 +23,8 @@ public:
     PowSys ();
     bool readData (string inputDir, string sysName);
 
+    string name;
+
     int numGen;
     int numBus;
     int numLine;

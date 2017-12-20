@@ -29,9 +29,9 @@ struct OneStocProc {
 };
 
 struct ScenarioType{						// set of scenarios
-	vector<string> name;					// lists all the stochastic processes for which scenarios were generated
+	string name;							// A descriptor of the type of scenarios contained.
 	map<string, int> mapVarNamesToIndex;	//
-	int numOmega;							// Number of random variables in the stochastic process
+	int numVars;							// Number of random variables in the stochastic process
 	int T;									// Time horizon
 	int cnt;								// Number of scenarios
 	vector<vector<vector<double>>> vals;	// scenario/observations of random variables: dim1 (rows) - time, dim2 (columns) - random variables, and dim (3) outcomes.

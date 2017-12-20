@@ -19,8 +19,6 @@
 
 //#include "master.hpp"
 
-// TODO: I have changed a few *.h to *.hpp to separate the C files of SD from the cpp files here.
-
 runType runParam;
 
 void readRunfile (string inputDir);
