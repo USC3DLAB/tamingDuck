@@ -12,7 +12,7 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, vector<string> stoc
 	this->stoc	    = stoc;
 	this->detElems  = detElems;
 	this->stocElems = stocElems;
-	
+
 	// TODO: Move this initialization to a better place.
 	this->hierarchy = {"DA", "ST", "RT"};
 
@@ -47,29 +47,31 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, vector<string> stoc
 		}
 	}
 
+	summary();
+
 	return true;
-}
+}//END instance()
 
 bool instance::readLoadData(string filepath, vector<vector<double>> &load) {
 	ifstream input;
 	bool status = open_file(input, filepath);
 	if (!status) return false;
-	
+
 	string temp_str;
 	double temp_dbl;
-	
+
 	// read the headers
 	safeGetline(input, temp_str);
-	
+
 	// get the # of regions
 	int numRegion = (int)count(temp_str.begin(), temp_str.end(), delimiter);
 	load.resize(numRegion);
-	
+
 	// read the data
 	while (!input.eof()) {
 		// time stamp
 		getline(input, temp_str, delimiter);
-		
+
 		// regional data
 		int r;
 		for (r=0; r<numRegion-1; r++) {
@@ -77,22 +79,36 @@ bool instance::readLoadData(string filepath, vector<vector<double>> &load) {
 			load[r].push_back(temp_dbl);
 			move_cursor(input, delimiter);
 		}
-		
+
 		// final column (separated from above to deal with eoline token)
 		input >> temp_dbl;
 		load[r].push_back(temp_dbl);
 		safeGetline(input, temp_str);
 	}
 	input.close();
-	
+
 	return true;
 }
 
-//void instance::summary() {
-//
-//	cout << "------------------------------------------------------------------------------------------------------------------------------" << endl;
-//	cout << "Power system           : " << powSys->name << endl;
-//	cout << "Deterministic elements : " << detElems << endl;
-//	cout << "Stocastic elements     : " << stocElems << endl;
-//
-//}// summary()
+void instance::summary() {
+
+	cout << "------------------------------------------------------------------------------------------------------------------------------" << endl;
+	cout << "Power system           : " << powSys->name << endl;
+	if ( !detElems.empty() ) {
+		cout << "Deterministic elements : ";
+		for (auto i = detElems.begin(); i != detElems.end(); ++i)
+			std::cout << *i << ' ';
+		cout << endl;
+	}
+	else
+		cout << "Deterministic elements : None" << endl;
+	if ( !stocElems.empty() ) {
+		cout << "Stochastic elements : ";
+		for (auto i = stocElems.begin(); i != stocElems.end(); ++i)
+			std::cout << *i << ' ';
+		cout << endl;
+	}
+	else
+		cout << "Stochastic elements : None";
+
+}// summary()
