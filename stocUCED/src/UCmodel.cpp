@@ -50,9 +50,9 @@ void UCmodel::preprocessing ()
 	
 	
 	// initialize the containers
-	minGenerationReq.resize(inst->powSys->numGen);		// minimum production requirements
-	minUpTimePeriods.resize(inst->powSys->numGen);		// minimum uptime in periods
-	minDownTimePeriods.resize(inst->powSys->numGen);	// minimum downtime in periods
+	minGenerationReq.resize(numGen);		// minimum production requirements
+	minUpTimePeriods.resize(numGen);		// minimum uptime in periods
+	minDownTimePeriods.resize(numGen);	// minimum downtime in periods
 	resize_matrix(expCapacity, numGen, numPeriods);		// mean generator capacities
 	if (modelType == System) {
 		sysLoad.resize(numPeriods);						// aggregated system load
@@ -115,31 +115,28 @@ void UCmodel::preprocessing ()
 		}
 	}
 	
+	observPtr = (probType == DayAhead) ? &(inst->detObserv[0]) : &(inst->detObserv[1]);
 	// load calculations
 	if (modelType == System) {
-		auto it = (probType == DayAhead) ? &(inst->detObserv[0]) : &(inst->detObserv[1]);
-		
 		fill( sysLoad.begin(), sysLoad.end(), 0.0 );		// initialize to 0
 		for (int t=0; t<numPeriods; t++) {
-			for (int r=0; r<it->numVars; r++) {
+			for (int r=0; r<observPtr->numVars; r++) {
 				for (int d=0; d<numBaseTimePerPeriod; d++) {
-					sysLoad[t] += it->vals[0][t*numBaseTimePerPeriod+d][r];
+					sysLoad[t] += observPtr->vals[0][t*numBaseTimePerPeriod+d][r];
 				}
 			}
 		}
 	}
 	else {
-		auto it = (probType == DayAhead) ? &(inst->detObserv[0]) : &(inst->detObserv[1]);
-		
 		for (int b=0; b<numBus; b++) {
 			Bus *busPtr = &(inst->powSys->buses[b]);
 			
-			int r = busPtr->regionId-1;
+			int r = observPtr->mapVarNamesToIndex[ to_string(busPtr->regionId) ];
 			for (int t=0; t<numPeriods; t++)
 			{
 				busLoad[b][t] = 0.0;
 				for (int d=0; d<numBaseTimePerPeriod; d++) {
-					busLoad[b][t] += it->vals[0][t*numBaseTimePerPeriod+d][r] * busPtr->loadPercentage;
+					busLoad[b][t] += observPtr->vals[0][t*numBaseTimePerPeriod+d][r] * busPtr->loadPercentage;
 				}
 			}
 		}
