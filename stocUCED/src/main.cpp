@@ -198,7 +198,6 @@ void readRunfile (string inputDir) {
 	if ( fmod(runParam.ED_horizon, runParam.ED_resolution) != 0 || fmod(runParam.ED_frequency, runParam.ED_resolution) != 0)
 		perror("The economic dispatch time parameters are not consistent.\n");
 
-
 	/* Compute the remaining run parameters */
 	runParam.DA_numPeriods = runParam.DA_horizon/runParam.DA_resolution; runParam.DA_numSolves = runParam.horizon/runParam.DA_frequency;
 	runParam.ST_numPeriods = runParam.ST_horizon/runParam.ST_resolution; runParam.ST_numSolves = runParam.DA_horizon/runParam.ST_frequency;

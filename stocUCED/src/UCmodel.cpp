@@ -65,7 +65,7 @@ void UCmodel::preprocessing ()
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
-		minGenerationReq[g] = genPtr->minGenerationReq * periodLength/60.0;
+		minGenerationReq[g] = genPtr->minGenerationReq;
 		if (minGenerationReq[g] > min(genPtr->rampUpLim * periodLength, genPtr->rampDownLim * periodLength)) {
 			minGenerationReq[g] = min(genPtr->rampUpLim * periodLength, genPtr->rampDownLim * periodLength);
 		}
@@ -83,19 +83,20 @@ void UCmodel::preprocessing ()
 	}
 	
 	// expected capacity
-	auto observPtr = (probType == DayAhead) ? &(inst->stocObserv[0]) : &(inst->stocObserv[1]);
+	auto dataPtr = (probType == DayAhead) ? &(inst->stocObserv[0]) : &(inst->stocObserv[1]);
 	
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 
-		auto it = observPtr->mapVarNamesToIndex.find(genPtr->name);
-		if ( it != observPtr->mapVarNamesToIndex.end() ) {
+		auto it = dataPtr->mapVarNamesToIndex.find(genPtr->name);
+		if ( it != dataPtr->mapVarNamesToIndex.end() ) {
 			/* random supply */
 			for (int t=0; t<numPeriods; t++) {
-
+				expCapacity[g][t] = dataPtr->vals[0][t*numBaseTimePerPeriod][it->second];	// in MWs
+				
 				/* ***************************************************
 				 * TODO: Clean up.
-				 * This version computes capacity in MWh's.
+				 * This version computes capacity in MWhs.
 				expCapacity[g][t] = 0.0;
 				for (int subPeriod=0; subPeriod<numBaseTimePerPeriod; subPeriod++) {
 					expCapacity[g][t] += observPtr->vals[0][t*numBaseTimePerPeriod + subPeriod][it->second];
@@ -104,7 +105,13 @@ void UCmodel::preprocessing ()
 			}
 		} else {
 			/* deterministic supply */
+			fill(expCapacity[g].begin(), expCapacity[g].end(), genPtr->maxCapacity);	// in MWs
+			
+			/* ***************************************************
+			 * TODO: Clean up.
+			 * This version computes capacity in MWhs.
 			fill(expCapacity[g].begin(), expCapacity[g].end(), genPtr->maxCapacity*periodLength/60.0);
+			 */
 		}
 	}
 
@@ -120,15 +127,21 @@ void UCmodel::preprocessing ()
 		}
 	}
 	
-	observPtr = (probType == DayAhead) ? &(inst->detObserv[0]) : &(inst->detObserv[1]);
 	// load calculations
+	dataPtr = (probType == DayAhead) ? &(inst->detObserv[0]) : &(inst->detObserv[1]);
 	if (modelType == System) {
 		fill( sysLoad.begin(), sysLoad.end(), 0.0 );		// initialize to 0
 		for (int t=0; t<numPeriods; t++) {
-			for (int r=0; r<observPtr->numVars; r++) {
+			for (int r=0; r<dataPtr->numVars; r++) {
+				sysLoad[t] += dataPtr->vals[0][t*numBaseTimePerPeriod][r];
+
+				/* ***************************************************
+				 * TODO: Clean up.
+				 * This version computes capacity in MWhs.
 				for (int d=0; d<numBaseTimePerPeriod; d++) {
-					sysLoad[t] += observPtr->vals[0][t*numBaseTimePerPeriod+d][r];
+					sysLoad[t] += dataPtr->vals[0][t*numBaseTimePerPeriod+d][r];
 				}
+				 */
 			}
 		}
 	}
@@ -136,13 +149,18 @@ void UCmodel::preprocessing ()
 		for (int b=0; b<numBus; b++) {
 			Bus *busPtr = &(inst->powSys->buses[b]);
 			
-			int r = observPtr->mapVarNamesToIndex[ numToStr(busPtr->regionId) ];
-			for (int t=0; t<numPeriods; t++)
-			{
+			int r = dataPtr->mapVarNamesToIndex[ numToStr(busPtr->regionId) ];
+			for (int t=0; t<numPeriods; t++) {
+				busLoad[b][t] = dataPtr->vals[0][t*numBaseTimePerPeriod][r] * busPtr->loadPercentage;
+				
+				/* ***************************************************
+				 * TODO: Clean up.
+				 * This version computes capacity in MWhs.
 				busLoad[b][t] = 0.0;
 				for (int d=0; d<numBaseTimePerPeriod; d++) {
-					busLoad[b][t] += observPtr->vals[0][t*numBaseTimePerPeriod+d][r] * busPtr->loadPercentage;
+					busLoad[b][t] += dataPtr->vals[0][t*numBaseTimePerPeriod+d][r] * busPtr->loadPercentage;
 				}
+				 */
 			}
 		}
 	}
@@ -327,14 +345,16 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst.powSys->generators[g]);
 		
+		double varCostPerPeriod    = genPtr->variableCost * periodLength/60.0;
+		double noloadCostPerPeriod = genPtr->noLoadCost * periodLength/60.0;
+		
 		for (int t=0; t<numPeriods; t++) {
-			obj += genPtr->startupCost * s[g][t];							// start up cost
-			obj += minGenerationReq[g] * genPtr->variableCost * x[g][t];	// cost of producing minimum production amount
-			obj += genPtr->noLoadCost*periodLength/60.0 * x[g][t];			// no-load cost
-			obj += genPtr->variableCost * p_var[g][t];						// variable cost
+			obj += genPtr->startupCost * s[g][t];						// start up cost
+			obj += minGenerationReq[g] * varCostPerPeriod * x[g][t];	// cost of producing minimum generation requirements
+			obj += varCostPerPeriod * p_var[g][t];						// variable cost
+			obj += noloadCostPerPeriod * x[g][t];						// no-load cost
 		}
-	}
-	
+	}	
 	
 	/** Model-dependent obj function components, constraints **/
 	if (modelType == System)
@@ -373,9 +393,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 		}
 		
 		for (int l=0; l<numLine; l++) {
-			F[l] = IloNumVarArray(env, numPeriods,
-								  inst.powSys->lines[l].minFlowLim*periodLength/60.0,
-								  inst.powSys->lines[l].maxFlowLim*periodLength/60.0, ILOFLOAT);
+			F[l] = IloNumVarArray(env, numPeriods, inst.powSys->lines[l].minFlowLim, inst.powSys->lines[l].maxFlowLim, ILOFLOAT);
 			
 			sprintf(buffer, "F_%d", l);
 			F[l].setNames(buffer);

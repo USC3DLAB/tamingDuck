@@ -52,6 +52,7 @@ StocProcess::StocProcess(string inputDir, string sysName) {
 			vecPtr->push_back(numStocProc);
 			
 			numStocProc++;
+
 			cout << "Successfully read " << (inputDir + sysName + "/" + rType[r] + "/" + fType[f]).c_str() << endl;
 		}
 	}
