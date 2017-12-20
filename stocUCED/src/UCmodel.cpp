@@ -92,10 +92,15 @@ void UCmodel::preprocessing ()
 		if ( it != observPtr->mapVarNamesToIndex.end() ) {
 			/* random supply */
 			for (int t=0; t<numPeriods; t++) {
+
+				/* ***************************************************
+				 * TODO: Clean up.
+				 * This version computes capacity in MWh's.
 				expCapacity[g][t] = 0.0;
 				for (int subPeriod=0; subPeriod<numBaseTimePerPeriod; subPeriod++) {
 					expCapacity[g][t] += observPtr->vals[0][t*numBaseTimePerPeriod + subPeriod][it->second];
 				}
+				 * ***************************************************/
 			}
 		} else {
 			/* deterministic supply */
@@ -131,7 +136,7 @@ void UCmodel::preprocessing ()
 		for (int b=0; b<numBus; b++) {
 			Bus *busPtr = &(inst->powSys->buses[b]);
 			
-			int r = observPtr->mapVarNamesToIndex[ to_string(busPtr->regionId) ];
+			int r = observPtr->mapVarNamesToIndex[ numToStr(busPtr->regionId) ];
 			for (int t=0; t<numPeriods; t++)
 			{
 				busLoad[b][t] = 0.0;

@@ -20,6 +20,19 @@
 using namespace std;
 
 // Commonly used functions
+
+/****************************************************************************
+ * numToStr
+ * - Converts numbers to string
+ * - Source: https://stackoverflow.com/questions/5590381/easiest-way-to-convert-int-to-string-in-c
+ *****************************************************************************/
+template <typename T>
+string numToStr (T Number) {
+	ostringstream ss;
+	ss << Number;
+	return ss.str();
+}
+
 istream& safeGetline(istream& is, string& t);
 
 int getDirs (string dir, vector<string> &subdirs);
