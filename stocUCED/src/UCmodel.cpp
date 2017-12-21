@@ -12,9 +12,7 @@ extern runType runParam;
 
 UCmodel::UCmodel () {
 	model = IloModel(env);
-	cplex = IloCplex(model);
-
-	cplex.setOut(env.getNullStream());
+	cplex = IloCplex(env);
 }
 
 UCmodel::~UCmodel() {
@@ -38,6 +36,8 @@ UCmodel::~UCmodel() {
  * rates, otherwise, generators cannot switch on/off.
  * - Assumption 2: Min up/down times must at least be 1 period.
  ****************************************************************************/
+void UCmodel::preprocessing ()
+{
 void UCmodel::preprocessing ()
 {
 	/* basic parameters */

@@ -359,7 +359,7 @@ vector<int> sort_this (vector<double> &x, bool ascend)
 
 // Get current date/time, format is YYYY-MM-DD.HH:mm:ss
 // Reference: http://stackoverflow.com/questions/997946/how-to-get-current-time-and-date-in-c
-const std::string currentDateTime() {
+const std::string getCurrentDateTime() {
 	time_t     now = time(0);
 	struct tm  tstruct;
 	char       buf[80];

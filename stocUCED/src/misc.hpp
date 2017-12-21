@@ -149,7 +149,7 @@ vector<object> Subtract (vector<object> x, vector<object> y)
 	return difference;
 }
 
-const std::string currentDateTime();
+const std::string getCurrentDateTime();
 
 double get_cpu_time();
 double get_wall_time();

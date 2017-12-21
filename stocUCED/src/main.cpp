@@ -36,21 +36,33 @@ int main(int argc, const char * argv[]) {
 	readRunfile (inputDir);
 
     /* Read the power system */
-	PowSys system;
-    system.readData(inputDir, sysName);
+	PowSys powSys;
+    powSys.readData(inputDir, sysName);
 
 	/* checking scenario reader */
-    StocProcess stoc(inputDir, sysName);
+    StocProcess stocProc(inputDir, sysName);
 	
 	
-	/*** Begin: Semih's Removeable Test-Content ***/
+	/*** Begin: Semih's Removeable Test-Content ***
+	vector<string> detElems (1);
+	detElems[0] = "Load";
+	
+	vector<string> stocElems (2);
+	stocElems[0] = "Solar";
+	stocElems[1] = "Wind";
+
+	instance inst;
+	inst.initialize(&powSys, &stocProc, stocElems, detElems);
+
 	SUCmaster master;
+	master.formulate(inst, DayAhead, Transmission, 0);
+	master.solve();
 	/*** End: Semih's Removeable Test-Content ***/
 	
 	
 	// Switch based on the chosen setting
 	if ( setting == "DUC-DED" ) {
-		if( setup_DUCDED(system, stoc) ) {
+		if( setup_DUCDED(powSys, stocProc) ) {
 			perror("Failed to complete the DUC-DED run.\n");
 		}
 	}
