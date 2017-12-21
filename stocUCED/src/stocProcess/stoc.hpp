@@ -53,6 +53,6 @@ private:
 };
 
 void read(string fname, char delimiter, bool colNames, bool rowNames);
-ScenarioType createScenarioList(StocProcess *S, vector<int> S_indices, int T, int numVals);
+ScenarioType createScenarioList(StocProcess *S, vector<int> S_indices, int lenT, int stepSize, int numVals);
 
 #endif /* STOC_HPP_ */

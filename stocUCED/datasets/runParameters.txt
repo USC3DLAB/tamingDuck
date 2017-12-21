@@ -1,4 +1,4 @@
-horizon 12 hours
+horizon	12 hours
 DA_time_horizon 12 hours
 ST_time_horizon 3 hours
 ED_time_horizon 1 hours

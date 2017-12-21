@@ -29,7 +29,7 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, vector<string> stoc
 					indices.push_back(*it);
 				}
 			}
-			ScenarioType temp = createScenarioList(stoc, indices, runParam.numPeriods, runParam.numRep);
+			ScenarioType temp = createScenarioList(stoc, indices, runParam.numPeriods+runParam.ED_numPeriods-1, runParam.numPeriods, runParam.numRep);
 			this->detObserv.push_back(temp);
 		}
 	}
@@ -43,7 +43,7 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, vector<string> stoc
 					indices.push_back(*it);
 				}
 			}
-			ScenarioType temp = createScenarioList(stoc, indices, runParam.numPeriods, runParam.numRep);
+			ScenarioType temp = createScenarioList(stoc, indices, runParam.numPeriods+runParam.ED_numPeriods-1, runParam.numPeriods, runParam.numRep);
 			this->stocObserv.push_back(temp);
 		}
 	}
@@ -53,45 +53,6 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, vector<string> stoc
 	return true;
 }//END instance()
 
-/*
-bool instance::readLoadData(string filepath, vector<vector<double>> &load) {
-	ifstream input;
-	bool status = open_file(input, filepath);
-	if (!status) return false;
-
-	string temp_str;
-	double temp_dbl;
-
-	// read the headers
-	safeGetline(input, temp_str);
-
-	// get the # of regions
-	int numRegion = (int)count(temp_str.begin(), temp_str.end(), delimiter);
-	load.resize(numRegion);
-
-	// read the data
-	while (!input.eof()) {
-		// time stamp
-		getline(input, temp_str, delimiter);
-
-		// regional data
-		int r;
-		for (r=0; r<numRegion-1; r++) {
-			input >> temp_dbl;
-			load[r].push_back(temp_dbl);
-			move_cursor(input, delimiter);
-		}
-
-		// final column (separated from above to deal with eoline token)
-		input >> temp_dbl;
-		load[r].push_back(temp_dbl);
-		safeGetline(input, temp_str);
-	}
-	input.close();
-
-	return true;
-}
- */
 
 void instance::summary() {
 	cout << "------------------------------------------------------------------" << endl;
@@ -105,7 +66,7 @@ void instance::summary() {
 	else {
  		printf("%-23s%s%s\n", "Deterministic elements", ": ", "None");
 	}
-	
+
 	if ( !stocElems.empty() ) {
 		printf("%-23s%s", "Stochastic elements", ": ");
 		for (auto i = stocElems.begin(); i != stocElems.end(); ++i)
@@ -119,28 +80,29 @@ void instance::summary() {
 
 }// summary()
 
+
 bool instance::printSolution(string filepath) {
 	bool status;
-	
+
 	ofstream output;
 	status = open_file(output, filepath + "_commitments.sol");
 	if (!status) goto finalize;
-	
+
 	print_matrix(output, solution.x, delimiter, 0);
 	output.close();
-	
+
 	status = open_file(output, filepath + "_genUC.sol");
 	if (!status) goto finalize;
-	
+
 	print_matrix(output, solution.g_UC, delimiter, 2);
 	output.close();
-	
+
 	status = open_file(output, filepath + "_genED.sol");
 	if (!status) goto finalize;
-	
+
 	print_matrix(output, solution.g_ED, delimiter, 2);
 	output.close();
-	
-finalize:
+
+	finalize:
 	return status;
 }

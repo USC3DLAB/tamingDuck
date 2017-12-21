@@ -24,10 +24,10 @@ using namespace std;
 class EDmodel {
 
 public:
-	EDmodel();
+	EDmodel(instance &inst, int t0, int rep);
 	~EDmodel();
 
-	void formulate(instance &inst, int beginTime);
+	void formulate(instance &inst, int t0);
 	bool solve(instance &inst, int t0);
 
 private:
@@ -35,6 +35,9 @@ private:
 	IloModel	model;
 	IloCplex	cplex;
 	IloArray <IloNumVarArray> gen, overGen, demMet, demShed, flow, theta;
+
+	int numGen, numBus, numLine, numLoad, numPeriods;
+	vector<vector<double>> busLoad, genMin, genRampUp, genRampDown, genCap;
 };
 
 #endif /* EDMODEL_HPP_ */

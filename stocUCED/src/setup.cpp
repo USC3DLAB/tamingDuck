@@ -25,8 +25,8 @@ extern runType runParam;
  */
 int setup_DUCDED(PowSys &powSys, StocProcess &stocProc) {
 	int h, t, n;
-	tm nowTime;		// TODO: not working in my environment
-	
+	tm nowTime;
+
 	string timeStamp = getCurrentDateTime();
 
 	// TODO: Move this initialization to a better place.
@@ -50,11 +50,11 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc) {
 		Solution soln;
 		soln.allocateMem(powSys.numGen, runParam.DA_horizon/runParam.baseTime);
 
-		int beginPeriod = 0; mktime(&nowTime);
+		int beginPeriod = 0; nowTime.tm_hour = 0; nowTime.tm_min = 0; mktime(&nowTime);
 		/* Long-term unit commitment */
 		for ( h = 0; h < runParam.DA_numSolves; h++ ) {
 			printf("Long-term Unit-Commitment (%02d:%02d): ", nowTime.tm_hour, nowTime.tm_min);
-			
+
 			UCmodel DAmodel;
 			DAmodel.formulate(inst, DayAhead, Transmission, 0, rep);
 			DAmodel.solve();
@@ -71,7 +71,7 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc) {
 				/* Economic dispatch */
 				for ( n = 0; n < runParam.ED_numSolves; n++ ) {
 					printf("\t\tEconomic Dispatch (%02d:%02d): ", nowTime.tm_hour, nowTime.tm_min);
-					EDmodel DED;
+					EDmodel DED(inst, beginPeriod, rep);
 					DED.formulate(inst, beginPeriod);
 					DED.solve(inst, beginPeriod);
 					cout << "Success." << endl;

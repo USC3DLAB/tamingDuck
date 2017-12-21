@@ -76,8 +76,8 @@ OneStocProc StocProcess::read(string fname, char delimiter, bool readColNames, b
 		getline ( fptr, line );
 		tokens = splitString(line, delimiter);
 		for ( n = 1; n < tokens.size(); n++ ) {
-			size_t first = tokens[n].find_first_of('"');
-			size_t last = tokens[n].find_last_of('"');
+			unsigned int first = tokens[n].find_first_of('"');
+			unsigned int last = tokens[n].find_last_of('"');
 			if ( first != std::string::npos && last != std::string::npos ) //TODO: I'm getting an interesting warning for this function, saying it will always be true
 				tokens[n] = tokens[n].substr(first+1, last-1);
 
@@ -109,29 +109,29 @@ OneStocProc StocProcess::read(string fname, char delimiter, bool readColNames, b
 }//END scenarios::read
 
 /* This subroutine creates a list of _numVals_ observations for stochastic processes indexed by S_indices of time duration _T_ and returns a observType structure output. */
-ScenarioType createScenarioList(StocProcess *stoc, vector<int> S_indices, int T, int numVals) {
+ScenarioType createScenarioList(StocProcess *stoc, vector<int> S_indices, int lenT, int stepSize, int numVals) {
 	ScenarioType observ;
 
 	/* Compute the number of observations that can be generated */
 	for ( unsigned int n = 0; n < S_indices.size(); n++ )
-		if ( stoc->sp[S_indices[n]].numT/T < numVals )
-			numVals = stoc->sp[S_indices[n]].numT/T;
+		if (numVals > ceil((stoc->sp[S_indices[n]].numT - lenT)/stepSize))
+			numVals = ceil(stoc->sp[S_indices[n]].numT - lenT)/stepSize;
 
 	for ( int rep = 0; rep < numVals; rep++ ) {
 		vector<vector<double>> M;
-		for ( int t = 0; t < T; t++ ) {
+		int offset = rep*stepSize;
+		for ( int t = offset; t < offset+lenT; t++ ) {
 			vector <double> vec;
 			for ( unsigned int n = 0; n < S_indices.size(); n++ ) {
 				for ( unsigned int m = 0; m < stoc->sp[S_indices[n]].vals[t].size(); m++)
 					vec.push_back(stoc->sp[S_indices[n]].vals[t][m]);
-				observ.T = T;
 			}
 			M.push_back(vec);
 		}
 		observ.vals.push_back(M);
 	}
 
-	observ.T = T;
+	observ.T = lenT;
 	observ.cnt = observ.vals.size();
 	observ.numVars = observ.vals[0][0].size();
 	for ( unsigned int n = 0; n < S_indices.size(); n++ )
