@@ -19,6 +19,12 @@ enum ModelType {
 	Transmission
 };
 
+enum LevelType {
+	DA,
+	ST,
+	RT
+};
+
 enum SettingType {
 	DUC_DED,
 	DUC_SED,
