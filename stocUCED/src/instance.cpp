@@ -53,6 +53,7 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, vector<string> stoc
 	return true;
 }//END instance()
 
+/*
 bool instance::readLoadData(string filepath, vector<vector<double>> &load) {
 	ifstream input;
 	bool status = open_file(input, filepath);
@@ -90,27 +91,56 @@ bool instance::readLoadData(string filepath, vector<vector<double>> &load) {
 
 	return true;
 }
+ */
 
 void instance::summary() {
-
-	cout << "------------------------------------------------------------------------------------------------------------------------------" << endl;
-	cout << "Power system           : " << powSys->name << endl;
+	cout << "------------------------------------------------------------------" << endl;
+	printf("%-23s%s%s\n", "Power System", ": ", powSys->name.c_str());
 	if ( !detElems.empty() ) {
-		cout << "Deterministic elements : ";
+		printf("%-23s%s", "Deterministic elements", ": ");
 		for (auto i = detElems.begin(); i != detElems.end(); ++i)
 			std::cout << *i << ' ';
 		cout << endl;
 	}
-	else
-		cout << "Deterministic elements : None" << endl;
+	else {
+ 		printf("%-23s%s%s\n", "Deterministic elements", ": ", "None");
+	}
+	
 	if ( !stocElems.empty() ) {
-		cout << "Stochastic elements : ";
+		printf("%-23s%s", "Stochastic elements", ": ");
 		for (auto i = stocElems.begin(); i != stocElems.end(); ++i)
 			std::cout << *i << ' ';
 		cout << endl;
 	}
-	else
-		cout << "Stochastic elements : None";
-	cout << "------------------------------------------------------------------------------------------------------------------------------" << endl;
+	else {
+		printf("%-23s%s%s\n", "Stochastic elements", ": ", "None");
+	}
+	cout << "------------------------------------------------------------------" << endl;
 
 }// summary()
+
+bool instance::printSolution(string filepath) {
+	bool status;
+	
+	ofstream output;
+	status = open_file(output, filepath + "_commitments.sol");
+	if (!status) goto finalize;
+	
+	print_matrix(output, solution.x, delimiter, 0);
+	output.close();
+	
+	status = open_file(output, filepath + "_genUC.sol");
+	if (!status) goto finalize;
+	
+	print_matrix(output, solution.g_UC, delimiter, 2);
+	output.close();
+	
+	status = open_file(output, filepath + "_genED.sol");
+	if (!status) goto finalize;
+	
+	print_matrix(output, solution.g_ED, delimiter, 2);
+	output.close();
+	
+finalize:
+	return status;
+}

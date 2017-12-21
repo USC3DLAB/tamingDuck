@@ -23,6 +23,8 @@ class instance {
 public:
     instance ();										
 	bool initialize (PowSys *powSys, StocProcess *stoc, vector<string> stocElems, vector<string> detElems);
+	bool printSolution(string filepath);
+	
 	
 	PowSys		*powSys;
 	StocProcess	*stoc;
@@ -37,7 +39,6 @@ public:
 	vector<ScenarioType> stocObserv; // Stochastic observations.
 
 private:
-	bool readLoadData (string filepath, vector<vector<double>> &load);
 	void summary();
 };
 

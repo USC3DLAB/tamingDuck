@@ -25,7 +25,9 @@ extern runType runParam;
  */
 int setup_DUCDED(PowSys &powSys, StocProcess &stocProc) {
 	int h, t, n;
-	tm nowTime;
+	tm nowTime;		// TODO: not working in my environment
+	
+	string timeStamp = getCurrentDateTime();
 
 	// TODO: Move this initialization to a better place.
 	vector<string> detElems (1);
@@ -39,8 +41,8 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc) {
 	instance inst;
 	inst.initialize(&powSys, &stocProc, stocElems, detElems);
 
-	cout << "------------------------------------------------------------------------------------------------------------------------------" << endl;
-	cout << "---------------------------------------------Deterministic optimization-simulation--------------------------------------------" << endl;
+	cout << "------------------------------------------------------------------" << endl;
+	cout << "------------ Deterministic Optimization / Simulation -------------" << endl;
 	for (int rep = 0; rep < runParam.numRep; rep++) {
 		cout << "Observation-" << rep << endl;
 
@@ -81,8 +83,9 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc) {
 				}
 			}
 		}
+		inst.printSolution( ("./" + timeStamp + "_rep" + num2str(rep)) );
 	}
-	cout << "------------------------------------------------------------------------------------------------------------------------------" << endl;
+	cout << "------------------------------------------------------------------" << endl;
 
 	return 0;
 }

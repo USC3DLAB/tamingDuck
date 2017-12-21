@@ -22,12 +22,12 @@ using namespace std;
 // Commonly used functions
 
 /****************************************************************************
- * numToStr
+ * num2str
  * - Converts numbers to string
  * - Source: https://stackoverflow.com/questions/5590381/easiest-way-to-convert-int-to-string-in-c
  *****************************************************************************/
 template <typename T>
-string numToStr (T Number) {
+string num2str (T Number) {
 	ostringstream ss;
 	ss << Number;
 	return ss.str();
@@ -41,29 +41,30 @@ int getContents (string dir, vector<string> &contents);
 
 vector<string> splitString(string &line, char delimiter);
 
-bool open_file (ifstream &file, string filename);
+bool open_file (ifstream &fptr, string filename);
+bool open_file (ofstream &fptr, string filename);
+
 void move_cursor (ifstream &file, char character);
 
 void disp_vector (vector<int> &x);
 void disp_vector (vector<double> &x);
 void disp_vector (vector<bool> &x);
 
-void print_vector (vector <int> &x, ofstream &output);
-void print_vector (vector <bool> &x, ofstream &output);
-void print_vector (vector <double> &x, ofstream &output);
-
 void disp_matrix (vector< vector<double> > &x);
 void disp_matrix (vector< vector<bool> > &x);
 void disp_matrix (vector< vector<int> > &x);
 
-void print_matrix (vector < vector<double> > &x, ofstream &output);
-void print_matrix (vector < vector<bool> > &x, ofstream &output);
+void print_vector (ofstream &output, vector <double> &x, char delimiter, unsigned short precision);
+void print_vector (ofstream &output, vector <bool> &x, char delimiter);
+void print_vector (ofstream &output, vector <int> &x, char delimiter);
 
-void alloc_mem();
+void print_matrix (ofstream &output, vector < vector<double> > &x, char delimiter, unsigned short precision);
+void print_matrix (ofstream &output, vector < vector<bool> > &x, char delimiter);
+void print_matrix (ofstream &output, vector < vector<int> > &x, char delimiter);
 
-void resize_matrix(vector< vector<int> > &mat, int rows, int cols);
-void resize_matrix(vector< vector<bool> > &mat, int rows, int cols);
 void resize_matrix(vector< vector<double> > &mat, int rows, int cols);
+void resize_matrix(vector< vector<bool> > &mat, int rows, int cols);
+void resize_matrix(vector< vector<int> > &mat, int rows, int cols);
 
 vector< vector<int> > create_int_matrix(int rows, int cols);
 

@@ -121,7 +121,7 @@ void UCmodel::preprocessing ()
 	else {
 		for (int b=0; b<numBus; b++) {
 			Bus *busPtr = &(inst->powSys->buses[b]);
-			int r = dataPtr->mapVarNamesToIndex[ numToStr(busPtr->regionId) ];
+			int r = dataPtr->mapVarNamesToIndex[ num2str(busPtr->regionId) ];
 			
 			for (int t=0; t<numPeriods; t++) {
 				busLoad[b][t] = dataPtr->vals[rep][t*numBaseTimePerPeriod][r] * busPtr->loadPercentage;

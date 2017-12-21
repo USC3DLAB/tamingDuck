@@ -119,6 +119,16 @@ bool open_file (ifstream &fptr, string filename) {
 	return true;
 }
 
+bool open_file (ofstream &fptr, string filename) {
+	
+	fptr.open( filename.c_str() );
+	if (fptr.fail()) {
+		cout << "Error opening file: " << filename << endl;
+		return false;
+	}
+	return true;
+}
+
 void move_cursor (ifstream &file, char character) {
 	char x;
 	while (!file.eof())	{
@@ -191,51 +201,55 @@ void disp_matrix (vector< vector<int> > &x)
 	cout << endl;
 }
 
-void print_matrix (vector < vector<double> > &x, ofstream &output)
+void print_matrix (ofstream &output, vector < vector<double> > &x, char delimiter, unsigned short precision)
 {
-	for (unsigned int i=0; i<x.size(); i++)
-	{
-		for (unsigned int j=0; j<x[0].size(); j++)
-			output << fixed << setprecision(20) << setw(23) << x[i][j] << "\t";
+	for (unsigned int i=0; i<x.size(); i++) {
+		for (unsigned int j=0; j<x[0].size(); j++) {
+			output << setprecision(precision) << fixed << x[i][j] << delimiter;
+		}
 		output << endl;
 	}
 }
 
-void print_matrix (vector < vector<bool> > &x, ofstream &output)
+void print_matrix (ofstream &output, vector < vector<bool> > &x, char delimiter)
 {
-	for (unsigned int i=0; i<x.size(); i++)
-	{
-		for (unsigned int j=0; j<x[0].size(); j++)
-			output << fixed << setprecision(0) << setw(3) << x[i][j] << ",";
+	for (unsigned int i=0; i<x.size(); i++) {
+		for (unsigned int j=0; j<x[0].size(); j++) {
+			output << x[i][j] << delimiter;
+		}
 		output << endl;
 	}
 }
 
-void print_vector (vector <int> &x, ofstream &output)
+void print_matrix (ofstream &output, vector < vector<int> > &x, char delimiter)
+{
+	for (unsigned int i=0; i<x.size(); i++) {
+		for (unsigned int j=0; j<x[0].size(); j++) {
+			output << x[i][j] << delimiter;
+		}
+		output << endl;
+	}
+}
+
+void print_vector (ofstream &output, vector <double> &x, char delimiter, unsigned short precision)
 {
 	for (unsigned int i=0; i<x.size(); i++)
-		output << x[i] << " ";
+		output << setprecision(precision) << fixed << x[i] << delimiter;
 	output << endl;
 }
 
-void print_vector (vector <bool> &x, ofstream &output)
+void print_vector (ofstream &output, vector <bool> &x, char delimiter)
 {
 	for (unsigned int i=0; i<x.size(); i++)
-		output << x[i] << " ";
+		output << x[i] << delimiter;
 	output << endl;
 }
 
-void print_vector (vector <double> &x, ofstream &output)
+void print_vector (ofstream &output, vector <int> &x, char delimiter)
 {
 	for (unsigned int i=0; i<x.size(); i++)
-		output << x[i] << " ";
+		output << x[i] << delimiter;
 	output << endl;
-}
-
-void alloc_mem()
-{
-	// resize vectors
-	cout << " empty ";
 }
 
 void resize_matrix(vector< vector<bool> > &mat, int rows, int cols)

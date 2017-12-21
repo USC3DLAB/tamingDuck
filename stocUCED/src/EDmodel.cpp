@@ -159,7 +159,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 	/* Demand consistency */
 	for ( int d = 0; d < inst.powSys->numBus; d++ ) {
 		Bus *busPtr = &(inst.powSys->buses[d]);
-		int r = inst.detObserv[2].mapVarNamesToIndex[numToStr(busPtr->regionId)];
+		int r = inst.detObserv[2].mapVarNamesToIndex[num2str(busPtr->regionId)];
 
 		for ( int t = 0; t < runParam.ED_numPeriods; t++) {
 			sprintf(elemName, "demConsist[%d][%d]", d, t);

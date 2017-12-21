@@ -76,8 +76,8 @@ OneStocProc StocProcess::read(string fname, char delimiter, bool readColNames, b
 		getline ( fptr, line );
 		tokens = splitString(line, delimiter);
 		for ( n = 1; n < tokens.size(); n++ ) {
-			unsigned int first = tokens[n].find_first_of('"');
-			unsigned int last = tokens[n].find_last_of('"');
+			size_t first = tokens[n].find_first_of('"');
+			size_t last = tokens[n].find_last_of('"');
 			if ( first != std::string::npos && last != std::string::npos ) //TODO: I'm getting an interesting warning for this function, saying it will always be true
 				tokens[n] = tokens[n].substr(first+1, last-1);
 
