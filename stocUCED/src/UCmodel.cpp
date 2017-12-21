@@ -180,10 +180,8 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	this->probType	= probType;
 	this->modelType = modelType;
 
-
 	/* Prepare Model-Dependent Input Data */
 	preprocessing();
-	
 	
 	/* Prepare the Mathematical Model */
 	
