@@ -12,7 +12,9 @@ extern runType runParam;
 
 UCmodel::UCmodel () {
 	model = IloModel(env);
-	cplex = IloCplex(env);
+	cplex = IloCplex(model);
+
+	cplex.setOut(env.getNullStream());
 }
 
 UCmodel::~UCmodel() {
@@ -56,8 +58,6 @@ void UCmodel::preprocessing ()
 	resize_matrix(expCapacity, numGen, numPeriods);		// mean generator capacities
 	if (modelType == System) { sysLoad.resize(numPeriods); }					// aggregated system load
 	else					 { resize_matrix(busLoad, numBus, numPeriods); }	// individual bus loads
-	
-	
 	
 	/* Min Generation Amounts */
 	for (int g=0; g<numGen; g++) {

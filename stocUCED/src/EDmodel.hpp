@@ -27,7 +27,6 @@ public:
 	EDmodel();
 	~EDmodel();
 
-	void preprocess(instance &inst, int t0);
 	void formulate(instance &inst, int beginTime);
 	bool solve(instance &inst, int t0);
 
@@ -36,12 +35,6 @@ private:
 	IloModel	model;
 	IloCplex	cplex;
 	IloArray <IloNumVarArray> gen, overGen, demMet, demShed, flow, theta;
-
-	vector<vector<double>>  busLoad;			// load at each bus and period
-	vector<vector<double>>	minGenerationReq;	// minimum production requirements (obeying assumptions)
-	vector<vector<double>>	maxGenerationReq;	// minimum production requirements (obeying assumptions)
-
-	double beginTime;
 };
 
 #endif /* EDMODEL_HPP_ */

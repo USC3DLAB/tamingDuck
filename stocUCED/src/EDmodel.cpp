@@ -14,54 +14,18 @@
 extern runType runParam;
 
 EDmodel::EDmodel() {
+
 	model = IloModel(env);
-	cplex = IloCplex(env);
+	cplex = IloCplex(model);
+
+	cplex.setOut(env.getNullStream());
 }
 
 EDmodel::~EDmodel() {
 	env.end();
 }
 
-void EDmodel::preprocess(instance &inst, int t0) {
-
-	/* Parameters to be updated */
-	resize_matrix(minGenerationReq, inst.powSys->numGen, runParam.ED_numPeriods);
-	resize_matrix(maxGenerationReq, inst.powSys->numGen, runParam.ED_numPeriods);
-	resize_matrix(busLoad, inst.powSys->numBus, runParam.ED_numSolves);
-
-	for (int g = 0; g < inst.powSys->numGen; g++) {
-		Generator *genPtr = &(inst.powSys->generators[g]);
-
-		// Make sure that the generators meet the minGenerationReq & Assumption 1
-		double temp = genPtr->minGenerationReq;
-		if (temp > min(genPtr->rampUpLim * runParam.ED_resolution, genPtr->rampDownLim * runParam.ED_resolution)) {
-			temp = min(genPtr->rampUpLim * runParam.ED_resolution, genPtr->rampDownLim * runParam.ED_resolution);
-		}
-		fill(minGenerationReq[g].begin(), minGenerationReq[g].begin()+runParam.ED_numPeriods, temp);
-		fill(maxGenerationReq[g].begin(), maxGenerationReq[g].begin()+runParam.ED_numPeriods, genPtr->maxCapacity);
-
-		/* Make sure that the generator minimum is set to 0. */
-		for ( int t = t0; t < t0 + runParam.ED_numPeriods; t++ ) {
-			minGenerationReq[g][t-t0] *= (double) (inst.solution.x[g][t] && inst.solution.s[g][t]);
-			maxGenerationReq[g][t-t0] *= (double) (inst.solution.x[g][t] && inst.solution.s[g][t]);
-		}
-	}
-
-	/* Compute the load at a bus based on the regional load */
-	for (int b = 0; b < inst.powSys->numBus; b++) {
-		Bus *busPtr = &(inst.powSys->buses[b]);
-
-		int r = inst.detObserv[2].mapVarNamesToIndex[numToStr(busPtr->regionId)];
-		for (int t = 0; t < runParam.ED_numPeriods; t++) {
-			busLoad[b][t] = inst.detObserv[2].vals[0][t0+t][r]*busPtr->loadPercentage;
-		}
-	}
-
-
-	return;
-}
-
-void EDmodel::formulate(instance &inst, int beginTime) {
+void EDmodel::formulate(instance &inst, int t0) {
 	char elemName[NAMESIZE];
 
 	/**** Decision variables *****/
@@ -140,34 +104,51 @@ void EDmodel::formulate(instance &inst, int beginTime) {
 		}
 	}
 
-	/* Generation ramping constraints */
-	{
+	/* Generation ramping constraints: applicable only if the generator continues to be ON, i.e., x[g][t] = 1. */
+	if ( t0 != 0 ) {
+		/* TODO: The initial generation level is not considered */
+		/* The first time period of the ED horizon */
 		int t = 0;
 		for ( int g = 0; g < inst.powSys->numGen; g++ ) {
-			if ( inst.solution.x[beginTime][g] == 1 ) {
-				if ( beginTime != 0 ) {
-					sprintf(elemName, "rampUp[%d][%d]", g, t);
-					IloConstraint c1( gen[g][t] -  inst.solution.g[beginTime-1][g] <= inst.powSys->generators[g].rampUpLim); c1.setName(elemName); model.add(c1);
-					sprintf(elemName, "rampDown[%d][%d]", g, t);
-					IloConstraint c2( inst.powSys->generators[g].rampDownLim <= gen[g][t] - inst.solution.g[beginTime-1][g]); c2.setName(elemName); model.add(c2);
-				}
-			}
+			double rhs;
+
+			/* ramp-up */
+			sprintf(elemName, "rampUp[%d][%d]", g, t);
+			rhs = inst.solution.x[g][t0]*inst.powSys->generators[g].rampUpLim;
+			IloConstraint c1( gen[g][t] -  inst.solution.g[g][t0-1] <= rhs); c1.setName(elemName); model.add(c1);
+
+			/* ramp-down */
+			sprintf(elemName, "rampDown[%d][%d]", g, t);
+			rhs = inst.solution.x[g][t0]*inst.powSys->generators[g].rampDownLim;
+			IloConstraint c2( inst.solution.g[g][t0-1] - gen[g][t] <= rhs); c2.setName(elemName); model.add(c2);
 		}
 	}
+
 	for ( int t = 1; t < runParam.ED_numPeriods; t++ ) {
-		for ( int i = 0; i < inst.powSys->numGen; i++ ) {
-			sprintf(elemName, "rampUp[%d][%d]", i, t);
-			IloConstraint c1( gen[i][t] - gen[i][t-1] <= inst.powSys->generators[i].rampUpLim); c1.setName(elemName); model.add(c1);
-			sprintf(elemName, "rampDown[%d][%d]", i, t);
-			IloConstraint c2( inst.powSys->generators[i].rampDownLim <= gen[i][t] - gen[i][t-1]); c2.setName(elemName); model.add(c2);
+		/* The the remaining periods of the ED horizon */
+		for ( int g = 0; g < inst.powSys->numGen; g++ ) {
+			double rhs;
+
+			/* ramp-up */
+			sprintf(elemName, "rampUp[%d][%d]", g, t);
+			rhs = (inst.solution.x[g][t])*inst.powSys->generators[g].rampUpLim;
+			IloConstraint c1( gen[g][t] - gen[g][t-1] <= rhs); c1.setName(elemName); model.add(c1);
+
+			/* ramp-down */
+			sprintf(elemName, "rampDown[%d][%d]", g, t);
+			rhs = (inst.solution.x[g][t])*inst.powSys->generators[g].rampDownLim;
+			IloConstraint c2( gen[g][t-1] - gen[g][t] <= rhs); c2.setName(elemName); model.add(c2);
 		}
 	}
 
 	/* Generation capacity and availability limit */
 	for ( int g = 0; g < inst.powSys->numGen; g++ ) {
+		Generator genPtr = inst.powSys->generators[g];
 		for (int t = 0; t < runParam.ED_numPeriods; t++ ) {
 			/* Make sure that the generation capacity limits are met. The minimum and maximum for generators which are turned off are set to zero during pre-processing */
-			gen[g][t].setBounds(minGenerationReq[g][t], maxGenerationReq[g][t]);
+			double ub = genPtr.maxCapacity;
+			double lb = min(genPtr.minGenerationReq, min(genPtr.rampUpLim * runParam.ED_resolution, genPtr.rampDownLim * runParam.ED_resolution));
+			gen[g][t].setBounds(lb, ub);
 
 			/* Make sure that the over generation is less than the actual generation!! */
 			sprintf(elemName, "genConsist[%d][%d]", g, t);
@@ -177,9 +158,12 @@ void EDmodel::formulate(instance &inst, int beginTime) {
 
 	/* Demand consistency */
 	for ( int d = 0; d < inst.powSys->numBus; d++ ) {
+		Bus *busPtr = &(inst.powSys->buses[d]);
+		int r = inst.detObserv[2].mapVarNamesToIndex[numToStr(busPtr->regionId)];
+
 		for ( int t = 0; t < runParam.ED_numPeriods; t++) {
 			sprintf(elemName, "demConsist[%d][%d]", d, t);
-			IloConstraint c(demMet[d][t] + demShed[d][t] == busLoad[d][t]); c.setName(elemName); model.add(c);
+			IloConstraint c(demMet[d][t] + demShed[d][t] == inst.detObserv[2].vals[0][t0+t][r]*busPtr->loadPercentage); c.setName(elemName); model.add(c);
 		}
 	}
 
@@ -199,11 +183,6 @@ void EDmodel::formulate(instance &inst, int beginTime) {
 	model.add(obj);
 	realTimeCost.end();
 
-	/* Model parameters */
-	cplex.extract(model);
-
-	cplex.exportModel("EDform.lp");
-
 }//END formulate()
 
 /****************************************************************************
@@ -213,13 +192,14 @@ void EDmodel::formulate(instance &inst, int beginTime) {
 bool EDmodel::solve(instance &inst, int t0) {
 	bool status;
 
+
+
 	try {
 		status = cplex.solve();
 
 		// record the solution
 		if (status) {
 			for (int g = 0; g < inst.powSys->numGen; g++) {
-				Generator *genPtr = &(inst.powSys->generators[g]);
 				for (int t = 0; t < runParam.ED_numPeriods; t++) {
 					inst.solution.g[g][t0+t] = cplex.getValue(gen[g][t]);
 				}

@@ -39,7 +39,11 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc) {
 	instance inst;
 	inst.initialize(&powSys, &stocProc, stocElems, detElems);
 
+	cout << "------------------------------------------------------------------------------------------------------------------------------" << endl;
+	cout << "---------------------------------------------Deterministic optimization-simulation--------------------------------------------" << endl;
 	for (int rep = 0; rep < runParam.numRep; rep++) {
+		cout << "Observation-" << rep << endl;
+
 		/* allocate memory to hold solutions */
 		Solution soln;
 		soln.allocateMem(powSys.numGen, runParam.DA_horizon/runParam.baseTime);
@@ -65,7 +69,6 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc) {
 				for ( n = 0; n < runParam.ED_numSolves; n++ ) {
 					printf("\t\tEconomic Dispatch (%02d:%02d): ", nowTime.tm_hour, nowTime.tm_min);
 					EDmodel DED;
-					DED.preprocess(inst, beginPeriod);
 					DED.formulate(inst, beginPeriod);
 					DED.solve(inst, beginPeriod);
 					cout << "Success." << endl;
@@ -78,6 +81,7 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc) {
 			}
 		}
 	}
+	cout << "------------------------------------------------------------------------------------------------------------------------------" << endl;
 
 	return 0;
 }
