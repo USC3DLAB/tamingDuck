@@ -53,6 +53,8 @@ private:
 
 	bool getGenState(int genId, int period);				// reads from Solution.x
 	void setGenState(int genId, int period, double value);	// writes to Solution.x
+	void setGenProd(int genId, int period, double value);	// writes to Solution.g
+
 	
 	vector<double>	minGenerationReq;	// minimum production requirements (obeying assumptions)
 	vector<int>		minUpTimePeriods;	// minimum uptime in periods (obeying assumptions)

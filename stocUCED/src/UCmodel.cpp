@@ -38,7 +38,7 @@ UCmodel::~UCmodel() {
  ****************************************************************************/
 void UCmodel::preprocessing ()
 {
-	// initialize basic parameters
+	/* basic parameters */
 	numGen	   = inst->powSys->numGen;
 	numLine    = inst->powSys->numLine;
 	numBus     = inst->powSys->numBus;
@@ -49,19 +49,17 @@ void UCmodel::preprocessing ()
 	numBaseTimePerPeriod = (int)round(periodLength) / runParam.ED_resolution;
 	
 	
-	// initialize the containers
-	minGenerationReq.resize(numGen);		// minimum production requirements
-	minUpTimePeriods.resize(numGen);		// minimum uptime in periods
-	minDownTimePeriods.resize(numGen);	// minimum downtime in periods
+	/* initialize containers */
+	minGenerationReq.resize(numGen);					// minimum production requirements
+	minUpTimePeriods.resize(numGen);					// minimum uptime in periods
+	minDownTimePeriods.resize(numGen);					// minimum downtime in periods
 	resize_matrix(expCapacity, numGen, numPeriods);		// mean generator capacities
-	if (modelType == System) {
-		sysLoad.resize(numPeriods);						// aggregated system load
-	} else {
-		resize_matrix(busLoad, numBus, numPeriods);		// individual bus loads
-	}
-
+	if (modelType == System) { sysLoad.resize(numPeriods); }					// aggregated system load
+	else					 { resize_matrix(busLoad, numBus, numPeriods); }	// individual bus loads
 	
-	// minGenerationReq & Assumption 1
+	
+	
+	/* Min Generation Amounts */
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
@@ -71,7 +69,7 @@ void UCmodel::preprocessing ()
 		}
 	}
 	
-	// minUpTimePeriods, minDownTimePeriods & Assumption 2
+	/* Min Up/Down */
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
@@ -82,7 +80,7 @@ void UCmodel::preprocessing ()
 		if (minDownTimePeriods[g] < 1)	minDownTimePeriods[g] = 1;
 	}
 	
-	// expected capacity
+	/* Mean Generator Capacity */
 	auto dataPtr = (probType == DayAhead) ? &(inst->stocObserv[0]) : &(inst->stocObserv[1]);
 	
 	for (int g=0; g<numGen; g++) {
@@ -93,29 +91,14 @@ void UCmodel::preprocessing ()
 			/* random supply */
 			for (int t=0; t<numPeriods; t++) {
 				expCapacity[g][t] = dataPtr->vals[0][t*numBaseTimePerPeriod][it->second];	// in MWs
-				
-				/* ***************************************************
-				 * TODO: Clean up.
-				 * This version computes capacity in MWhs.
-				expCapacity[g][t] = 0.0;
-				for (int subPeriod=0; subPeriod<numBaseTimePerPeriod; subPeriod++) {
-					expCapacity[g][t] += observPtr->vals[0][t*numBaseTimePerPeriod + subPeriod][it->second];
-				}
-				 * ***************************************************/
 			}
 		} else {
 			/* deterministic supply */
 			fill(expCapacity[g].begin(), expCapacity[g].end(), genPtr->maxCapacity);	// in MWs
-			
-			/* ***************************************************
-			 * TODO: Clean up.
-			 * This version computes capacity in MWhs.
-			fill(expCapacity[g].begin(), expCapacity[g].end(), genPtr->maxCapacity*periodLength/60.0);
-			 */
 		}
 	}
 
-	// Generators which are scheduled in ST-UC, must have 0 min-generation-requirement & capacity in DA-UC problem
+	/* Misc: Generators which are scheduled in ST-UC, must have 0 min-generation-requirement & capacity in DA-UC problem */
 	if (probType == DayAhead) {
 		for (int g=0; g<numGen; g++) {
 			Generator *genPtr = &(inst->powSys->generators[g]);
@@ -127,40 +110,23 @@ void UCmodel::preprocessing ()
 		}
 	}
 	
-	// load calculations
+	/* Load */
 	dataPtr = (probType == DayAhead) ? &(inst->detObserv[0]) : &(inst->detObserv[1]);
 	if (modelType == System) {
 		fill( sysLoad.begin(), sysLoad.end(), 0.0 );		// initialize to 0
 		for (int t=0; t<numPeriods; t++) {
 			for (int r=0; r<dataPtr->numVars; r++) {
 				sysLoad[t] += dataPtr->vals[0][t*numBaseTimePerPeriod][r];
-
-				/* ***************************************************
-				 * TODO: Clean up.
-				 * This version computes capacity in MWhs.
-				for (int d=0; d<numBaseTimePerPeriod; d++) {
-					sysLoad[t] += dataPtr->vals[0][t*numBaseTimePerPeriod+d][r];
-				}
-				 */
 			}
 		}
 	}
 	else {
 		for (int b=0; b<numBus; b++) {
 			Bus *busPtr = &(inst->powSys->buses[b]);
-			
 			int r = dataPtr->mapVarNamesToIndex[ numToStr(busPtr->regionId) ];
+			
 			for (int t=0; t<numPeriods; t++) {
 				busLoad[b][t] = dataPtr->vals[0][t*numBaseTimePerPeriod][r] * busPtr->loadPercentage;
-				
-				/* ***************************************************
-				 * TODO: Clean up.
-				 * This version computes capacity in MWhs.
-				busLoad[b][t] = 0.0;
-				for (int d=0; d<numBaseTimePerPeriod; d++) {
-					busLoad[b][t] += dataPtr->vals[0][t*numBaseTimePerPeriod+d][r] * busPtr->loadPercentage;
-				}
-				 */
 			}
 		}
 	}
@@ -384,7 +350,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 
 		for (int b=0; b<numBus; b++) {
 			L[b] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
-			T[b] = IloNumVarArray(env, numPeriods, 0, 2*pi, ILOFLOAT);
+			T[b] = IloNumVarArray(env, numPeriods, inst.powSys->buses[b].minPhaseAngle, inst.powSys->buses[b].maxPhaseAngle, ILOFLOAT);
 			
 			sprintf(buffer, "L_%d", b);
 			L[b].setNames(buffer);
@@ -486,6 +452,7 @@ bool UCmodel::solve() {
 				if ( (probType == DayAhead && genPtr->isBaseLoadGen) || (probType == ShortTerm && !genPtr->isBaseLoadGen) ) {
 					for (int t=0; t<numPeriods; t++) {
 						setGenState(g,t, cplex.getValue(x[g][t]));
+						setGenProd (g,t, cplex.getValue(p[g][t]));
 					}
 				}
 			}
@@ -532,6 +499,26 @@ void UCmodel::setGenState(int genId, int period, double value) {
 	if (solnComp >= 0 && solnComp < inst->solution.x[genId].size()) {
 		for (int t=solnComp; t<solnComp+numBaseTimePerPeriod; t++) {
 			inst->solution.x[genId][t] = value;
+		}
+	}
+	else {
+		cout << "Error: Setting generator state out of the bounds of the horizon" << endl;
+		exit(-1);
+	}
+}
+
+/****************************************************************************
+ * setGenProd
+ * - Fills the (genId, correspondingComponent) of the Solution.g object.
+ ****************************************************************************/
+void UCmodel::setGenProd(int genId, int period, double value) {
+	// which Solution component is being set?
+	int solnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
+	
+	// set the solution
+	if (solnComp >= 0 && solnComp < inst->solution.g[genId].size()) {
+		for (int t=solnComp; t<solnComp+numBaseTimePerPeriod; t++) {
+			inst->solution.g[genId][t] = value;
 		}
 	}
 	else {
