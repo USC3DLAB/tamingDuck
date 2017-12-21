@@ -58,7 +58,6 @@ void UCmodel::preprocessing ()
 	else					 { resize_matrix(busLoad, numBus, numPeriods); }	// individual bus loads
 	
 	
-	
 	/* Min Generation Amounts */
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
@@ -430,7 +429,9 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	cplex.extract(model);
 	cplex.setParam(IloCplex::Threads, 1);
 	cplex.setParam(IloCplex::EpGap, 1e-1);
+	cplex.setParam(IloCplex::MIPDisplay, 0);
 }
+
 
 /****************************************************************************
  * solve
@@ -441,9 +442,19 @@ bool UCmodel::solve() {
 	bool status;
 	try {
 		status = cplex.solve();
+	
+		if ( probType == DayAhead ) {
+			cout << "DA-UC has terminated with status " << cplex.getCplexStatus() << endl;
+		} else {
+			cout << "ST-UC has terminated with status " << cplex.getCplexStatus() << endl;
+		}
 		
 		// record the solution
-		if (status) {			
+		if (status) {
+			
+			cout << "Obj Value = " << fixed << setprecision(4) << cplex.getObjValue() << endl;
+			cout << "Best LBnd = " << fixed << setprecision(4) << cplex.getBestObjValue() << " (gap = " << setprecision(3) << cplex.getMIPRelativeGap()*100 << "%)" << endl;
+			
 			for (int g=0; g<numGen; g++) {
 				Generator *genPtr = &(inst->powSys->generators[g]);
 				

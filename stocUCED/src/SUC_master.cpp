@@ -91,9 +91,26 @@ SUCmaster::~SUCmaster() {
 	env.end();
 }
 
-void SUCmaster::preprocessing() {
-	
-	// initialize basic parameters
+/****************************************************************************
+ * preprocessing
+ * - Initializes basic parameters
+ * - Fills the following containers, according to model units & assumptions:
+ *	 minGenerationReq
+ *   minUpTimePeriods
+ *   minDownTimePeriods
+ *   expCapacity
+ *   busLoads
+ *   aggLoads
+ * - If it is a DA-UC problem, sets the capacity and minGenerationReq to 0
+ * for generators which must be scheduled at ST-UC.
+ *
+ * - Assumption 1: Min generation requirement must be less than ramping
+ * rates, otherwise, generators cannot switch on/off.
+ * - Assumption 2: Min up/down times must at least be 1 period.
+ ****************************************************************************/
+void SUCmaster::preprocessing ()
+{
+	/* basic parameters */
 	numGen	   = inst->powSys->numGen;
 	numLine    = inst->powSys->numLine;
 	numBus     = inst->powSys->numBus;
@@ -102,25 +119,113 @@ void SUCmaster::preprocessing() {
 	periodLength = (probType == DayAhead) ? runParam.DA_resolution : runParam.ST_resolution;
 	
 	numBaseTimePerPeriod = (int)round(periodLength) / runParam.ED_resolution;
+	
+	
+	/* initialize containers */
+	minGenerationReq.resize(numGen);					// minimum production requirements
+	minUpTimePeriods.resize(numGen);					// minimum uptime in periods
+	minDownTimePeriods.resize(numGen);					// minimum downtime in periods
+	resize_matrix(expCapacity, numGen, numPeriods);		// mean generator capacities
+	if (modelType == System) { sysLoad.resize(numPeriods); }					// aggregated system load
+	else					 { resize_matrix(busLoad, numBus, numPeriods); }	// individual bus loads
+		
+	
+	/* Min Generation Amounts */
+	for (int g=0; g<numGen; g++) {
+		Generator *genPtr = &(inst->powSys->generators[g]);
+		
+		minGenerationReq[g] = genPtr->minGenerationReq;
+		if (minGenerationReq[g] > min(genPtr->rampUpLim * periodLength, genPtr->rampDownLim * periodLength)) {
+			minGenerationReq[g] = min(genPtr->rampUpLim * periodLength, genPtr->rampDownLim * periodLength);
+		}
+	}
+	
+	/* Min Up/Down */
+	for (int g=0; g<numGen; g++) {
+		Generator *genPtr = &(inst->powSys->generators[g]);
+		
+		minUpTimePeriods[g]		= round(genPtr->minUpTime * 60.0/periodLength);
+		minDownTimePeriods[g]	= round(genPtr->minDownTime * 60.0/periodLength);
+		
+		if (minUpTimePeriods[g] < 1)	minUpTimePeriods[g] = 1;
+		if (minDownTimePeriods[g] < 1)	minDownTimePeriods[g] = 1;
+	}
+	
+	/* Mean Generator Capacity */
+	auto dataPtr = (probType == DayAhead) ? &(inst->stocObserv[0]) : &(inst->stocObserv[1]);
+	
+	for (int g=0; g<numGen; g++) {
+		Generator *genPtr = &(inst->powSys->generators[g]);
+		
+		auto it = dataPtr->mapVarNamesToIndex.find(genPtr->name);
+		if ( it != dataPtr->mapVarNamesToIndex.end() ) {
+			/* random supply */
+			for (int t=0; t<numPeriods; t++) {
+				expCapacity[g][t] = dataPtr->vals[0][t*numBaseTimePerPeriod][it->second];	// in MWs
+			}
+		} else {
+			/* deterministic supply */
+			fill(expCapacity[g].begin(), expCapacity[g].end(), genPtr->maxCapacity);	// in MWs
+		}
+	}
+	
+	/* Misc: Generators which are scheduled in ST-UC, must have 0 min-generation-requirement & capacity in DA-UC problem */
+	if (probType == DayAhead) {
+		for (int g=0; g<numGen; g++) {
+			Generator *genPtr = &(inst->powSys->generators[g]);
+			
+			if (!genPtr->isBaseLoadGen) {
+				minGenerationReq[g] = 0.0;
+				fill(expCapacity[g].begin(), expCapacity[g].end(), 0.0);
+			}
+		}
+	}
+	
+	/* Load */
+	dataPtr = (probType == DayAhead) ? &(inst->detObserv[0]) : &(inst->detObserv[1]);
+	if (modelType == System) {
+		fill( sysLoad.begin(), sysLoad.end(), 0.0 );		// initialize to 0
+		for (int t=0; t<numPeriods; t++) {
+			for (int r=0; r<dataPtr->numVars; r++) {
+				sysLoad[t] += dataPtr->vals[0][t*numBaseTimePerPeriod][r];
+			}
+		}
+	}
+	else {
+		for (int b=0; b<numBus; b++) {
+			Bus *busPtr = &(inst->powSys->buses[b]);
+			int r = dataPtr->mapVarNamesToIndex[ numToStr(busPtr->regionId) ];
+			
+			for (int t=0; t<numPeriods; t++) {
+				busLoad[b][t] = dataPtr->vals[0][t*numBaseTimePerPeriod][r] * busPtr->loadPercentage;
+			}
+		}
+	}
 }
 
 
-/*
-void master::formulate (instance &inst, int model_id) {
+void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin) {
 	
-	// initialize the instance
-	this->inst = &inst;
+	/* Initializations */
+	this->inst		= &inst;
+	this->beginMin	= beginMin;
+	this->probType	= probType;
+	this->modelType = modelType;
 	
+	/* Prepare Model-Dependent Input Data */
+	preprocessing();
+
+	/* Master Formulation */
 	// create the variables
 	eta = IloNumVar (env);	// second-stage expectation approximation
     
-    s = IloArray< IloNumVarArray > (env, inst.G);
-	x = IloArray< IloNumVarArray > (env, inst.G);
-	z = IloArray< IloNumVarArray > (env, inst.G);
-	for (int g=0; g<inst.G; g++) {
-		s[g] = IloNumVarArray(env, inst.T, 0, 1, ILOBOOL);
-		x[g] = IloNumVarArray(env, inst.T, 0, 1, ILOBOOL);
-		z[g] = IloNumVarArray(env, inst.T, 0, 1, ILOBOOL);
+    s = IloArray< IloNumVarArray > (env, numGen);
+	x = IloArray< IloNumVarArray > (env, numGen);
+	z = IloArray< IloNumVarArray > (env, numGen);
+	for (int g=0; g<numGen; g++) {
+		s[g] = IloNumVarArray(env, numPeriods, 0, 1, ILOBOOL);
+		x[g] = IloNumVarArray(env, numPeriods, 0, 1, ILOBOOL);
+		z[g] = IloNumVarArray(env, numPeriods, 0, 1, ILOBOOL);
 		
 		char buffer[30];
 		
@@ -139,78 +244,110 @@ void master::formulate (instance &inst, int model_id) {
 	// create the constraints
 
     // state constraints
-    for (int g=0; g<inst.G; g++) {
+    for (int g=0; g<numGen; g++) {
         
         // t=0: generators are assumed to be turned on
-        model.add( x[g][0] - 1 == s[g][0] - z[g][0] );
+        model.add( x[g][0] - getGenState(g,-1) == s[g][0] - z[g][0] );
         
         // t>0
-        for (int t=1; t<inst.T; t++) {
+        for (int t=1; t<numPeriods; t++) {
             model.add( x[g][t] - x[g][t-1] == s[g][t] - z[g][t] );
         }
     }
     
     // minimum uptime/downtime constraints
-    for (int g=0; g<inst.G; g++)
+    for (int g=0; g<numGen; g++)
     {
         // turn on inequalities
-        for (int t=1; t<=inst.T; t++)
+        for (int t=1; t<=numPeriods; t++)
         {
             IloExpr lhs (env);
-            for (int i = t-inst.min_u_time[g]+1; i<=t; i++)
+            for (int i = t-minUpTimePeriods[g]+1; i<=t; i++)
             {
                 if (i-1 >= 0)	lhs += s[g][i-1];
-                else			lhs += 0;	// otherwise, generator is assumed to be operational (but turned on way earlier in the past)
+                else			lhs += max(0, getGenState(g,i-1) - getGenState(g,i-2));
             }
             model.add( lhs <= x[g][t-1] );
             lhs.end();
         }
     }
     
-    for (int g=0; g<inst.G; g++)
+    for (int g=0; g<numGen; g++)
     {
         // turn off inequalities
-        for (int t=1; t<=inst.T; t++)
+        for (int t=1; t<=numPeriods; t++)
         {
             IloExpr lhs (env);
-            for (int i = t-inst.min_d_time[g]+1; i<=t; i++)  {
+            for (int i = t-minDownTimePeriods[g]+1; i<=t; i++)  {
                 if (i-1 >= 0)	lhs += s[g][i-1];
-                else			lhs += 0;	// otherwise, generator is assumed to be operational (but turned on way earlier in the past)
+                else			lhs += max(0, getGenState(g,i-1) - getGenState(g,i-2));
             }
             
-            if (t-inst.min_d_time[g]-1 >= 0)	model.add( lhs <= 1 - x[g][t-inst.min_d_time[g]-1] );
-            else								model.add( lhs <= 1 - 1 );	// assumed to be remaining on for a long, long, while
-            lhs.end();
+			if (t-minDownTimePeriods[g]-1 >= 0)	model.add( lhs <= 1 - x[g][t-minDownTimePeriods[g]-1] );
+			else								model.add( lhs <= 1 - getGenState(g, (t-minDownTimePeriods[g]-1)));
+
+			lhs.end();
         }
     }
     
     // demand-based valid inequality
+	// TODO: Revisit this 'valid' inequality
     // the capacities of operational generators must exceed the system demand at any point
-    for (int t=0; t<inst.T; t++) {
+/*    for (int t=0; t<numPeriods; t++) {
         IloExpr expr (env);
-        for (int g=0; g<inst.G; g++) {
-            expr += inst.capacity[g] * x[g][t];
+        for (int g=0; g<numGen; g++) {
+            expr += expCapacity[g] * x[g][t];
         }
         model.add( expr >= inst.aggDemand[t] );
         expr.end();
     }
+ */
     
-    // must-run units must be committed
-    for (int g=0; g<inst.G; g++) {
-        if (inst.must_run[g]) {
-            for (int t=0; t<inst.T; t++) {
-                x[g][t].setLB(1);
-            }
-        }
-    }
-    
+	// must-run units must be committed
+	for (int g=0; g<numGen; g++) {
+		if ( inst.powSys->generators[g].isMustRun ) {
+			for (int t=0; t<numPeriods; t++) {
+				x[g][t].setBounds(1, 1);
+			}
+		}
+	}
+	
+	// commit the right set of generators for the right type of problem
+	if (probType == DayAhead) {
+		/* ST-UC generators will not produce in the DA-UC problem. */
+		for (int g=0; g<numGen; g++) {
+			if (!(inst.powSys->generators[g].isBaseLoadGen)) {
+				for (int t=0; t<numPeriods; t++) {
+					x[g][t].setBounds(0, 0);
+				}
+			}
+		}
+	}
+	else {
+		/* All generators will produce in the ST-UC problem. Commitment
+		 * decisions of DA-UC generators will be read from the solution. */
+		double genState;
+		for (int g=0; g<numGen; g++) {
+			Generator *genPtr = &(inst.powSys->generators[g]);
+			
+			if (genPtr->isBaseLoadGen) {
+				for (int t=0; t<numPeriods; t++) {
+					genState = getGenState(g, t);
+					x[g][t].setBounds(genState, genState);
+				}
+			}
+		}
+	}
+	
     // create the objective function
     IloExpr obj_func (env);
     
-    for (int g=0; g<inst.G; g++) {
-        for (int t=0; t<inst.T; t++) {
-            obj_func += inst.start_cost[g] * s[g][t];						// start up cost
-            obj_func += inst.no_load_cost[g] * x[g][t];                     // no-load cost
+    for (int g=0; g<numGen; g++) {
+		Generator *genPtr = &(inst.powSys->generators[g]);
+		
+        for (int t=0; t<numPeriods; t++) {
+            obj_func += genPtr->startupCost * s[g][t];						// start up cost
+            obj_func += genPtr->noLoadCost*periodLength/60.0 * x[g][t];     // no-load cost
         }
     }
     obj_func += eta;
@@ -219,29 +356,30 @@ void master::formulate (instance &inst, int model_id) {
 	model.add( IloMinimize(env, obj_func) );
 	
     // formulate the subproblem
-    sub.formulate(inst, model_id);
+	// TODO: subproblem
+    // sub.formulate(inst, model_id);
 
     /*************************************************************************
-    /* DISABLED: Didn't improve the progress of the algorithm. Donno why..
-     
-    // compute a lower bound on eta
-    double eta_lb = sub.computeLowerBound();
-    eta.setLB( eta_lb );
-    /************************************************************************
+     * DISABLED: Didn't improve the progress of the algorithm. Donno why..
+     *
+     * // compute a lower bound on eta
+     * double eta_lb = sub.computeLowerBound();
+     * eta.setLB( eta_lb );
+     ************************************************************************/
      
     // prepare the solver
 	cplex.extract(model);
 
     /*************************************************************************
-    /* DISABLED: Didn't improve the progress much.. reduced it in some cases.
-    
-    // assign priorities to state variables
-    for (int g=0; g<inst.G; g++) {
-        for (int t=0; t<inst.T; t++) {
-            cplex.setPriority(x[g][t], 1);
-        }
-    }
-    /************************************************************************
+     * DISABLED: Didn't improve the progress much.. reduced it in some cases.
+     *
+     * // assign priorities to state variables
+     * for (int g=0; g<inst.G; g++) {
+	 *    for (int t=0; t<inst.T; t++) {
+     *         cplex.setPriority(x[g][t], 1);
+     *     }
+     * }
+     ************************************************************************/
     
 	cplex.use( LazySepCallback(env, *this) );
 	cplex.setParam(IloCplex::Threads, 1);
@@ -252,7 +390,6 @@ void master::formulate (instance &inst, int model_id) {
     cplex.setParam(IloCplex::Reduce, 0);    // due to callbacks
     cplex.setParam(IloCplex::PreLinear, 0); // due to callbacks
 }
- */
 
 bool SUCmaster::solve () {
 	try{
@@ -341,3 +478,45 @@ void master::warmStart(vector<Solution> &solnPool)
 }
 
 */
+
+/****************************************************************************
+ * getGenState
+ * - Converts the model period, into the desired component of the Solution
+ * object. Returns the recorded status of the generator.
+ ****************************************************************************/
+bool SUCmaster::getGenState(int genId, int period) {
+	// which Solution component is requested?
+	int reqSolnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
+	
+	// return the requested generator state
+	if (reqSolnComp < 0) {										// all generators are assumed to be online, for a long time, at t=0.
+		return true;
+	}
+	else if (reqSolnComp < inst->solution.x[genId].size()) {	// return the corresponding solution
+		return round(inst->solution.x[genId][reqSolnComp]);
+	}
+	else {														// error
+		cout << "Error: You cannot access a solution component that is beyond the planning horizon" << endl;
+		exit(-1);
+	}
+}
+
+/****************************************************************************
+ * setGenState
+ * - Fills the (genId, correspondingComponent) of the Solution.x object.
+ ****************************************************************************/
+void SUCmaster::setGenState(int genId, int period, double value) {
+	// which Solution component is being set?
+	int solnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
+	
+	// set the solution
+	if (solnComp >= 0 && solnComp < inst->solution.x[genId].size()) {
+		for (int t=solnComp; t<solnComp+numBaseTimePerPeriod; t++) {
+			inst->solution.x[genId][t] = value;
+		}
+	}
+	else {
+		cout << "Error: Setting generator state out of the bounds of the horizon" << endl;
+		exit(-1);
+	}
+}
