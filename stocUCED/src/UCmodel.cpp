@@ -38,8 +38,6 @@ UCmodel::~UCmodel() {
  ****************************************************************************/
 void UCmodel::preprocessing ()
 {
-void UCmodel::preprocessing ()
-{
 	/* basic parameters */
 	numGen	   = inst->powSys->numGen;
 	numLine    = inst->powSys->numLine;
@@ -90,7 +88,7 @@ void UCmodel::preprocessing ()
 		if ( it != dataPtr->mapVarNamesToIndex.end() ) {
 			/* random supply */
 			for (int t=0; t<numPeriods; t++) {
-				expCapacity[g][t] = dataPtr->vals[0][t*numBaseTimePerPeriod][it->second];	// in MWs
+				expCapacity[g][t] = dataPtr->vals[rep][t*numBaseTimePerPeriod][it->second];	// in MWs
 			}
 		} else {
 			/* deterministic supply */
@@ -116,7 +114,7 @@ void UCmodel::preprocessing ()
 		fill( sysLoad.begin(), sysLoad.end(), 0.0 );		// initialize to 0
 		for (int t=0; t<numPeriods; t++) {
 			for (int r=0; r<dataPtr->numVars; r++) {
-				sysLoad[t] += dataPtr->vals[0][t*numBaseTimePerPeriod][r];
+				sysLoad[t] += dataPtr->vals[rep][t*numBaseTimePerPeriod][r];
 			}
 		}
 	}
@@ -126,7 +124,7 @@ void UCmodel::preprocessing ()
 			int r = dataPtr->mapVarNamesToIndex[ numToStr(busPtr->regionId) ];
 			
 			for (int t=0; t<numPeriods; t++) {
-				busLoad[b][t] = dataPtr->vals[0][t*numBaseTimePerPeriod][r] * busPtr->loadPercentage;
+				busLoad[b][t] = dataPtr->vals[rep][t*numBaseTimePerPeriod][r] * busPtr->loadPercentage;
 			}
 		}
 	}
@@ -138,13 +136,14 @@ void UCmodel::preprocessing ()
  * parameters.
  * - Formulates the mathematical program.
  ****************************************************************************/
-void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin) {
+void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep) {
 	
 	/* Initializations */
 	this->inst		= &inst;
 	this->beginMin	= beginMin;
 	this->probType	= probType;
 	this->modelType = modelType;
+	this->rep		= rep;
 
 	/* Prepare Model-Dependent Input Data */
 	preprocessing();
@@ -430,6 +429,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	cplex.extract(model);
 	cplex.setParam(IloCplex::Threads, 1);
 	cplex.setParam(IloCplex::EpGap, 1e-1);
+	cplex.setOut(env.getNullStream());
 }
 
 /****************************************************************************
@@ -514,9 +514,9 @@ void UCmodel::setGenProd(int genId, int period, double value) {
 	int solnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
 	
 	// set the solution
-	if (solnComp >= 0 && solnComp < inst->solution.g[genId].size()) {
+	if (solnComp >= 0 && solnComp < inst->solution.g_UC[genId].size()) {
 		for (int t=solnComp; t<solnComp+numBaseTimePerPeriod; t++) {
-			inst->solution.g[genId][t] = value;
+			inst->solution.g_UC[genId][t] = value;
 		}
 	}
 	else {

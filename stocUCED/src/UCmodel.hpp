@@ -22,7 +22,7 @@ public:
 	UCmodel ();
 	~UCmodel();
 
-	void formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin);
+	void formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep);
 	bool solve ();
 	
 private:
@@ -46,6 +46,7 @@ private:
 	int numBus;					// ..
 	int numLine;
 	int numPeriods;
+	int rep;
 	
 	double periodLength;		// in minutes
 

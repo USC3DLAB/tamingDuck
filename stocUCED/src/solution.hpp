@@ -27,15 +27,12 @@ struct Solution {
     Solution () {}
     
     void allocateMem ( int numGen, int periods ) {
-        resize_matrix(s, numGen, periods);
         resize_matrix(x, numGen, periods);
-        resize_matrix(z, numGen, periods);
-        resize_matrix(g, numGen, periods);
-        resize_matrix(gInit, numGen, periods);
+        resize_matrix(g_UC, numGen, periods);
+        resize_matrix(g_ED, numGen, periods);
     }
     
-    vector< vector<double> > s, x, z, g;
-    vector< vector <double> > gInit;
+    vector< vector<double> > x, g_UC, g_ED;
 };
 
 #endif /* solution_hpp */

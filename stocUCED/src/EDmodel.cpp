@@ -115,12 +115,12 @@ void EDmodel::formulate(instance &inst, int t0) {
 			/* ramp-up */
 			sprintf(elemName, "rampUp[%d][%d]", g, t);
 			rhs = inst.solution.x[g][t0]*inst.powSys->generators[g].rampUpLim;
-			IloConstraint c1( gen[g][t] -  inst.solution.g[g][t0-1] <= rhs); c1.setName(elemName); model.add(c1);
+			IloConstraint c1( gen[g][t] -  inst.solution.g_ED[g][t0-1] <= rhs); c1.setName(elemName); model.add(c1);
 
 			/* ramp-down */
 			sprintf(elemName, "rampDown[%d][%d]", g, t);
 			rhs = inst.solution.x[g][t0]*inst.powSys->generators[g].rampDownLim;
-			IloConstraint c2( inst.solution.g[g][t0-1] - gen[g][t] <= rhs); c2.setName(elemName); model.add(c2);
+			IloConstraint c2( inst.solution.g_ED[g][t0-1] - gen[g][t] <= rhs); c2.setName(elemName); model.add(c2);
 		}
 	}
 
@@ -201,7 +201,7 @@ bool EDmodel::solve(instance &inst, int t0) {
 		if (status) {
 			for (int g = 0; g < inst.powSys->numGen; g++) {
 				for (int t = 0; t < runParam.ED_numPeriods; t++) {
-					inst.solution.g[g][t0+t] = cplex.getValue(gen[g][t]);
+					inst.solution.g_ED[g][t0+t] = cplex.getValue(gen[g][t]);
 				}
 			}
 		}

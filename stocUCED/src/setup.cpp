@@ -52,12 +52,9 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc) {
 		/* Long-term unit commitment */
 		for ( h = 0; h < runParam.DA_numSolves; h++ ) {
 			printf("Long-term Unit-Commitment (%02d:%02d): ", nowTime.tm_hour, nowTime.tm_min);
-			cout << "\n\n   HARSHAAAA, what's this function above saying??" << endl;
-			cout << "if you are requesting a time stamp, would this work? " << getCurrentDateTime() << endl;
-			cout << "that function is in misc.cpp" << endl;
 			
 			UCmodel DAmodel;
-			DAmodel.formulate(inst, DayAhead, Transmission, 0);
+			DAmodel.formulate(inst, DayAhead, Transmission, 0, rep);
 			DAmodel.solve();
 			cout << "Success." << endl;
 
@@ -65,7 +62,7 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc) {
 			for ( t = 0; t < runParam.ST_numSolves; t++ ) {
 				printf("\tShort-term Unit-Commitment (%02d:%02d): ", nowTime.tm_hour, nowTime.tm_min);
 				UCmodel STmodel;
-				STmodel.formulate(inst, ShortTerm, Transmission, 0);
+				STmodel.formulate(inst, ShortTerm, Transmission, 0, rep);
 				STmodel.solve();
 				cout << "Success." << endl;
 
