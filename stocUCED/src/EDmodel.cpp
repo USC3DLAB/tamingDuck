@@ -51,10 +51,9 @@ void EDmodel::preprocess(instance &inst, int t0) {
 	for (int b = 0; b < inst.powSys->numBus; b++) {
 		Bus *busPtr = &(inst.powSys->buses[b]);
 
-		// TODO: Fix the mapping issue
-		// int r = inst.detObserv[2].mapVarNamesToIndex[numToStr(busPtr->regionId)];
-		for (int t = 0; t < runParam.numPeriods; t++) {
-			busLoad[b][t] = 10;//inst.detObserv[2].vals[0][t0+t][0]*busPtr->loadPercentage;
+		int r = inst.detObserv[2].mapVarNamesToIndex[numToStr(busPtr->regionId)];
+		for (int t = 0; t < runParam.ED_numPeriods; t++) {
+			busLoad[b][t] = inst.detObserv[2].vals[0][t0+t][r]*busPtr->loadPercentage;
 		}
 	}
 
@@ -146,10 +145,12 @@ void EDmodel::formulate(instance &inst, int beginTime) {
 		int t = 0;
 		for ( int g = 0; g < inst.powSys->numGen; g++ ) {
 			if ( inst.solution.x[beginTime][g] == 1 ) {
-				sprintf(elemName, "rampUp[%d][%d]", g, t);
-				IloConstraint c1( gen[g][t] -  inst.solution.g[beginTime-1][g] <= inst.powSys->generators[g].rampUpLim); c1.setName(elemName); model.add(c1);
-				sprintf(elemName, "rampDown[%d][%d]", g, t);
-				IloConstraint c2( inst.powSys->generators[g].rampDownLim <= gen[g][t] - inst.solution.g[beginTime-1][g]); c2.setName(elemName); model.add(c2);
+				if ( beginTime != 0 ) {
+					sprintf(elemName, "rampUp[%d][%d]", g, t);
+					IloConstraint c1( gen[g][t] -  inst.solution.g[beginTime-1][g] <= inst.powSys->generators[g].rampUpLim); c1.setName(elemName); model.add(c1);
+					sprintf(elemName, "rampDown[%d][%d]", g, t);
+					IloConstraint c2( inst.powSys->generators[g].rampDownLim <= gen[g][t] - inst.solution.g[beginTime-1][g]); c2.setName(elemName); model.add(c2);
+				}
 			}
 		}
 	}
