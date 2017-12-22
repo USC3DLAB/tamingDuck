@@ -51,6 +51,7 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc) {
 	cout << "------------------------------------------------------------------" << endl;
 	cout << "------------ Deterministic Optimization / Simulation -------------" << endl;
 	for (int rep = 0; rep < runParam.numRep; rep++) {
+		cout << "------------------------------------------------------------------" << endl;
 		cout << "Observation-" << rep << endl;
 
 		/* allocate memory to hold solutions */

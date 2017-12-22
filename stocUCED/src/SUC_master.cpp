@@ -30,7 +30,6 @@ void SUCmaster::LazySepCallbackI::main()
     x_vals.end();
 
 	// set the master solution in the subproblems
-	/* TODO: Deal with the subproblem
 	me.sub.setMasterSoln(state);
 	
 	// solve the subproblems
@@ -46,26 +45,25 @@ void SUCmaster::LazySepCallbackI::main()
         }
     }
 
-    if (addCut)
-	{
-		// get the benders' cut
-		double pi_b = me.sub.pi_b;
-		vector<vector<double> >* pi_T = &me.sub.pi_T;
-				
+    if (addCut) {
+		// get the Benders's cut coefs
+		SUCsubprob::BendersCutCoefs *cutCoefs = &(me.sub.cutCoefs);
+		
+		// create the cut
 		IloExpr pi_Tx (me.env);
-		for (int g=0; g<me.inst->G; g++) {
-			for (int t=0; t<me.inst->T; t++) {
-				if ( fabs((*pi_T)[g][t]) > 1e-10 ) {
-					pi_Tx += (*pi_T)[g][t] * me.x[g][t];
+		for (int g=0; g<me.numGen; g++) {
+			for (int t=0; t<me.numPeriods; t++) {
+				if ( fabs(cutCoefs->pi_T[g][t] > 1e-10) ) {
+					pi_Tx += cutCoefs->pi_T[g][t] * me.x[g][t];
 				}
 			}
 		}
 		
 		IloRange BendersCut;
 		if (isFeasible) {
-			BendersCut = IloRange(me.env, pi_b, me.eta-pi_Tx);		// optimality cut
+			BendersCut = IloRange(me.env, cutCoefs->pi_b, me.eta-pi_Tx);	// optimality cut
 		} else {
-			BendersCut = IloRange(me.env, pi_b, -pi_Tx);			// feasibility cut
+			BendersCut = IloRange(me.env, cutCoefs->pi_b, -pi_Tx);			// feasibility cut
 		}
 		
 		// add the cut
@@ -76,10 +74,8 @@ void SUCmaster::LazySepCallbackI::main()
 			cout << "Exception: " << e << endl;
 			BendersCut.end();
 		}
-		
 		pi_Tx.end();
 	}
-	 */
 }
 
 SUCmaster::SUCmaster () {
@@ -95,11 +91,9 @@ SUCmaster::~SUCmaster() {
  * preprocessing
  * - Initializes basic parameters
  * - Fills the following containers, according to model units & assumptions:
- *	 minGenerationReq
  *   minUpTimePeriods
  *   minDownTimePeriods
  *   expCapacity
- *   busLoads
  *   aggLoads
  * - If it is a DA-UC problem, sets the capacity and minGenerationReq to 0
  * for generators which must be scheduled at ST-UC.
@@ -122,23 +116,10 @@ void SUCmaster::preprocessing ()
 	
 	
 	/* initialize containers */
-	minGenerationReq.resize(numGen);					// minimum production requirements
 	minUpTimePeriods.resize(numGen);					// minimum uptime in periods
 	minDownTimePeriods.resize(numGen);					// minimum downtime in periods
 	resize_matrix(expCapacity, numGen, numPeriods);		// mean generator capacities
-	if (modelType == System) { sysLoad.resize(numPeriods); }					// aggregated system load
-	else					 { resize_matrix(busLoad, numBus, numPeriods); }	// individual bus loads
-		
-	
-	/* Min Generation Amounts */
-	for (int g=0; g<numGen; g++) {
-		Generator *genPtr = &(inst->powSys->generators[g]);
-		
-		minGenerationReq[g] = genPtr->minGenerationReq;
-		if (minGenerationReq[g] > min(genPtr->rampUpLim * periodLength, genPtr->rampDownLim * periodLength)) {
-			minGenerationReq[g] = min(genPtr->rampUpLim * periodLength, genPtr->rampDownLim * periodLength);
-		}
-	}
+	sysLoad.resize(numPeriods);							// aggregated system load
 	
 	/* Min Up/Down */
 	for (int g=0; g<numGen; g++) {
@@ -175,7 +156,6 @@ void SUCmaster::preprocessing ()
 			Generator *genPtr = &(inst->powSys->generators[g]);
 			
 			if (!genPtr->isBaseLoadGen) {
-				minGenerationReq[g] = 0.0;
 				fill(expCapacity[g].begin(), expCapacity[g].end(), 0.0);
 			}
 		}
@@ -183,22 +163,10 @@ void SUCmaster::preprocessing ()
 	
 	/* Load */
 	dataPtr = (probType == DayAhead) ? &(inst->detObserv[0]) : &(inst->detObserv[1]);
-	if (modelType == System) {
-		fill( sysLoad.begin(), sysLoad.end(), 0.0 );		// initialize to 0
-		for (int t=0; t<numPeriods; t++) {
-			for (int r=0; r<dataPtr->numVars; r++) {
-				sysLoad[t] += dataPtr->vals[0][t*numBaseTimePerPeriod][r];
-			}
-		}
-	}
-	else {
-		for (int b=0; b<numBus; b++) {
-			Bus *busPtr = &(inst->powSys->buses[b]);
-			int r = dataPtr->mapVarNamesToIndex[ num2str(busPtr->regionId) ];
-			
-			for (int t=0; t<numPeriods; t++) {
-				busLoad[b][t] = dataPtr->vals[0][t*numBaseTimePerPeriod][r] * busPtr->loadPercentage;
-			}
+	fill( sysLoad.begin(), sysLoad.end(), 0.0 );		// initialize to 0
+	for (int t=0; t<numPeriods; t++) {
+		for (int r=0; r<dataPtr->numVars; r++) {
+			sysLoad[t] += dataPtr->vals[0][t*numBaseTimePerPeriod][r];
 		}
 	}
 }
@@ -340,24 +308,23 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 	}
 	
     // create the objective function
-    IloExpr obj_func (env);
+    IloExpr obj (env);
     
     for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst.powSys->generators[g]);
 		
         for (int t=0; t<numPeriods; t++) {
-            obj_func += genPtr->startupCost * s[g][t];						// start up cost
-            obj_func += genPtr->noLoadCost*periodLength/60.0 * x[g][t];     // no-load cost
+            obj += genPtr->startupCost * s[g][t];					// start up cost
+            obj += genPtr->noLoadCost*periodLength/60.0 * x[g][t];	// no-load cost
         }
     }
-    obj_func += eta;
+    obj += eta;
     
     // set the objective function
-	model.add( IloMinimize(env, obj_func) );
+	model.add( IloMinimize(env, obj) );
 	
     // formulate the subproblem
-	// TODO: subproblem
-    // sub.formulate(inst, model_id);
+	sub.formulate(inst, probType, modelType, beginMin);
 
     /*************************************************************************
      * DISABLED: Didn't improve the progress of the algorithm. Donno why..
@@ -408,21 +375,6 @@ bool SUCmaster::solve () {
 }
 
 /*
-void master::displayCommitments()
-{
-	try {
-		for (int g=0; g<inst->G; g++) {
-			for (int t=0; t<inst->T; t++) {
-				cout << setprecision(0) << fixed << cplex.getValue(s[g][t] + x[g][t]) << " ";
-			}
-			cout << endl;
-		}
-	}
-	catch (IloException &e) {
-		cout << e << endl;
-	}
-}
-
 void master::warmStart(Solution &soln)
 {
     this->soln = soln;

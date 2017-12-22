@@ -5,114 +5,202 @@
 //  Created by Semih Atakan on 10/31/17.
 //  Copyright © 2017 University of Southern California. All rights reserved.
 //
-/*
-#include "subprob.hpp"
 
-subprob::subprob () {
-	timer_t = 0.0;
-	
+#include "SUC_subprob.hpp"
+
+extern runType runParam;
+
+SUCsubprob::SUCsubprob () {
 	model = IloModel (env);
 	cplex = IloCplex (env);
-	
-	/* TODO: Commented by HG after encountering "Invalid arguments candidates are: void setOut(? &)
-	cplex.setOut(env.getNullStream()); *
+
+	cons  = IloRangeArray (env);
+	duals = IloNumArray (env);
+
+	cplex.setOut(env.getNullStream());
 	cplex.setParam(IloCplex::PreInd, 0);
-	cplex.setParam(IloCplex::RootAlg, IloCplex::Dual);
+	cplex.setParam(IloCplex::RootAlg, IloCplex::Dual);	// Important
 }
 
-subprob::~subprob () {
+SUCsubprob::~SUCsubprob () {
 	env.end();
 }
 
-void subprob::formulate (instance &inst, int model_id)
+/****************************************************************************
+ * preprocessing
+ * - Initializes basic parameters
+ * - Fills the following containers, according to model units & assumptions:
+ *	 minGenerationReq
+ *   minDownTimePeriods
+ *   expCapacity
+ *   busLoads
+ *   aggLoads
+ * - If it is a DA-UC problem, sets the capacity and minGenerationReq to 0
+ * for generators which must be scheduled at ST-UC.
+ *
+ * - Assumption 1: Min generation requirement must be less than ramping
+ * rates, otherwise, generators cannot switch on/off.
+ * - Assumption 2: Min up/down times must at least be 1 period.
+ ****************************************************************************/
+void SUCsubprob::preprocessing ()
 {
-	// get a handle on the instance and model type
-	this->inst = &inst;
-	this->model_id = model_id;
+	/* basic parameters */
+	numGen	   = inst->powSys->numGen;
+	numLine    = inst->powSys->numLine;
+	numBus     = inst->powSys->numBus;
 	
-	// some initializations
-	cons  = IloRangeArray (env);
-	duals = IloNumArray (env);
-	resize_matrix(pi_T, inst.G, inst.T);
+	numPeriods	 = (probType == DayAhead) ? runParam.DA_numPeriods : runParam.ST_numPeriods;
+	periodLength = (probType == DayAhead) ? runParam.DA_resolution : runParam.ST_resolution;
+	
+	numBaseTimePerPeriod = (int)round(periodLength) / runParam.ED_resolution;
+	
+	/* initialize containers */
+	cutCoefs.initialize(numGen, numPeriods);
+	minGenerationReq.resize(numGen);					// minimum production requirements
+	if (modelType == System) { sysLoad.resize(numPeriods); }					// aggregated system load
+	else					 { resize_matrix(busLoad, numBus, numPeriods); }	// individual bus loads
+	
+	/* Min Generation Amounts */
+	for (int g=0; g<numGen; g++) {
+		Generator *genPtr = &(inst->powSys->generators[g]);
 		
-	// formulate the desired problem
-	switch (model_id) {
-		case 0:
-			formulate_aggregate_system();
-			break;
-		case 1:
-			formulate_nodebased_system();
-			break;
-		default:
-			std::cout << "Invalid model ID" << std::endl;
-			break;
+		minGenerationReq[g] = genPtr->minGenerationReq;
+		if (minGenerationReq[g] > min(genPtr->rampUpLim * periodLength, genPtr->rampDownLim * periodLength)) {
+			minGenerationReq[g] = min(genPtr->rampUpLim * periodLength, genPtr->rampDownLim * periodLength);
+		}
+	}
+	
+	/* Max Generator Capacity */
+	auto dataPtr = (probType == DayAhead) ? &(inst->stocObserv[0]) : &(inst->stocObserv[1]);
+	
+	for (int g=0; g<numGen; g++) {
+		Generator *genPtr = &(inst->powSys->generators[g]);
+		maxCapacity[g] = genPtr->maxCapacity;
+	}
+	
+	/* Misc: Generators which are scheduled in ST-UC, must have 0 min-generation-requirement & capacity in DA-UC problem */
+	if (probType == DayAhead) {
+		for (int g=0; g<numGen; g++) {
+			Generator *genPtr = &(inst->powSys->generators[g]);
+			
+			if (!genPtr->isBaseLoadGen) {
+				minGenerationReq[g] = 0.0;
+				maxCapacity[g] = 0.0;
+			}
+		}
+	}
+	
+	/* Load */
+	dataPtr = (probType == DayAhead) ? &(inst->detObserv[0]) : &(inst->detObserv[1]);
+	if (modelType == System) {
+		fill( sysLoad.begin(), sysLoad.end(), 0.0 );		// initialize to 0
+		for (int t=0; t<numPeriods; t++) {
+			for (int r=0; r<dataPtr->numVars; r++) {
+				//TODO: rep
+				//sysLoad[t] += dataPtr->vals[rep][t*numBaseTimePerPeriod][r];
+			}
+		}
+	}
+	else {
+		for (int b=0; b<numBus; b++) {
+			Bus *busPtr = &(inst->powSys->buses[b]);
+			int r = dataPtr->mapVarNamesToIndex[ num2str(busPtr->regionId) ];
+			
+			for (int t=0; t<numPeriods; t++) {
+				//TODO: rep
+				//busLoad[b][t] = dataPtr->vals[rep][t*numBaseTimePerPeriod][r] * busPtr->loadPercentage;
+			}
+		}
 	}
 }
 
-void subprob::formulate_production()
+void SUCsubprob::formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin)
 {
-	/** Decision Variables **
-	p	  = IloArray< IloNumVarArray > (env, inst->G);	// production amounts
-	for (int g=0; g<inst->G; g++) {
-		p[g]	 = IloNumVarArray(env, inst->T, 0, IloInfinity, ILOFLOAT);
+	// get a handle on the instance and model type
+	this->inst		= &inst;
+	this->beginMin	= beginMin;
+	this->probType	= probType;
+	this->modelType = modelType;
+	//TODO:
+	//this->rep		= rep;
+	
+	preprocessing();
 		
-		char buffer[30];
+	// formulate the desired problem
+	if (modelType == System) {
+		formulate_aggregate_system();
+	} else {
+		formulate_nodebased_system();
+	}
+}
+
+void SUCsubprob::formulate_production()
+{
+	/** Decision Variables **/
+	p	  = IloArray< IloNumVarArray > (env, numGen);	// production amounts
+	for (int g=0; g<numGen; g++) {
+		p[g]	 = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+		
 		sprintf(buffer, "p_%d", g);
 		p[g].setNames(buffer);
 	}
 
-	/** Constraints **
+	/** Constraints **/
  
 	// capacity constraints
-	for (int g=0; g<inst->G; g++) {
-		for (int t=0; t<inst->T; t++) {
+	for (int g=0; g<numGen; g++) {
+		Generator *genPtr = &(inst->powSys->generators[g]);
+		
+		for (int t=0; t<numPeriods; t++) {
 			IloRange con;
-			if (inst->must_run[g]) {
-                con = IloRange (env, inst->capacity[g], p[g][t], inst->capacity[g]);
+			if (genPtr->isMustRun) {
+                con = IloRange (env, genPtr->maxCapacity, p[g][t], genPtr->maxCapacity);
 			} else {
-                con = IloRange (env, -IloInfinity, p[g][t], inst->capacity[g]);
+                con = IloRange (env, -IloInfinity, p[g][t], genPtr->maxCapacity);
 			}
 			cons.add( con );
 		}
 	}
 	
 	// minimum production constraints
-	for (int g=0; g<inst->G; g++) {
-		for (int t=0; t<inst->T; t++) {
-			IloRange con (env, inst->min_prod_lim[g], p[g][t]);
+	for (int g=0; g<numGen; g++) {
+		for (int t=0; t<numPeriods; t++) {
+			IloRange con (env, minGenerationReq[g], p[g][t]);
 			cons.add( con );
 		}
 	}
 	
 	// ramp up constraints
-	for (int g=0; g<inst->G; g++) {
-		for (int t=1; t<inst->T; t++) {
-			IloRange con (env, -IloInfinity, p[g][t] - p[g][t-1], inst->ramp_u_lim[g]);
+	for (int g=0; g<numGen; g++) {
+		Generator *genPtr = &(inst->powSys->generators[g]);
+		
+		for (int t=1; t<numPeriods; t++) {
+			IloRange con (env, -IloInfinity, p[g][t] - p[g][t-1], genPtr->rampUpLim * periodLength);
 			cons.add( con );
 		}
 	}
 	
 	// ramp down constraints
-	for (int g=0; g<inst->G; g++) {
-		for (int t=1; t<inst->T; t++) {
-			IloRange con (env, -IloInfinity, p[g][t-1] - p[g][t], inst->ramp_d_lim[g]);
+	for (int g=0; g<numGen; g++) {
+		Generator *genPtr = &(inst->powSys->generators[g]);
+		
+		for (int t=1; t<numPeriods; t++) {
+			IloRange con (env, -IloInfinity, p[g][t-1] - p[g][t], genPtr->rampDownLim * periodLength);
 			cons.add( con );
 		}
 	}
 }
 
-void subprob::formulate_nodebased_system()
+void SUCsubprob::formulate_nodebased_system()
 {
 	formulate_production();
 	
-	/** Decision Variables **
-    L = IloArray< IloNumVarArray > (env, inst->B);
-	IloArray< IloNumVarArray > T (env, inst->B);		// phase angles
-	for (int b=0; b<inst->B; b++) {
-		L[b] = IloNumVarArray(env, inst->T, 0, IloInfinity, ILOFLOAT);  // load shedding
-		T[b] = IloNumVarArray(env, inst->T, 0, IloInfinity, ILOFLOAT);
-		
-		char buffer[30];
+	/** Decision Variables **/
+    L = IloArray< IloNumVarArray > (env, numBus);	// load shedding
+	IloArray< IloNumVarArray > T (env, numBus);		// phase angles
+	for (int b=0; b<numBus; b++) {
+		L[b] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+		T[b] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
 		
 		sprintf(buffer, "L_%d", b);
 		L[b].setNames(buffer);
@@ -121,168 +209,179 @@ void subprob::formulate_nodebased_system()
 		T[b].setNames(buffer);
 	}
 	
-	IloArray< IloNumVarArray > F (env, inst->L);		// flows
-	for (int l=0; l<inst->L; l++) {
-		F[l] = IloNumVarArray(env, inst->T, -IloInfinity, IloInfinity, ILOFLOAT);
-		
-		char buffer[30];
+	IloArray< IloNumVarArray > F (env, numLine);		// flows
+	for (int l=0; l<numLine; l++) {
+		F[l] = IloNumVarArray(env, numPeriods, -IloInfinity, IloInfinity, ILOFLOAT);
 		
 		sprintf(buffer, "F_%d", l);
 		F[l].setNames(buffer);
 	}
 	
-	/** Constraints **
+	/** Constraints **/
 	// Flow upper and lower bounds
-	for (int l=0; l<inst->L; l++) {			// upper bound
-		for (int t=0; t<inst->T; t++) {
-			IloRange con(env, -IloInfinity, F[l][t], inst->max_arc_flow[l]);
+	for (int l=0; l<numLine; l++) {			// upper bound
+		Line *linePtr = &(inst->powSys->lines[l]);
+		
+		for (int t=0; t<numPeriods; t++) {
+			IloRange con(env, -IloInfinity, F[l][t], linePtr->maxFlowLim);
 			cons.add(con);
 		}
 	}
-	for (int l=0; l<inst->L; l++) {			// lower bound
-		for (int t=0; t<inst->T; t++) {
-			IloRange con(env, inst->min_arc_flow[l], F[l][t]);
+	for (int l=0; l<numLine; l++) {			// lower bound
+		Line *linePtr = &(inst->powSys->lines[l]);
+		
+		for (int t=0; t<numPeriods; t++) {
+			IloRange con(env, linePtr->minFlowLim, F[l][t]);
 			cons.add(con);
 		}
 	}
 	
 	// Phase-angle upper bounds
-	for (int b=0; b<inst->B; b++) {
-		for (int t=0; t<inst->T; t++) {
-			IloRange con(env, -IloInfinity, T[b][t], 2*inst->pi);
+	for (int b=0; b<numBus; b++) {
+		Bus *busPtr = &(inst->powSys->buses[b]);
+		
+		for (int t=0; t<numPeriods; t++) {
+			IloRange con(env, -IloInfinity, T[b][t], busPtr->maxPhaseAngle - busPtr->minPhaseAngle);
 			cons.add(con);
 		}
 	}
 	
 	// DC-approximation to AC flow
-	for (int l=0; l<inst->L; l++) {
-		for (int t=0; t<inst->T; t++) {
-			int orig = inst->arcs[l].first;
-			int dest = inst->arcs[l].second;
-			
-			model.add( F[l][t] == inst->susceptance[l] * (T[orig][t] - T[dest][t]) );
+	for (int l=0; l<numLine; l++) {
+		Line *linePtr = &(inst->powSys->lines[l]);
+		
+		int orig = linePtr->orig->id;
+		int dest = linePtr->dest->id;
+
+		for (int t=0; t<numPeriods; t++) {
+			model.add( F[l][t] == linePtr->susceptance * (T[orig][t] - T[dest][t]) );
 		}
 	}
-	
+
 	// Flow balance
-	for (int b=0; b<inst->B; b++) {
-		for (int t=0; t<inst->T; t++) {
-			
+	for (int b=0; b<numBus; b++) {
+		Bus *busPtr = &(inst->powSys->buses[b]);
+		
+		for (int t=0; t<numPeriods; t++) {
 			IloExpr expr (env);
 			
-			// production
-			for (int g=0; g<inst->G; g++) {
-				if (inst->generator_loc[g] == b)    expr += p[g][t];
+			// production (iterate over connected generators)
+			for (int g=0; g<busPtr->connectedGenerators.size(); g++) {
+				expr += p[ busPtr->connectedGenerators[g]->id ][t];
 			}
 
-			// incoming arcs
-			for (int l=0; l<inst->L; l++) {
-				if (inst->arcs[l].second == b)      expr += F[l][t];
-			}
-			
-			// outgoing arcs
-			for (int l=0; l<inst->L; l++) {
-				if (inst->arcs[l].first == b)       expr -= F[l][t];
+
+			// in/out flows (iterate over all arcs)
+			for (auto linePtr = inst->powSys->lines.begin(); linePtr != inst->powSys->lines.end(); ++linePtr) {
+				if (linePtr->orig->id == busPtr->id) {	// if line-origin and bus have same ids, then this is outgoing flow
+					expr -= F[linePtr->id][t];
+				}
+				if (linePtr->dest->id == busPtr->id) {	// if line-destination and bus have same ids, then this is outgoing flow
+					expr += F[linePtr->id][t];
+				}
 			}
 			
 			// load shedding
 			expr += L[b][t];
 			
 			// constraint
-			IloRange con(env, inst->demand[b][t], expr, inst->demand[b][t]);
+			IloRange con(env, busLoad[b][t], expr, busLoad[b][t]);
 			cons.add(con);
 			
 			expr.end();
 		}
 	}
 	
+	/** Objective Function **/
+	IloExpr obj (env);
 	
-	/** Objective Function **
-	IloExpr obj_func (env);
-	
-	for (int g=0; g<inst->G; g++) {
-		for (int t=0; t<inst->T; t++) {
-			obj_func += inst->var_cost[g] * p[g][t];
+	for (int g=0; g<numGen; g++) {
+		Generator *genPtr = &(inst->powSys->generators[g]);
+		
+		for (int t=0; t<numPeriods; t++) {
+			obj += genPtr->variableCost * periodLength/60.0 * p[g][t];
 		}
 	}
 	
-	for (int b=0; b<inst->B; b++) {
-		for (int t=0; t<inst->T; t++) {
-			obj_func += inst->load_shedding_penalty * L[b][t];
+	for (int b=0; b<numBus; b++) {
+		for (int t=0; t<numPeriods; t++) {
+			obj += loadShedPenaltyCoef * L[b][t];
 		}
 	}
 	
-	/** Finalize **
-	model.add( IloMinimize(env, obj_func) );
+	/** Finalize **/
+	model.add( IloMinimize(env, obj) );
 	model.add( cons );
 	cplex.extract(model);
-	
 }
 
-void subprob::formulate_aggregate_system()
+void SUCsubprob::formulate_aggregate_system()
 {
 	formulate_production();
 
-	/** Decision Variables **
-	IloNumVarArray L (env, inst->T, 0, IloInfinity, ILOFLOAT);	// load shedding
+	/** Decision Variables **/
+	IloNumVarArray L (env, numPeriods, 0, IloInfinity, ILOFLOAT);	// load shedding
 
-	/** Constraints **
+	/** Constraints **/
 	// aggregated demand constraints
-	for (int t=0; t<inst->T; t++) {
+	for (int t=0; t<numPeriods; t++) {
 		IloExpr expr (env);
-		for (int g=0; g<inst->G; g++)	expr += p[g][t];
+		for (int g=0; g<numGen; g++)	expr += p[g][t];
 		expr += L[t];
-		IloRange con (env, inst->aggDemand[t], expr);
+		IloRange con (env, sysLoad[t], expr);
 		cons.add( con );
 	}
 	
-	/** Objective Function **
-	IloExpr obj_func (env);
+	/** Objective Function **/
+	IloExpr obj (env);
 	
-	for (int g=0; g<inst->G; g++) {
-		for (int t=0; t<inst->T; t++) {
-			obj_func += inst->var_cost[g] * p[g][t];
+	for (int g=0; g<numGen; g++) {
+		Generator *genPtr = &(inst->powSys->generators[g]);
+
+		for (int t=0; t<numPeriods; t++) {
+			obj += genPtr->variableCost * periodLength/60.0 * p[g][t];
 		}
 	}
 	
-	for (int t=0; t<inst->T; t++) {
-		obj_func += inst->load_shedding_penalty * L[t];
+	for (int t=0; t<numPeriods; t++) {
+		obj += loadShedPenaltyCoef * L[t];
 	}
 	
 	// prepare the model and the solver
-	model.add( IloMinimize(env, obj_func) );
+	model.add( IloMinimize(env, obj) );
 	model.add( cons );
 	cplex.extract(model);
 }
 
-void subprob::setMasterSoln ( vector< vector<bool> > & gen_stat )
-{
+void SUCsubprob::setMasterSoln ( vector< vector<bool> > & gen_stat ) {
 	this->gen_stat = &gen_stat;
 	
 	int c=0;
 	
 	// capacity constraints
-	for (int g=0; g<inst->G; g++) {
-		for (int t=0; t<inst->T; t++, c++) {
-            if (inst->must_run[g]) {
-                cons[c].setBounds( gen_stat[g][t] * inst->capacity[g], gen_stat[g][t] * inst->capacity[g]);
+	for (int g=0; g<numGen; g++) {
+		Generator *genPtr = &(inst->powSys->generators[g]);
+
+		for (int t=0; t<numPeriods; t++, c++) {
+            if (genPtr->isMustRun) {
+                cons[c].setBounds( gen_stat[g][t] * genPtr->maxCapacity, gen_stat[g][t] * genPtr->maxCapacity);
             } else {
-                cons[c].setUB( gen_stat[g][t] * inst->capacity[g] );
+                cons[c].setUB( gen_stat[g][t] * genPtr->maxCapacity );
             }
 		}
 	}
 
 	// production amounts
-	for (int g=0; g<inst->G; g++) {
-		for (int t=0; t<inst->T; t++, c++) {
-			cons[c].setLB( gen_stat[g][t] * inst->min_prod_lim[g] );
+	for (int g=0; g<numGen; g++) {
+		for (int t=0; t<numPeriods; t++, c++) {
+			cons[c].setLB( gen_stat[g][t] * minGenerationReq[g] );
 		}
 	}
     
     // rest of the constraints are not a function of x
 }
-
-bool subprob::solve() {
+/*
+bool SUCsubprob::solve() {
 	
 	reset_cut_coefs();
 	recourse_obj_val = 0;
@@ -296,7 +395,6 @@ bool subprob::solve() {
 		
 		status = cplex.solve();			// solve the subproblem
 		if (!status) {
-			
 			if ( cplex.getCplexStatus() == IloCplex::Infeasible ) {
 				get_feasibility_cut_coefs(s);
 				recourse_obj_val = INFINITY;
@@ -316,13 +414,13 @@ bool subprob::solve() {
 	return true;
 }
 
-void subprob::setup_subproblem(int &s)
+void SUCsubprob::setup_subproblem(int &s)
 {
 	// iterate over capacity constraints
 	int c=0;
 	
 	// capacity constraints
-	for (int g=0; g<inst->G; g++) {
+	for (int g=0; g<numGen; g++) {
 		
 		map<int, vector<vector<double> > >::iterator it = inst->rndSupply.find(g);
 		
@@ -342,8 +440,9 @@ void subprob::setup_subproblem(int &s)
 		}
 	}    
 }
-
-void subprob::update_optimality_cut_coefs(int &s)
+*/
+/*
+void SUCsubprob::update_optimality_cut_coefs(int &s)
 {
 	// get dual multipliers
 	cplex.getDuals(duals, cons);
@@ -352,7 +451,7 @@ void subprob::update_optimality_cut_coefs(int &s)
 	int c=0;
 	
 	// capacity constraints
-	for (int g=0; g<inst->G; g++) {
+	for (int g=0; g<numGen; g++) {
 		map<int, vector<vector<double> > >::iterator it = inst->rndSupply.find(g);
 		
 		if ( it != inst->rndSupply.end() ) {
@@ -435,19 +534,14 @@ void subprob::update_optimality_cut_coefs(int &s)
 		cout << "!! Error: Unknown model id" << endl;
 	}
 }
+ */
 
-void subprob::reset_cut_coefs () {
-	pi_b = 0.0;
-	for (int g=0; g<inst->G; g++) {
-		std::fill(pi_T[g].begin(), pi_T[g].end(), 0.0);
-	}
-}
-
-double subprob::getRecourseObjValue() {
+double SUCsubprob::getRecourseObjValue() {
 	return recourse_obj_val;
 }
 
-void subprob::get_feasibility_cut_coefs(int &s)
+/*
+void SUCsubprob::get_feasibility_cut_coefs(int &s)
 {
 	// reset earlier (optimality-)cut coefficient entries
 	reset_cut_coefs();
@@ -478,7 +572,7 @@ void subprob::get_feasibility_cut_coefs(int &s)
 	int c=0;
 	
 	// capacity constraints
-	for (int g=0; g<inst->G; g++) {
+	for (int g=0; g<numGen; g++) {
 		map<int, vector<vector<double> > >::iterator it = inst->rndSupply.find(g);
 		
 		if ( it != inst->rndSupply.end() ) {
@@ -561,8 +655,9 @@ void subprob::get_feasibility_cut_coefs(int &s)
 		cout << "!! Error: Unknown model id" << endl;
 	}
 }
-
-double subprob::computeLowerBound ()
+*/
+/*
+double SUCsubprob::computeLowerBound ()
 {
     double bound = 0;
 

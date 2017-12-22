@@ -5,7 +5,7 @@
 //  Created by Semih Atakan on 10/31/17.
 //  Copyright © 2017 University of Southern California. All rights reserved.
 //
-/*
+
 #ifndef subprob_hpp
 #define subprob_hpp
 
@@ -14,21 +14,20 @@
 #include <vector>
 
 #include "instance.hpp"
-#include "commons.h"
 
-class subprob {
-	friend class master;
+class SUCsubprob {
+	friend class SUCmaster;
 	friend class LazySepCallbackI;
 	
 public:
-	subprob ();
-	~subprob ();
+	SUCsubprob ();
+	~SUCsubprob ();
 	
-	void formulate (instance &inst, int model_id);
+	void formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin);
 	bool solve ();
 	void setMasterSoln		(vector< vector<bool> > & gen_stat);
     
-    double computeLowerBound();          // a lower bound on the subproblem
+//    double computeLowerBound();          // a lower bound on the subproblem
     
 	double getRecourseObjValue();
 	
@@ -42,7 +41,9 @@ private:
 	
 	instance*	inst;
 	
-	int	 model_id;
+	ModelType   modelType;
+	ProblemType probType;
+	
 	void formulate_aggregate_system ();
 	void formulate_nodebased_system ();
 	void formulate_production ();
@@ -51,11 +52,6 @@ private:
 	
 	double recourse_obj_val;
 	
-	// Benders' Cut
-	double pi_b;
-	vector< vector<double> > pi_T;
-	
-	void reset_cut_coefs ();
 	void update_optimality_cut_coefs (int &s);
 	void get_feasibility_cut_coefs (int &s);
 	
@@ -65,11 +61,37 @@ private:
 	// Variables
     IloArray< IloNumVarArray > p, L;		// production, load-shedding
 	
+	// data
+	void preprocessing();
+	int numGen, numLine, numBus, numPeriods, numBaseTimePerPeriod, beginMin;
+	double periodLength;
+
+	vector<double> minGenerationReq;	// minimum production requirements (obeying assumptions)
+	vector<double> maxCapacity;
+	
+	vector<vector<double>> busLoad;		// load at each bus and period
+	vector<double>		   sysLoad;		// aggregated load at each period
+
 	// Miscellaneous
+	char buffer[30];
 	map< IloInt, double > farkasMap;
 	
-	double timer_t;
 	
+	// Benders' Cut
+	struct BendersCutCoefs {
+		double pi_b;
+		vector< vector<double> > pi_T;
+		
+		void initialize(int numRows, int numCols) {
+			resize_matrix(pi_T, numRows, numCols);
+		};
+		
+		void reset() {
+			pi_b = 0;
+			for (int g=0; g<pi_T.size(); g++) fill(pi_T[g].begin(), pi_T[g].end(), 0.0);
+		};
+	};
+	BendersCutCoefs cutCoefs;
 };
 
 #endif /* subprob_hpp */
