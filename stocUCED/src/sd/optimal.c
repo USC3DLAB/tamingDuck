@@ -132,7 +132,7 @@ BOOL fullTest(probType **prob, cellType *cell) {
  * are likely to provide good approximations of the recourse function at incumbent solution, when they are reformed with new observations.
  * The function returns a new cut structure which contains room for cuts to be reformed. Only the _istar_ and _cut_obs_ fields of
  * each cut have been initialized. */
-cutsType *chooseCuts(cutsType *cuts, vector pi, int lenX) {
+cutsType *chooseCuts(cutsType *cuts, vectorC pi, int lenX) {
 	cutsType *gCuts;
 	int cnt;
 
@@ -225,7 +225,7 @@ void reformCuts(sigmaType *sigma, deltaType *delta, omegaType *omega, numType *n
 
 /* This function is to calculate the lower bound on the optimal value which is used in stopping rule in full_test() in optimal.c in the case of
  regularized approach. */
-double calcBootstrpLB(probType *prob, vector incumbX, vector piM, vector djM, int currIter, double quadScalar, cutsType *cuts) {
+double calcBootstrpLB(probType *prob, vectorC incumbX, vectorC piM, vectorC djM, int currIter, double quadScalar, cutsType *cuts) {
 	double *bk; 			/* vector: b - A*incumb_x. */
 	double *lambda; 		/* vector: the dual of the primal constraints. */
 	double bk_lambda; 		/* scalar: bk*lambda. */

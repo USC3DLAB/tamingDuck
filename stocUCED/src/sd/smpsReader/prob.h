@@ -47,7 +47,7 @@ typedef struct {
 	int		beg;			/* indicates the beginning of stage random variables in the entire observation vector */
 	intvec	row;			/* row coordinate for random variable; -1 indicates cost coefficients */
 	intvec	col;			/* column coordinates for random variable; -1 indicates right-hand side */
-	vector	mean;			/* vector of mean values */
+	vectorC	mean;			/* vector of mean values */
 }omegastuff;
 
 /* structure for the problem type:
@@ -56,7 +56,7 @@ typedef struct {
  * where, x_{t+} = a_{t+} + A_{t+}x_t + B_{t+}u_t.
  */
 typedef struct{
-	string			name;			/* name of the problem */
+	stringC			name;			/* name of the problem */
 	oneProblem		*sp;			/* structure with complete problem information */
 	numType			*num;			/* structure which holds the problem dimensions */
 	coordType		*coord;			/* structure which holds the necessary coordinates of the problem */
@@ -73,9 +73,9 @@ typedef struct{
 }probType;
 
 /* subroutines in prob.c */
-probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, vector lb, double TOLERANCE);
-vector meanProblem(oneProblem *orig, stocType *stoc);
-vector calcLowerBound(oneProblem *orig, timeType *tim, stocType *stoc);
+probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, vectorC lb, double TOLERANCE);
+vectorC meanProblem(oneProblem *orig, stocType *stoc);
+vectorC calcLowerBound(oneProblem *orig, timeType *tim, stocType *stoc);
 void freeProbType(probType **prob, int T);
 void freeCoordType (coordType *coord);
 void freeOmegastuff(omegastuff *omegas);

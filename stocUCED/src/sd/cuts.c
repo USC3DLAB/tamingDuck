@@ -13,7 +13,7 @@
 
 extern configType config;
 
-int formSDCut(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOOL newOmegaFlag) {
+int formSDCut(probType *prob, cellType *cell, vectorC Xvect, int omegaIdx, BOOL newOmegaFlag) {
 	oneCut *cut;
 	int    cutIdx;
 
@@ -38,13 +38,13 @@ int formSDCut(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOOL n
 	return cutIdx;
 }//END formCut()
 
-oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, omegaType *omega, vector Xvect, int numSamples,
-		BOOL *dualStableFlag, vector pi_ratio, double lb) {
+oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, omegaType *omega, vectorC Xvect, int numSamples,
+		BOOL *dualStableFlag, vectorC pi_ratio, double lb) {
 	oneCut *cut;
 	iType istar_new;
 	iType istar_old;
 	iType 	istar;
-	vector 	piCbarX, beta;
+	vectorC 	piCbarX, beta;
 	BOOL    pi_eval_flag = FALSE;
 	double  argmax_all;
 	double  argmax_new;
@@ -58,7 +58,7 @@ oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta
 	/* Need to store  Pi x Cbar x X independently of observation loop */
 	if (!(piCbarX= arr_alloc(sigma->cnt, double)))
 		errMsg("Allocation", "SDCut", "pi_Tbar_x",0);
-	if ( !(beta = (vector) arr_alloc(num->prevCols + 1, double)) )
+	if ( !(beta = (vectorC) arr_alloc(num->prevCols + 1, double)) )
 		errMsg("Allocation", "SDCut", "beta", 0);
 
 	/* Calculate pi_eval_flag to determine the way of computing argmax */
@@ -146,8 +146,8 @@ oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta
  * Since the Pi's are stored in two different structures (sigma and delta), the index to the maximizing Pi is actually a structure
  * containing two indices.  (While both indices point to pieces of the dual vectors, sigma and delta may not be in sync with one
  * another due to elimination of non-distinct or redundant vectors. */
-iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, vector Xvect, vector PiCbarX, int obs,
-		int ictr, BOOL pi_eval, double *argmax) {
+iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, vectorC Xvect, vectorC PiCbarX, int obs,
+		int ictr, BOOL pi_eval, vectorC argmax) {
 	iType 	ans;
 	ans.delta = 0;
 	ans.sigma = 0;
@@ -186,8 +186,8 @@ iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *
 }//END computeIstar
 
 // TODO: Redundant function
-iType compute_new_istar(int obs, oneCut *cut, sigmaType *sigma, deltaType *delta, vector Xvect, numType *num, coordType *coord,
-		vector PiCbarX, double *argmax, int ictr) {
+iType compute_new_istar(int obs, oneCut *cut, sigmaType *sigma, deltaType *delta, vectorC Xvect, numType *num, coordType *coord,
+		vectorC PiCbarX, vectorC argmax, int ictr) {
 	iType ans;
 	ans.delta = 0;
 	ans.sigma = 0;
@@ -264,7 +264,7 @@ cutsType *newCuts(int maxCuts) {
 }//END newCuts
 
 /* This function will remove the oldest cut whose corresponding dual variable is zero (thus, a cut which was slack in last solution). */
-int reduceCuts(cellType *cell, vector candidX, vector pi, int betaLen, double lb) {
+int reduceCuts(cellType *cell, vectorC candidX, vectorC pi, int betaLen, double lb) {
 	double height, minHeight;
 	int minObs, oldestCut,idx;
 

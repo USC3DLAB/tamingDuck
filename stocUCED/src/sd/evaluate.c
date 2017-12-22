@@ -12,21 +12,21 @@
 #include "twoSD.h"
 
 extern configType config;
-extern string outputDir;
+extern stringC outputDir;
 
-int evaluate(FILE **soln, stocType *stoc, probType **prob, cellType *cell, vector Xvect) {
-	vector 	observ, rhs;
+int evaluate(FILE **soln, stocType *stoc, probType **prob, cellType *cell, vectorC Xvect) {
+	vectorC 	observ, rhs;
 	double 	obj, mean, variance, stdev, temp;
 	int		cnt, status, m;
 
-	if ( !(observ = (vector) arr_alloc(stoc->numOmega + 1, double)) )
+	if ( !(observ = (vectorC) arr_alloc(stoc->numOmega + 1, double)) )
 		errMsg("allocation", "evaluateOpt", "observ", 0);
 
 	printf("\nStarting evaluating.\n");
 
 	/* initialize parameters used for evaluations */
 	cnt = 0.0; mean = 0.0; variance = 0.0; stdev = INFBOUND; cnt = 0;
-	if (!(rhs =(vector) arr_alloc(prob[1]->num->rows+1, double)))
+	if (!(rhs =(vectorC) arr_alloc(prob[1]->num->rows+1, double)))
 		errMsg("Allocation", "computeRhs", "rhs",0);
 
 	/* change the right hand side with the solution */

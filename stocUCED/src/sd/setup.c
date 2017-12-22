@@ -14,7 +14,7 @@
 extern configType config;
 
 int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell) {
-	vector	meanSol, lb;
+	vectorC	meanSol, lb;
 	int 	t;
 
 	/* setup mean value problem which will act as reference for all future computations */
@@ -62,7 +62,7 @@ int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob,
 }//END setupAlgo()
 
 /* This function is used to create cells used in the algorithm */
-cellType *newCell(stocType *stoc, probType **prob, vector xk) {
+cellType *newCell(stocType *stoc, probType **prob, vectorC xk) {
 	cellType    *cell;
 	int			length;
 
@@ -126,11 +126,11 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 	cell->fcuts   = NULL;
 
 	/* solution parts of the cell */
-	if ( !(cell->piS = (vector) arr_alloc(prob[1]->num->rows + 1, double)) )
+	if ( !(cell->piS = (vectorC) arr_alloc(prob[1]->num->rows + 1, double)) )
 		errMsg("allocation", "newMaster", "cell->pi", 0);
-	if ( !(cell->djM = (vector) arr_alloc(prob[0]->num->cols + 2, double)) )
+	if ( !(cell->djM = (vectorC) arr_alloc(prob[0]->num->cols + 2, double)) )
 		errMsg("allocation", "newMaster", "cell->di", 0);
-	if ( !(cell->piM = (vector) arr_alloc(prob[0]->num->rows + cell->maxCuts + 1, double)) )
+	if ( !(cell->piM = (vectorC) arr_alloc(prob[0]->num->rows + cell->maxCuts + 1, double)) )
 		errMsg("allocation", "newMaster", "cell->piM", 0);
 	cell->mubBar = 0.0;
 
@@ -143,7 +143,7 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 
 	cell->optFlag 			= FALSE;
 	cell->dualStableFlag 	= FALSE;
-	if ( !(cell->pi_ratio = (vector) arr_alloc(config.SCAN_LEN, double)) )
+	if ( !(cell->pi_ratio = (vectorC) arr_alloc(config.SCAN_LEN, double)) )
 		errMsg("allocation", "newCell", "cell->pi_ratio", 0);
 
 	cell->feasCnt 			= 0;

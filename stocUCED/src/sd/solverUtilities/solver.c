@@ -8,10 +8,10 @@
 #include <utils.h>
 #include <solver.h>
 
-extern string 	outputDir;
+extern stringC outputDir;
 ENVptr	env;
 
-int solveProblem(LPptr lp, string pname, int type, int *status) {
+int solveProblem(LPptr lp, stringC pname, int type, int *status) {
 	int		aggres = 0;
 
 	solveagain:
@@ -99,7 +99,7 @@ double getObjective(LPptr lp, int type) {
 	return ans;
 }//END getObjective()
 
-int getPrimal(LPptr lp, vector X, int length) {
+int getPrimal(LPptr lp, vectorC X, int length) {
 	int status;
     
 	status = CPXgetx(env, lp, X+1, 0, length-1);
@@ -122,7 +122,7 @@ double getPrimalPoint(LPptr lp, int idx) {
 	return x[0];
 }//END getPrimalPoint
 
-int getDual(LPptr lp, vector Pi, int length) {
+int getDual(LPptr lp, vectorC Pi, int length) {
 	int	status;
 
 	status = CPXgetpi(env, lp, Pi+1, 0, length-1);
@@ -134,7 +134,7 @@ int getDual(LPptr lp, vector Pi, int length) {
 	return status;
 }//END getDual()
 
-int getDualSlacks(LPptr lp, vector Dj, int length){
+int getDualSlacks(LPptr lp, vectorC Dj, int length){
 	int	status;
 
 	status = CPXgetdj(env, lp, Dj+1, 0, length-1);
@@ -226,7 +226,7 @@ int createProblem(char *probname, LPptr *lp) {
 	return status;
 }// END createProb()
 
-int readProblem(string probpath, LPptr lp) {
+int readProblem(stringC probpath, LPptr lp) {
 	int status;
 
 	status = CPXreadcopyprob (env, lp, probpath, "MPS");
@@ -239,8 +239,8 @@ int readProblem(string probpath, LPptr lp) {
 	return status;
 }// END readProb()
 
-LPptr setupProblem(string name, int type, int numcols, int numrows, int objsense, vector objx, vector rhsx, string sense, intvec matbeg, intvec matcnt,
-		intvec matind, vector matval, vector lb, vector ub, vector rngval, string *colname, string *rowname, string ctype) {
+LPptr setupProblem(stringC name, int type, int numcols, int numrows, int objsense, vectorC objx, vectorC rhsx, stringC sense, intvec matbeg, intvec matcnt,
+		intvec matind, vectorC matval, vectorC lb, vectorC ub, vectorC rngval, stringC *colname, stringC *rowname, stringC ctype) {
 	LPptr	lp = NULL;
 	int		*indices, c;
 
@@ -270,8 +270,8 @@ LPptr setupProblem(string name, int type, int numcols, int numrows, int objsense
 	return lp;
 }//END setupProblem()
 
-int loadProblem(LPptr lp, int numcols, int numrows, int objsense, vector objx, vector rhsx, string sense, intvec matbeg, intvec matcnt,
-		intvec matind, vector matval, vector lb, vector ub, vector rngval) {
+int loadProblem(LPptr lp, int numcols, int numrows, int objsense, vectorC objx, vectorC rhsx, stringC sense, intvec matbeg, intvec matcnt,
+		intvec matind, vectorC matval, vectorC lb, vectorC ub, vectorC rngval) {
 	int status;
 	status = CPXcopylp(env, lp, numcols, numrows, objsense, objx, rhsx, sense, matbeg, matcnt, matind, matval, lb, ub, rngval);
 	if(status)
@@ -280,8 +280,8 @@ int loadProblem(LPptr lp, int numcols, int numrows, int objsense, vector objx, v
 	return status;
 }// END loadwnames_prob()
 
-int loadProbwNames(LPptr lp, int numcols, int numrows, int objsense, vector objx, vector rhsx, string sense, intvec matbeg, intvec matcnt,
-		intvec matind, vector matval, vector lb, vector ub, vector rngval, string *colname, string *rowname) {
+int loadProbwNames(LPptr lp, int numcols, int numrows, int objsense, vectorC objx, vectorC rhsx, stringC sense, intvec matbeg, intvec matcnt,
+		intvec matind, vectorC matval, vectorC lb, vectorC ub, vectorC rngval, stringC *colname, stringC *rowname) {
 	int status;
 	status = CPXcopylpwnames (env, lp, numcols, numrows, objsense, objx, rhsx, sense, matbeg, matcnt, matind, matval, lb, ub, rngval, colname, rowname);
 	if(status)
@@ -290,7 +290,7 @@ int loadProbwNames(LPptr lp, int numcols, int numrows, int objsense, vector objx
 	return status;
 }// END loadwnames_prob()
 
-int writeProblem(LPptr lp, string filename) {
+int writeProblem(LPptr lp, stringC filename) {
 	int status;
 	char buffer[2*BLOCKSIZE];
 
@@ -315,7 +315,7 @@ LPptr cloneProblem(LPptr origLp) {
 	return cloneLp;
 }//END cloneProb()
 
-int getProbName(LPptr lp, string probName, int len) {
+int getProbName(LPptr lp, stringC probName, int len) {
 	int status, surplus;
 
 	status = CPXgetprobname (env, lp, probName, len, &surplus);
@@ -367,7 +367,7 @@ int getNumInt(LPptr lp){
 
 }//END getNumBinary()
 
-int getCtype(LPptr lp, int start, int end, string ctype) {
+int getCtype(LPptr lp, int start, int end, stringC ctype) {
 	int status;
 
 	status = CPXgetctype (env, lp, ctype, start, end-1);
@@ -383,7 +383,7 @@ int getNumnz(LPptr lp) {
 
 }//END getNumnz
 
-int getObjx(LPptr lp, int start, int end, vector obj) {
+int getObjx(LPptr lp, int start, int end, vectorC obj) {
 	int status;
 
 	if( (status = CPXgetobj (env, lp, obj, start, end-1)) )
@@ -392,7 +392,7 @@ int getObjx(LPptr lp, int start, int end, vector obj) {
 	return status;
 }// END getObjx()
 
-int getRhsx(LPptr lp, int start, int end, vector rhs) {
+int getRhsx(LPptr lp, int start, int end, vectorC rhs) {
 	int status;
 
 	if( (status = CPXgetrhs (env, lp, rhs, start, end-1)))
@@ -401,7 +401,7 @@ int getRhsx(LPptr lp, int start, int end, vector rhs) {
 	return status;
 }// END getRhsx()
 
-int getSense(LPptr lp, int start, int end, string sense) {
+int getSense(LPptr lp, int start, int end, stringC sense) {
 	int status;
 
 	if ( (status = CPXgetsense (env, lp, sense, start, end-1)))
@@ -410,7 +410,7 @@ int getSense(LPptr lp, int start, int end, string sense) {
 	return status;
 }// END getSense()
 
-int getCols(LPptr lp, int start, int end, intvec cmatbeg, intvec cmatind, vector cmatval, int cmatspace) {
+int getCols(LPptr lp, int start, int end, intvec cmatbeg, intvec cmatind, vectorC cmatval, int cmatspace) {
 	int status, nzcnt, surplus;
 
 	status = CPXgetcols (env, lp, &nzcnt, cmatbeg, cmatind, cmatval, cmatspace, &surplus, start, end-1);
@@ -426,7 +426,7 @@ int getCols(LPptr lp, int start, int end, intvec cmatbeg, intvec cmatind, vector
 
 /* function reads the lower bound on variables indexed from _start_ to _end_ of problem input and stores them in _lb_. Returns 0 on success and 1 on
  * failure. */
-int getLb(LPptr lp, int start, int end, vector lb) {
+int getLb(LPptr lp, int start, int end, vectorC lb) {
 	int status;
 
 	if ( (status = CPXgetlb(env, lp, lb, start, end - 1)) )
@@ -437,7 +437,7 @@ int getLb(LPptr lp, int start, int end, vector lb) {
 
 /* function reads the upper bound on variables indexed from _start_ to _end_ of problem input and stores them in _lb_. Returns 0 on success and 1 on
  * failure. */
-int getUb(LPptr lp, int start, int end, vector ub) {
+int getUb(LPptr lp, int start, int end, vectorC ub) {
 	int status;
 
 	if ( (status = CPXgetub(env, lp, ub, start, end - 1)))
@@ -447,7 +447,7 @@ int getUb(LPptr lp, int start, int end, vector ub) {
 }//END getUb()
 
 /* read problem objective function name into the string _objname. Returns 0 on success and 1 on failure.*/
-int getObjName(LPptr lp, string objname) {
+int getObjName(LPptr lp, stringC objname) {
 
 	return CPXgetobjname (env, lp, objname, NAMESIZE, NULL);
 
@@ -463,7 +463,7 @@ int getCstoreSize(LPptr lp, int start, int end) {
 	return surplus;
 }// END getCstoreSize()
 
-int getColName(LPptr lp, int start, int end, string *colname, string colnamestore, int csize) {
+int getColName(LPptr lp, int start, int end, stringC *colname, stringC colnamestore, int csize) {
 	int status;
 
 	return CPXgetcolname (env, lp, colname, colnamestore, csize, &status, start, end-1);
@@ -480,14 +480,14 @@ int getRstoreSize(LPptr lp, int start, int end) {
 	return surplus;
 }//END getRstoreSize()
 
-int getRowName(LPptr lp, int start, int end, string *rowname, string rownamestore, int rsize) {
+int getRowName(LPptr lp, int start, int end, stringC *rowname, stringC rownamestore, int rsize) {
 	int status;
 
 	return CPXgetrowname (env, lp, rowname, rownamestore, rsize, &status, start, end-1);
 
 }// END getRowName()
 
-int getBinvC(LPptr lp, int col, vector a ) {
+int getBinvC(LPptr lp, int col, vectorC a ) {
 	int status;
 
 	status = CPXbinvcol(env, lp, col, a);
@@ -497,7 +497,7 @@ int getBinvC(LPptr lp, int col, vector a ) {
 	return status;
 }//END getBinvC
 
-int getBhead(LPptr lp, intvec head, vector x) {
+int getBhead(LPptr lp, intvec head, vectorC x) {
 	int status;
 
 	status=CPXgetbhead(env, lp, head, x);
@@ -507,7 +507,7 @@ int getBhead(LPptr lp, intvec head, vector x) {
 	return status;
 }//END getBhead
 
-int binvArow(LPptr lp, int i, vector z) {
+int binvArow(LPptr lp, int i, vectorC z) {
 	int status;
 
 	status= CPXbinvarow (env, lp, i, z);
@@ -517,7 +517,7 @@ int binvArow(LPptr lp, int i, vector z) {
 	return status;
 }//END binvArow
 
-int binvAcol(LPptr lp, int i, vector z) {
+int binvAcol(LPptr lp, int i, vectorC z) {
 	int status;
 
 	status= CPXbinvacol (env, lp, i, z);
@@ -527,7 +527,7 @@ int binvAcol(LPptr lp, int i, vector z) {
 	return status;
 }//END binvArow
 
-int copyQPseparable(LPptr lp, vector qsepvec){
+int copyQPseparable(LPptr lp, vectorC qsepvec){
 	int status;
 	/* NOTE: CPLEX evaluates the corresponding objective with a factor of 0.5 in front of the quadratic objective term.*/
 	status = CPXcopyqpsep (env, lp, qsepvec);
@@ -547,7 +547,7 @@ int changeCoef(LPptr lp, int row, int col, double val) {
 	return status;
 }//END changeObjx()
 
-int changeObjx(LPptr lp, int cnt, intvec indices, vector values){
+int changeObjx(LPptr lp, int cnt, intvec indices, vectorC values){
 	int status;
 
 	status = CPXchgobj (env, lp, cnt, indices, values);
@@ -557,7 +557,7 @@ int changeObjx(LPptr lp, int cnt, intvec indices, vector values){
 	return status;
 }//END changeObjx()
 
-int changeRHS(LPptr lp, int cnt, intvec indices, vector values) {
+int changeRHS(LPptr lp, int cnt, intvec indices, vectorC values) {
 	int status;
 
 	status = CPXchgrhs (env, lp, cnt, indices, values);
@@ -567,7 +567,7 @@ int changeRHS(LPptr lp, int cnt, intvec indices, vector values) {
 	return status;
 }//END changeRHS
 
-int changeBDS(LPptr lp, int cnt, intvec indices, string lu, vector bd) {
+int changeBDS(LPptr lp, int cnt, intvec indices, stringC lu, vectorC bd) {
 	int status;
 
 	status = CPXchgbds (env, lp, cnt, indices, lu, bd);
@@ -577,7 +577,7 @@ int changeBDS(LPptr lp, int cnt, intvec indices, string lu, vector bd) {
 	return status;
 }//END changeBDS
 
-int changeCol(LPptr lp, int column, vector coef, int start, int stop){
+int changeCol(LPptr lp, int column, vectorC coef, int start, int stop){
 	int		row, status;
 
 	for (row = start; row < stop; row++){
@@ -589,7 +589,7 @@ int changeCol(LPptr lp, int column, vector coef, int start, int stop){
 	return 0;
 }//END changeCol()
 
-int changeCtype(LPptr lp, int cnt, intvec indices, string ctype){
+int changeCtype(LPptr lp, int cnt, intvec indices, stringC ctype){
 	int status;
 
 	status = CPXchgctype (env, lp, cnt, indices, ctype);
@@ -609,14 +609,14 @@ int changeProbType(LPptr lp, int type) {
 	return status;
 }//END changeProbType()
 
-int addRow(LPptr lp, int nzcnt, double inputRHS, char inputSense, int matbeg, intvec rmatind, vector rmatval) {
+int addRow(LPptr lp, int nzcnt, double inputRHS, char inputSense, int matbeg, intvec rmatind, vectorC rmatval) {
 	static int cumul_num = 0;
-	string	*rowname;
+	stringC	*rowname;
 	char	sense[1] = {'G'};
 	double	rhs[1];
 	int		status, rmatbeg[1];
 
-	rowname = arr_alloc(2, string);
+	rowname = arr_alloc(2, stringC);
 	rowname[0] = arr_alloc(NAMESIZE, char);
 	strcpy(rowname[0], "Cut    ");
 	rowname[0][3] = '0' + cumul_num / 10000 % 10;
@@ -640,7 +640,7 @@ int addRow(LPptr lp, int nzcnt, double inputRHS, char inputSense, int matbeg, in
 	return status;
 }//END addRow()
 
-int addCol(LPptr lp, int nzcnt, double objx, int matbeg, intvec cmatind, vector cmatval, double bdu, double bdl, string *colname){
+int addCol(LPptr lp, int nzcnt, double objx, int matbeg, intvec cmatind, vectorC cmatval, double bdu, double bdl, stringC *colname){
 	int 	status, cmatbeg[1];
 	double obj[1], lb[1], ub[1];
 

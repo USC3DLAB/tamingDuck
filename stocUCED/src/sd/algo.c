@@ -11,11 +11,11 @@
 
 #include "twoSD.h"
 
-extern string outputDir;
+extern stringC outputDir;
 extern configType config;
 
-int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, string probName) {
-	vector	 xk = NULL, lb = NULL;
+int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC inputDir, stringC probName) {
+	vectorC	 xk = NULL, lb = NULL;
 	probType **prob = NULL;
 	cellType *cell = NULL;
 	double	 totalTime;
@@ -61,13 +61,13 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, strin
 	return 1;
 }//END algo()
 
-int solveCell(stocType *stoc, probType **prob, cellType *cell, string inputDir, string probName) {
-	vector 	observ;
+int solveCell(stocType *stoc, probType **prob, cellType *cell, stringC inputDir, stringC probName) {
+	vectorC 	observ;
 	int		m, omegaIdx, candidCut;
 	BOOL 	newOmegaFlag;
 
 	/* -+-+-+-+-+-+-+-+-+-+-+-+-+-+- Main Algorithm -+-+-+-+-+-+-+-+-+-+-+-+-+-+- */
-	if ( !(observ = (vector) arr_alloc(stoc->numOmega + 1, double)) )
+	if ( !(observ = (vectorC) arr_alloc(stoc->numOmega + 1, double)) )
 		errMsg("allocation", "solveMASP", "observ", 0);
 
 	/******* 0. Initialization: The algorithm begins by solving the master problem as a QP *******/
@@ -125,7 +125,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, string inputDir, 
 	return 0;
 }//END solveCell()
 
-void writeStatistic(FILE **soln, probType *prob, cellType *cell, string probName) {
+void writeStatistic(FILE **soln, probType *prob, cellType *cell, stringC probName) {
 
 	(*soln) = openFile(outputDir, "summary.dat", "w");
 

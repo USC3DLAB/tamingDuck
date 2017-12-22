@@ -16,8 +16,8 @@ extern configType config;
 /* This function will solve a new subproblem. This involves replacing the right-hand side of the subproblem with new values, based upon some
  * observation of omega, and some X vector of primal variables from the master problem.  Generally, the latest observation is used.  When
  * forming a normal cut, the candidate x should be used, while the incumbent x should be used for updating the incumbent cut. */
-int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOOL newOmegaFlag) {
-	vector 	rhs;
+int solveSubprob(probType *prob, cellType *cell, vectorC Xvect, int omegaIdx, BOOL newOmegaFlag) {
+	vectorC 	rhs;
 	intvec	indices;
 	int  	status, n;
 
@@ -95,9 +95,9 @@ int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOO
  * for the vector, which must be freed by the customer.  Also, the zeroth position of this rhs vector is reserved, and the actual values begin at rhs[1].
  * R is b, and T is C
  \***********************************************************************/
-vector computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, vector X, vector obs) {
+vectorC computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, vectorC X, vectorC obs) {
     int cnt;
-    vector rhs;
+    vectorC rhs;
     sparseVector bomega;
     sparseMatrix Comega;
 
@@ -106,7 +106,7 @@ vector computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMatr
     Comega.cnt = num->rvCOmCnt; Comega.col = coord->omegaCol + num->rvbOmCnt;
     Comega.row = coord->omegaRow + num->rvbOmCnt; Comega.val = obs + num->rvbOmCnt;
 
-    if (!(rhs =(vector) arr_alloc(num->rows+1, double)))
+    if (!(rhs =(vectorC) arr_alloc(num->rows+1, double)))
         errMsg("Allocation", "computeRhs", "rhs",0);
 
     /* Start with the values of b(omega) -- both fixed and varying */
@@ -122,7 +122,7 @@ vector computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMatr
     return rhs;
 }//END computeRHS()
 
-void chgRHSwSoln(sparseVector *bBar, sparseMatrix *Cbar, vector rhs, vector X) {
+void chgRHSwSoln(sparseVector *bBar, sparseMatrix *Cbar, vectorC rhs, vectorC X) {
     int cnt;
 
     /* copy the original right-hand side */
@@ -134,10 +134,10 @@ void chgRHSwSoln(sparseVector *bBar, sparseMatrix *Cbar, vector rhs, vector X) {
 
 }//END chgRHSwMean()
 
-int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, vector observ, vector spRHS, vector X) {
+int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, vectorC observ, vectorC spRHS, vectorC X) {
     sparseVector bomega;
     sparseMatrix Comega;
-    vector 	rhs;
+    vectorC 	rhs;
     intvec	indices;
     int		cnt, stat1;
 
@@ -148,7 +148,7 @@ int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, vector observ, vecto
 
     if ( !(indices = (intvec) arr_alloc(num->rows, int)) )
         errMsg("allocation", "chgRHSwRand", "indices", 0);
-    if ( !(rhs = (vector) arr_alloc(num->rows+1, double)) )
+    if ( !(rhs = (vectorC) arr_alloc(num->rows+1, double)) )
         errMsg("allocation", "chgRHSwRand", "rhs", 0);
 
     /* copy right-hand side modified with mean information */

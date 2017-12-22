@@ -9,7 +9,7 @@
 
 extern long MEM_USED;
 
-FILE *openFile(string outputDir, string fname, char *mode) {
+FILE *openFile(stringC outputDir, stringC fname, char *mode) {
 	FILE *fptr;
 	char buffer[2*BLOCKSIZE];
 
@@ -25,7 +25,7 @@ FILE *openFile(string outputDir, string fname, char *mode) {
 	return fptr;
 }//END openFile()
 
-void createOutputDir(string outputDir, string algoName, string probName) {
+void createOutputDir(stringC outputDir, stringC algoName, stringC probName) {
 	struct stat st;
 	char buffer[2*BLOCKSIZE];
 
@@ -48,16 +48,16 @@ void createOutputDir(string outputDir, string algoName, string probName) {
 
 }//END createOutputDir()
 
-void errMsg(string type, string place, string item, int quit){
+void errMsg(stringC type, stringC place, stringC item, int quit){
 	fprintf(stderr, "\nError :: Type - %s;  Function - %s(); Item - %s\n", type, place, item);
 	if (quit)
 		exit(1);
 }//err_msg()
 
 /* The function getLine() reads an input line, checks its length, and determines the appropriate parsing function to call. In the case of a line consisting of only a single carriage return, the function
- * continues to read in lines until a string of non_zero length or an EOF is encountered. Upon return of fields from the parsing functions, each field will be sent to remove_spaces for the removal of all
+ * continues to read in lines until a stringC of non_zero length or an EOF is encountered. Upon return of fields from the parsing functions, each field will be sent to remove_spaces for the removal of all
  * blank spaces.  The getLine function then returns control to the calling function. */
-int getLine(FILE **input, string *fields, char *type, int *numFields) {
+int getLine(FILE **input, stringC *fields, char *type, int *numFields) {
 	char 	input_str[BLOCKSIZE], *strptr, *token;
 	long	len = 0, n, stat;
 
@@ -71,15 +71,15 @@ int getLine(FILE **input, string *fields, char *type, int *numFields) {
 		len = strlen(input_str);
 	}
 
-	/*  identify type of input string (title or field)  */
+	/*  identify type of input stringC (title or field)  */
 	if (input_str[0] >= '0' && input_str[0] <= 'Z') {
-		/* input string is title string, marked by type = 't' */
+		/* input stringC is title stringC, marked by type = 't' */
 		sscanf(input_str, "%s %s", fields[0], fields[1]);
 		type[0] = 't';
 		n = 2;
 	}
 	else {
-		/* input string is field string, marked by type = 'f' */
+		/* input stringC is field stringC, marked by type = 'f' */
 		token = strtok(input_str, " \t");
 		n = 0;
 		while( token != NULL ) {
@@ -100,7 +100,7 @@ int getLine(FILE **input, string *fields, char *type, int *numFields) {
 	return 0;
 }//END getLine()
 
-/* The function removeSpace() removes additional spaces from a	string. This function will be used after an input string has been broken into its appropriate fields according to column values. */
+/* The function removeSpace() removes additional spaces from a	stringC. This function will be used after an input stringC has been broken into its appropriate fields according to column values. */
 int removeSpaces (char *field) {
 	char *p, *q, len = 0;;
 
@@ -119,34 +119,34 @@ int removeSpaces (char *field) {
 	return len;
 }//END removeSpaces
 
-void trPrint(string routine, int type){
+void trPrint(stringC routine, int type){
 	if ( type == 1 )
 		printf("Entering :: %s()\n", routine);
 	else
 		printf("Exiting  :: %s()\n", routine);
 }//END trPrint()
 
-void *log_alloc(char *string, void *return_ptr, int size) {
+void *log_alloc(char *stringC, void *return_ptr, int size) {
 	MEM_USED += size;
 	return return_ptr;
 }//END log_alloc()
 
 
-void *log_realloc(char *string, void *free_ptr, void *alloc_ptr, int size) {
+void *log_realloc(char *stringC, void *free_ptr, void *alloc_ptr, int size) {
 	MEM_USED += size;
 	return alloc_ptr;
 }//END log_realloc()
 
 
-double str2float(char *string){
+double str2float(char *stringC){
 	double val;
-	sscanf(string, "%lf", &val);
+	sscanf(stringC, "%lf", &val);
 	return val;
 }//END str_to_float()
 
-int str2int(char *string) {
+int str2int(char *stringC) {
 	int val;
-	sscanf(string, "%d", &val);
+	sscanf(stringC, "%d", &val);
 	return val;
 }//END str2int()
 
@@ -162,7 +162,7 @@ int getNumBits(int num) {
 }//END getNumBits()
 
 
-double oneNorm(vector a, int len) {
+double oneNorm(vectorC a, int len) {
 	int		cnt;
 	double	sum;
 
@@ -173,7 +173,7 @@ double oneNorm(vector a, int len) {
 	return sum;
 }//END oneNorm()
 
-double twoNorm(vector a, vector b, int len) {
+double twoNorm(vectorC a, vectorC b, int len) {
 	int 	cnt;
 	double	norm = 0.0;
 
@@ -186,7 +186,7 @@ double twoNorm(vector a, vector b, int len) {
 	return norm;
 }//END twoNorm()
 
-double calcVariance(vector x, int lenX) {
+double calcVariance(vectorC x, int lenX) {
     double 	mean, vari, temp;
     int 	cnt;
 
@@ -201,7 +201,7 @@ double calcVariance(vector x, int lenX) {
     return vari;
 }//END calcVariance()
 
-double vXv(vector a, vector b, intvec idxCol, int len) {
+double vXv(vectorC a, vectorC b, intvec idxCol, int len) {
 	double ans = 0.0;
 	int n;
 
@@ -215,7 +215,7 @@ double vXv(vector a, vector b, intvec idxCol, int len) {
 	return ans;
 }//END vXv()
 
-double vXvSparse(vector v, sparseVector *vSparse){
+double vXvSparse(vectorC v, sparseVector *vSparse){
 	int		cnt;
 	double 	ans;
 
@@ -226,7 +226,7 @@ double vXvSparse(vector v, sparseVector *vSparse){
 	return ans;
 }//END vXvSparse()
 
-vector MSparsexvAdd(sparseMatrix *M, vector v, vector ans){
+vectorC MSparsexvAdd(sparseMatrix *M, vectorC v, vectorC ans){
 	int	cnt;
 
 	for (cnt = 1; cnt <= M->cnt; cnt++)
@@ -235,7 +235,7 @@ vector MSparsexvAdd(sparseMatrix *M, vector v, vector ans){
 	return ans;
 }//END MSparsexv()
 
-vector MSparsexvSub(sparseMatrix *M, vector v, vector ans){
+vectorC MSparsexvSub(sparseMatrix *M, vectorC v, vectorC ans){
 	int	cnt;
 
 	for (cnt = 1; cnt <= M->cnt; cnt++)
@@ -244,11 +244,11 @@ vector MSparsexvSub(sparseMatrix *M, vector v, vector ans){
 	return ans;
 }//END MSparsexvSub()
 
-vector vxMSparse(vector v, sparseMatrix *M, int len) {
+vectorC vxMSparse(vectorC v, sparseMatrix *M, int len) {
 	int		cnt;
-	vector	ans;
+	vectorC	ans;
 
-	if(!(ans = (vector) arr_alloc(len+1, double)))
+	if(!(ans = (vectorC) arr_alloc(len+1, double)))
 		errMsg("allocation", "vxMSparse", "ans", 1);
 
 	for (cnt = 1; cnt <= M->cnt; cnt++)
@@ -258,7 +258,7 @@ vector vxMSparse(vector v, sparseMatrix *M, int len) {
 	return ans;
 }//END PIxT()
 
-void vPlusv(vector a, vector b, double mult, int len){
+void vPlusv(vectorC a, vectorC b, double mult, int len){
 	int 	cnt;
 
 	for ( cnt = 1; cnt <= len; cnt++ )
@@ -271,11 +271,11 @@ double smooth(double new, double old, double factor) {
 	return factor*new + (1-factor)*old;
 }//END smooth();
 
-vector reduceVector(vector f_vect, int *row, int num_elem){
+vectorC reduceVector(vectorC f_vect, int *row, int num_elem){
 	int		cnt;
 	double 	*s_vect;
 
-	if(!(s_vect = (vector) arr_alloc(num_elem+1, double)))
+	if(!(s_vect = (vectorC) arr_alloc(num_elem+1, double)))
 		errMsg("allocation", "reduceVector", "s_vect", 1);
 
 	for (cnt = 1; cnt <= num_elem; cnt++)
@@ -285,12 +285,12 @@ vector reduceVector(vector f_vect, int *row, int num_elem){
 	return s_vect;
 }//END reduceVector()
 
-vector expandVector(vector red, intvec col, int redElems, int expElems){
+vectorC expandVector(vectorC red, intvec col, int redElems, int expElems){
 	int 	n;
-	vector 	exp;
+	vectorC 	exp;
 
-	if (!(exp = (vector) arr_alloc(expElems+1, double)) )
-		errMsg("allocation", "expandVector", "expanded vector", 0);
+	if (!(exp = (vectorC) arr_alloc(expElems+1, double)) )
+		errMsg("allocation", "expandVector", "expanded vectorC", 0);
 
 	for (n = 1; n <= redElems; n++ )
 		exp[col[n]] = red[n];
@@ -299,7 +299,7 @@ vector expandVector(vector red, intvec col, int redElems, int expElems){
 	return exp;
 }//END expandVector
 
-BOOL equalVector(vector a, vector b, int len, double tolerance) {
+BOOL equalVector(vectorC a, vectorC b, int len, double tolerance) {
 	int		cnt;
 
 	for (cnt = 1; cnt <= len; cnt++)
@@ -319,7 +319,7 @@ BOOL equalIntvec(intvec a, intvec b, int len) {
 	return TRUE;
 }//END equalIntvec()
 
-BOOL isZeroVector(vector a, int len, double tolerance) {
+BOOL isZeroVector(vectorC a, int len, double tolerance) {
 	int		cnt;
 
 	for (cnt = 0; cnt < len; cnt++) {
@@ -332,8 +332,8 @@ BOOL isZeroVector(vector a, int len, double tolerance) {
 	return TRUE;
 }//END equalVector()
 
-/*This function will check if a vector is integer with a predefined gap */
-BOOL isInteger(vector x, int length, int startIdx, int endIdx, double tolerance){
+/*This function will check if a vectorC is integer with a predefined gap */
+BOOL isInteger(vectorC x, int length, int startIdx, int endIdx, double tolerance){
 	int i;
 
 	for (i = startIdx+1; i < endIdx; i++)
@@ -344,11 +344,11 @@ BOOL isInteger(vector x, int length, int startIdx, int endIdx, double tolerance)
 }//END isInteger()
 
 
-vector duplicVector(vector a, int len) {
+vectorC duplicVector(vectorC a, int len) {
 	int		i;
-	vector	b;
+	vectorC	b;
 
-	if ((b = (vector) arr_alloc(len+1, double))) {
+	if ((b = (vectorC) arr_alloc(len+1, double))) {
 		for (i = 1; i <= len; i++)
 			b[i] = a[i];
 		b[0] = oneNorm(b+1, len);
@@ -373,7 +373,7 @@ intvec duplicIntvec(intvec a, int len) {
 	return b;
 }//END duplicArray()
 
-void copyVector(vector a, vector b, int len, BOOL isOneNorm){
+void copyVector(vectorC a, vectorC b, int len, BOOL isOneNorm){
 	int n;
 
 	if (isOneNorm)
@@ -395,7 +395,7 @@ void copyIntvec (intvec a, intvec b, int len) {
 
 }//END copyVector()
 
-void addVectors(vector a, vector b, intvec indices, int len){
+void addVectors(vectorC a, vectorC b, intvec indices, int len){
 	int n;
 
 	if ( indices == NULL ) {
@@ -410,7 +410,7 @@ void addVectors(vector a, vector b, intvec indices, int len){
 
 }//END copy_arr()
 
-void printVector(vector vec, int len, FILE *fptr){
+void printVector(vectorC vec, int len, FILE *fptr){
 	int n;
 
 	if ( fptr == NULL ) {
@@ -426,7 +426,7 @@ void printVector(vector vec, int len, FILE *fptr){
 
 }//END printVector()
 
-void printVectorWName(vector vec, string *vecName, int len, FILE *fptr){
+void printVectorWName(vectorC vec, stringC *vecName, int len, FILE *fptr){
 	int n;
 
 	for ( n = 1; n <= len; n++ ) {
@@ -452,7 +452,7 @@ void printIntvec(intvec vec, int len, FILE *fptr){
 
 }//END printIntvec()
 
-void printSparseVector(vector vec, intvec indices, int len) {
+void printSparseVector(vectorC vec, intvec indices, int len) {
 	int n;
 
 	for ( n = 1; n <= len; n++ )
@@ -461,9 +461,9 @@ void printSparseVector(vector vec, intvec indices, int len) {
 
 }//END printSparseVector()
 
-void printSparseMatrix(sparseMatrix *V, char *string) {
+void printSparseMatrix(sparseMatrix *V, char *stringC) {
 	int 	cnt;
-	printf("%s (%d) ::\n\t\n", string, V->cnt);
+	printf("%s (%d) ::\n\t\n", stringC, V->cnt);
 	for (cnt = 1; cnt <= V->cnt; cnt++){
 		printf("(%d, %d, %.2f)\t\n", V->row[cnt], V->col[cnt], V->val[cnt]);
 		if ( cnt % 5 == 0 )

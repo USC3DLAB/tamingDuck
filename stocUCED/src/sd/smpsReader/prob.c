@@ -13,7 +13,7 @@
 /* Decomposes the problem _orig_ into subproblems as well as decomposes the stochastic information _stoc_ into stage stochastic information. The decomposition
  * is carried out using information specified in _tim_. The function also stores stage lower bound information provided in _Lb_. It returns an array of
  * probType structures, each probType corresponds to a particular stage */
-probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, vector lb, double TOLERANCE) {
+probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, vectorC lb, double TOLERANCE) {
 	probType **prob;
 	char	 *q;
 	int		 i, k, m, t, rOffset = 0, cOffset = 0;
@@ -26,7 +26,7 @@ probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, vector lb, d
 	for ( t = 0; t < tim->numStages; t++ ) {
 		if ( !(prob[t] = (probType *) mem_malloc(sizeof(probType))) )
 			errMsg("allocation", "newProb", "prob[t]", 0);
-		if ( !(prob[t]->name = (string) arr_alloc(NAMESIZE, char)) )
+		if ( !(prob[t]->name = (stringC) arr_alloc(NAMESIZE, char)) )
 			errMsg("allocation", "newProb", "stage name", 0);
 		if( !(prob[t]->sp = (oneProblem *) mem_malloc (sizeof(oneProblem))))
 			errMsg("allocation", "newProb", "stage problem", 0);
@@ -36,7 +36,7 @@ probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, vector lb, d
 			errMsg("allocation", "newProb", "stage problem cost coefficients", 0);
 		if ( !(prob[t]->dBar->col = (intvec) arr_alloc(orig->mac+1, int)) )
 			errMsg("allocation", "newProb", "stage problem cost coefficients columns", 0);
-		if ( !(prob[t]->dBar->val = (vector) arr_alloc(orig->mac+1, double)) )
+		if ( !(prob[t]->dBar->val = (vectorC) arr_alloc(orig->mac+1, double)) )
 			errMsg("allocation", "newProb", "stage problem cost coefficients values", 0);
 		prob[t]->dBar->cnt = 0;
 
@@ -44,7 +44,7 @@ probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, vector lb, d
 			errMsg("allocation", "newProb", "stage problem right hand side", 0);
 		if ( !(prob[t]->bBar->col = (intvec) arr_alloc(orig->mar+1, int)) )
 			errMsg("allocation", "newProb", "stage problem right-hand rows", 0);
-		if ( !(prob[t]->bBar->val = (vector) arr_alloc(orig->mar+1, double)) )
+		if ( !(prob[t]->bBar->val = (vectorC) arr_alloc(orig->mar+1, double)) )
 			errMsg("allocation", "newProb", "stage problem right-hand values", 0);
 		prob[t]->bBar->cnt = 0;
 
@@ -72,35 +72,35 @@ probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, vector lb, d
 		prob[t]->sp->type = PROB_LP;
 
 		/* stage oneProblem */
-		if(!(prob[t]->sp->name = (string) arr_alloc(NAMESIZE, char)))
+		if(!(prob[t]->sp->name = (stringC) arr_alloc(NAMESIZE, char)))
 			errMsg("allocation", "newProb", "stage problem name", 0);
-		if(!(prob[t]->sp->objname = (string) arr_alloc(NAMESIZE, char)))
+		if(!(prob[t]->sp->objname = (stringC) arr_alloc(NAMESIZE, char)))
 			errMsg("allocation", "newProb", "stage problem objname", 0);
-		if(!(prob[t]->sp->objx = (vector) arr_alloc(prob[t]->sp->macsz, double)))
+		if(!(prob[t]->sp->objx = (vectorC) arr_alloc(prob[t]->sp->macsz, double)))
 			errMsg("allocation", "newProb", "stage problem objx", 0);
-		if(!(prob[t]->sp->bdl = (vector) arr_alloc(prob[t]->sp->macsz, double)))
+		if(!(prob[t]->sp->bdl = (vectorC) arr_alloc(prob[t]->sp->macsz, double)))
 			errMsg("allocation", "newProb", "stage problem bdl", 0);
-		if(!(prob[t]->sp->bdu = (vector) arr_alloc(prob[t]->sp->macsz, double)))
+		if(!(prob[t]->sp->bdu = (vectorC) arr_alloc(prob[t]->sp->macsz, double)))
 			errMsg("allocation", "newProb", "stage problem bdu", 0);
-		if(!(prob[t]->sp->ctype = (string) arr_alloc(prob[t]->sp->macsz, char)))
+		if(!(prob[t]->sp->ctype = (stringC) arr_alloc(prob[t]->sp->macsz, char)))
 			errMsg("allocation", "newProb", "stage problem column type", 0);
-		if(!(prob[t]->sp->rhsx = (vector) arr_alloc(prob[t]->sp->marsz, double)))
+		if(!(prob[t]->sp->rhsx = (vectorC) arr_alloc(prob[t]->sp->marsz, double)))
 			errMsg("allocation", "newProb", "stage problem rhsx", 0);
-		if(!(prob[t]->sp->senx = (string) arr_alloc(prob[t]->sp->marsz, char)))
+		if(!(prob[t]->sp->senx = (stringC) arr_alloc(prob[t]->sp->marsz, char)))
 			errMsg("allocation", "newProb", "stage problem senx", 0);
 		if(!(prob[t]->sp->matbeg = (intvec) arr_alloc(prob[t]->sp->macsz, int)))
 			errMsg("allocation", "newProb", "stage problem matbeg", 0);
 		if(!(prob[t]->sp->matcnt = (intvec) arr_alloc(prob[t]->sp->macsz, int)))
 			errMsg("allocation", "newProb", "stage problem matcnt", 0);
-		if(!(prob[t]->sp->cname = (string *) arr_alloc(prob[t]->sp->macsz, string)))
+		if(!(prob[t]->sp->cname = (stringC *) arr_alloc(prob[t]->sp->macsz, stringC)))
 			errMsg("allocation", "newProb", "stage problem cname", 0);
-		if(!(prob[t]->sp->cstore = (string) arr_alloc(prob[t]->sp->cstorsz, char)))
+		if(!(prob[t]->sp->cstore = (stringC) arr_alloc(prob[t]->sp->cstorsz, char)))
 			errMsg("allocation", "newProb", "stage problem cstore", 0);
-		if(!(prob[t]->sp->rname = (string *) arr_alloc(prob[t]->sp->marsz, string)))
+		if(!(prob[t]->sp->rname = (stringC *) arr_alloc(prob[t]->sp->marsz, stringC)))
 			errMsg("allocation", "newProb", "stage problem rname", 0);
-		if(!(prob[t]->sp->rstore = (string) arr_alloc(prob[t]->sp->rstorsz, char)))
+		if(!(prob[t]->sp->rstore = (stringC) arr_alloc(prob[t]->sp->rstorsz, char)))
 			errMsg("allocation", "newProb", "stage problem rstore", 0);
-		if(!(prob[t]->sp->matval = (vector) arr_alloc(orig->matsz, double)))
+		if(!(prob[t]->sp->matval = (vectorC) arr_alloc(orig->matsz, double)))
 			errMsg("allocation", "newProb", "stage problem matval", 0);
 		if(!(prob[t]->sp->matind = (intvec) arr_alloc(orig->matsz, int)))
 			errMsg("allocation", "newProb", "stage problem matind", 0);
@@ -117,7 +117,7 @@ probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, vector lb, d
 				errMsg("allocation", "newProb", "transfer matrix rows", 0);
 			if(!(prob[t]->Cbar->col = (intvec) arr_alloc(orig->matsz + 1, int)))
 				errMsg("allocation", "newProb", "transfer matrix columns", 0);
-			if(!(prob[t]->Cbar->val = (vector) arr_alloc(orig->matsz + 1, double)))
+			if(!(prob[t]->Cbar->val = (vectorC) arr_alloc(orig->matsz + 1, double)))
 				errMsg("allocation", "newProb", "transfer matrix values", 0);
 			prob[t]->Cbar->cnt = 0;
 		}
@@ -147,7 +147,7 @@ probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, vector lb, d
 				errMsg("allocation", "newProb", "stage constraint matrix rows", 0);
 			if(!(prob[t]->Dbar->col = (intvec) arr_alloc(orig->matsz+1, int)))
 				errMsg("allocation", "newProb", "stage constraint matrix columns", 0);
-			if(!(prob[t]->Dbar->val = (vector) arr_alloc(orig->matsz+1, double)))
+			if(!(prob[t]->Dbar->val = (vectorC) arr_alloc(orig->matsz+1, double)))
 				errMsg("allocation", "newProb", "stage constraint matrix values", 0);
 			prob[t]->Dbar->cnt = 0;
 		}
@@ -370,7 +370,7 @@ probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, vector lb, d
 				errMsg("allocation", "newProb", "prob->omegas->col", 0);
 			if ( !(prob[t]->omegas->row = (intvec) arr_alloc(stoc->numOmega+1, int)) )
 				errMsg("allocation", "newProb", "prob->omegas->row", 0);
-			if ( !(prob[t]->omegas->mean = (vector) arr_alloc(stoc->numOmega+1, double)) )
+			if ( !(prob[t]->omegas->mean = (vectorC) arr_alloc(stoc->numOmega+1, double)) )
 				errMsg("allocation", "newProb", "prob->omegas->mean", 0);
 			prob[t]->omegas->beg = m;
 		}
@@ -405,7 +405,7 @@ probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, vector lb, d
 		else {
 			prob[t]->omegas->col = (intvec) mem_realloc(prob[t]->omegas->col, (prob[t]->omegas->numRV+1)*sizeof(int));
 			prob[t]->omegas->row = (intvec) mem_realloc(prob[t]->omegas->row, (prob[t]->omegas->numRV+1)*sizeof(int));
-			prob[t]->omegas->mean = (vector) mem_realloc(prob[t]->omegas->mean, (prob[t]->omegas->numRV+1)*sizeof(double));
+			prob[t]->omegas->mean = (vectorC) mem_realloc(prob[t]->omegas->mean, (prob[t]->omegas->numRV+1)*sizeof(double));
 		}
 	}
 
@@ -478,8 +478,8 @@ probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, vector lb, d
 
 /* setup and solve the original problem _orig_ with expected values for all random variables provided in _stoc_. If the problem is an mixed-integer program,
  *  then a relaxed problem is solved. The function returns a vector of mean value solutions, if there is an error it returns NULL.*/
-vector meanProblem(oneProblem *orig, stocType *stoc) {
-	vector	xk;
+vectorC meanProblem(oneProblem *orig, stocType *stoc) {
+	vectorC	xk;
 	double	obj = 0.0;
 	int 	n, status;
 
@@ -525,7 +525,7 @@ vector meanProblem(oneProblem *orig, stocType *stoc) {
 	}
 
 	/* obtain solution information and print */
-	if ( !(xk = (vector) arr_alloc(orig->mac+1, double)) )
+	if ( !(xk = (vectorC) arr_alloc(orig->mac+1, double)) )
 		errMsg("allocation", "meanProblem", "sol", 0);
 
 	/* print results */
@@ -538,29 +538,29 @@ vector meanProblem(oneProblem *orig, stocType *stoc) {
 	return xk;
 }//END meanProblem()
 
-vector calcLowerBound(oneProblem *orig, timeType *tim, stocType *stoc) {
+vectorC calcLowerBound(oneProblem *orig, timeType *tim, stocType *stoc) {
 	sparseVector	*bBar;
 	sparseMatrix	*Cbar;
-	vector		duals, vals, beta, lb;
+	vectorC		duals, vals, beta, lb;
 	intvec		indices;
 	double		alpha;
 	int 		status, stat1, t, col, row, m, n;
 	LPptr		lpClone;
 	BOOL		zeroLB;
 
-	if ( !(lb = (vector) arr_alloc(tim->numStages, double)) )
+	if ( !(lb = (vectorC) arr_alloc(tim->numStages, double)) )
 		errMsg("allocation", "getLowerBound", "lb", 0);
-	if ( !(duals = (vector) arr_alloc(orig->mar+1, double)) )
+	if ( !(duals = (vectorC) arr_alloc(orig->mar+1, double)) )
 		errMsg("allocation", "getLowerBound", "duals", 0);
 	if (!(indices = (intvec) arr_alloc(orig->mac, int)))
 		errMsg("allocation", "getLowerBound", "indices", 0);
-	if (!(vals = (vector) arr_alloc(orig->mac, double)))
+	if (!(vals = (vectorC) arr_alloc(orig->mac, double)))
 		errMsg("allocation", "getLowerBound", "vals", 0);
 	if (!(bBar = (sparseVector *) mem_malloc(sizeof(sparseVector))) )
 		errMsg("allocation", "getLowerBound", "bBar", 0);
 	if (!(bBar->col = (intvec) arr_alloc(orig->mar+1, int)) )
 		errMsg("allocation", "getLowerBound", "bBar->col", 0);
-	if (!(bBar->val = (vector) arr_alloc(orig->mar+1, double)) )
+	if (!(bBar->val = (vectorC) arr_alloc(orig->mar+1, double)) )
 		errMsg("allocation", "getLowerBound", "bBar->val", 0);
 	if (!(Cbar = (sparseMatrix *) mem_malloc(sizeof(sparseMatrix))) )
 		errMsg("allocation", "getLowerBound", "Cbar", 0);
@@ -568,9 +568,9 @@ vector calcLowerBound(oneProblem *orig, timeType *tim, stocType *stoc) {
 		errMsg("allocation", "getLowerBound", "Cbar->col", 0);
 	if (!(Cbar->row = (intvec) arr_alloc(orig->matsz+1, int)) )
 		errMsg("allocation", "getLowerBound", "Cbar->row", 0);
-	if (!(Cbar->val = (vector) arr_alloc(orig->matsz+1, double)) )
+	if (!(Cbar->val = (vectorC) arr_alloc(orig->matsz+1, double)) )
 		errMsg("allocation", "getLowerBound", "Cbar->val", 0);
-	if ( !(beta = (vector) arr_alloc(orig->mac+3, double)) )
+	if ( !(beta = (vectorC) arr_alloc(orig->mac+3, double)) )
 		errMsg("allocation", "getLowerBound", "beta", 0);
 
 	/* obtain dual solutions from the mean value solve */

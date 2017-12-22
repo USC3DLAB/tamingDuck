@@ -123,12 +123,12 @@ int addCut2Master(cellType *cell, oneCut *cut, int lenX, double lb) {
 	return cell->cuts->cnt++;
 }//END addCuts2Master()
 
-int constructQP(probType *prob, LPptr lp, vector incumbX) {
-	vector rhs;
+int constructQP(probType *prob, LPptr lp, vectorC incumbX) {
+	vectorC rhs;
 	intvec indices;
 	int cnt;
 
-	if ( !(rhs = (vector) arr_alloc(prob->num->cols, double)))
+	if ( !(rhs = (vectorC) arr_alloc(prob->num->cols, double)))
 		errMsg("allocation", "constructQp", "rhs", 0);
 	if ( (!(indices = (intvec) arr_alloc(prob->num->cols, int))) )
 		errMsg("allocation", "constructQP", "indices", 0);
@@ -205,7 +205,7 @@ int changeEtaCol(LPptr lp, int numRows, int numCols, int k, cutsType *cuts, doub
 
 int updateRHS(LPptr lp, cutsType *cuts, int numIter, double lb) {
 	int 	cnt;
-	vector	rhs;
+	vectorC	rhs;
 	intvec	indices;
 
 	if (!(rhs = arr_alloc(cuts->cnt, double)))
@@ -233,7 +233,7 @@ int updateRHS(LPptr lp, cutsType *cuts, int numIter, double lb) {
 /* Construct the Q diagonal matrix and copy it for quadratic problem. */
 int changeQPproximal(LPptr lp, int numCols, double sigma) {
 	int    n;
-	vector qsepvec;
+	vectorC qsepvec;
 
 	if (!(qsepvec = arr_alloc(numCols+1, double)))
 		errMsg("Allocation", "constructQP", "qsepvec",0);
@@ -255,10 +255,10 @@ int changeQPproximal(LPptr lp, int numCols, double sigma) {
 
 int changeQPrhs(probType *prob, cellType *cell) {
 	int 	cnt, status, offset;
-	vector 	rhs;
+	vectorC 	rhs;
 	intvec 	indices;
 
-	if (!(rhs =(vector) arr_alloc(cell->master->mar+cell->maxCuts+1, double)))
+	if (!(rhs =(vectorC) arr_alloc(cell->master->mar+cell->maxCuts+1, double)))
 		errMsg("Allocation", "changeRhs", "rhs",0);
 	if (!(indices =(intvec) arr_alloc(cell->master->mar+cell->maxCuts, int)))
 		errMsg("Allocation", "changeRhs", "indices",0);
@@ -303,9 +303,9 @@ int changeQPrhs(probType *prob, cellType *cell) {
 
 /* This function changes the (lower) bounds of the variables, while changing from x to d. The lower bounds of d varibles are -xbar
  * (incumbent solution). */
-int changeQPbds(LPptr lp, int numCols, vector bdl, vector bdu, vector xk) {
+int changeQPbds(LPptr lp, int numCols, vectorC bdl, vectorC bdu, vectorC xk) {
 	int 	status = 0, cnt;
-	vector	lbounds, ubounds;
+	vectorC	lbounds, ubounds;
 	intvec	lindices, uindices;
 	char 	*llu, *ulu;
 
@@ -357,7 +357,7 @@ int changeQPbds(LPptr lp, int numCols, vector bdl, vector bdu, vector xk) {
 
 /* This subroutine initializes the master problem by copying information from the decomposed prob[0](type: oneProblem) and adding a column for
  * theta for modified benders decomposition. */
-oneProblem *newMaster(probType *prob, vector xk) {
+oneProblem *newMaster(probType *prob, vectorC xk) {
 	oneProblem 	*master;
 	int         r, i, j, idx, cnt;
 	long        colOffset, rowOffset;
@@ -380,33 +380,33 @@ oneProblem *newMaster(probType *prob, vector xk) {
 	master->cstorsz 	= prob->sp->cstorsz + NAMESIZE;    	/* memory size for storing column names */
 
 	/* Allocate memory to the information whose type is string */
-	if (!(master->name = (string) arr_alloc(NAMESIZE, char)))
+	if (!(master->name = (stringC) arr_alloc(NAMESIZE, char)))
 		errMsg("Allocation", "new_master", "Fail to allocate memory to master->name",0);
-	if (!(master->senx = (string) arr_alloc(master->marsz,char)))
+	if (!(master->senx = (stringC) arr_alloc(master->marsz,char)))
 		errMsg("Allocation", "new_master", "Fail to allocate memory to master->senx",0);
-	if (!(master->ctype = (string) arr_alloc(master->macsz,char)))
+	if (!(master->ctype = (stringC) arr_alloc(master->macsz,char)))
 		errMsg("Allocation", "new_master", "Fail to allocate memory to master->ctype",0);
-	if (!(master->objname = (string) arr_alloc(NAMESIZE,char)))
+	if (!(master->objname = (stringC) arr_alloc(NAMESIZE,char)))
 		errMsg("Allocation", "new_master", "Fail to allocate memory to master->objname",0);
-	if (!(master->rname = (string *) arr_alloc(master->marsz,string)))
+	if (!(master->rname = (stringC *) arr_alloc(master->marsz,stringC)))
 		errMsg("Allocation", "new_master", "Fail to allocate memory to master->rname",0);
-	if (!(master->rstore = (string) arr_alloc(master->rstorsz, char)))
+	if (!(master->rstore = (stringC) arr_alloc(master->rstorsz, char)))
 		errMsg("Allocation", "new_master", "Fail to allocate memory to master->rstore",0);
-	if (!(master->cname = (string*) arr_alloc(master->macsz,string)))
+	if (!(master->cname = (stringC*) arr_alloc(master->macsz,stringC)))
 		errMsg("Allocation", "new_master", "Fail to allocate memory to master->cname",0);
-	if (!(master->cstore = (string) arr_alloc(master->cstorsz, char)))
+	if (!(master->cstore = (stringC) arr_alloc(master->cstorsz, char)))
 		errMsg("Allocation", "new_master", "Fail to allocate memory to master->cstore",0);
 
 	/* Allocate memory to the information whose type is vector */
-	if (!(master->objx = (vector) arr_alloc(master->macsz, double)))
+	if (!(master->objx = (vectorC) arr_alloc(master->macsz, double)))
 		errMsg("Allocation", "new_master", "Fail to allocate memory to master->objx",0);
-	if (!(master->rhsx = (vector) arr_alloc(master->marsz, double)))
+	if (!(master->rhsx = (vectorC) arr_alloc(master->marsz, double)))
 		errMsg("Allocation", "new_master", "Fail to allocate memory to master->rhsx",0);
-	if (!(master->matval = (vector) arr_alloc(master->matsz, double)))
+	if (!(master->matval = (vectorC) arr_alloc(master->matsz, double)))
 		errMsg("allocation", "new_master", "master->matval",0);
-	if (!(master->bdl = (vector) arr_alloc(master->macsz, double)))
+	if (!(master->bdl = (vectorC) arr_alloc(master->macsz, double)))
 		errMsg("allocation", "new_master", "master->bdl",0);
-	if (!(master->bdu = (vector) arr_alloc(master->macsz, double)))
+	if (!(master->bdu = (vectorC) arr_alloc(master->macsz, double)))
 		errMsg("allocation", "new_master", "master->bdu",0);
 
 	/* Allocate memory to the information whose type is intvec */

@@ -30,7 +30,7 @@ int generateOmegaIdx(stocType *stoc, long long *seed) {
 	return 0;
 }//END generateOmegaIdx()
 
-void generateOmega(stocType *stoc, vector observ, long long *seed) {
+void generateOmega(stocType *stoc, vectorC observ, long long *seed) {
 	int n, offset = 0;
 
 	for ( n = 0; n < stoc->numGroups; n++ ) {
@@ -63,7 +63,7 @@ void generateOmega(stocType *stoc, vector observ, long long *seed) {
 
 }//END generateOmega()
 
-void generateBlocks(stocType *stoc, vector observ, int groupID, long long *seed) {
+void generateBlocks(stocType *stoc, vectorC observ, int groupID, long long *seed) {
 	int 	n, m;
 	double 	val, cumm;
 
@@ -79,7 +79,7 @@ void generateBlocks(stocType *stoc, vector observ, int groupID, long long *seed)
 
 }//END generateBlocks()
 
-void generateIndep(stocType *stoc, vector observ, int groupID, long long *seed) {
+void generateIndep(stocType *stoc, vectorC observ, int groupID, long long *seed) {
 	double 	val, cumm;
 	int		n, m;
 
@@ -95,7 +95,7 @@ void generateIndep(stocType *stoc, vector observ, int groupID, long long *seed) 
 
 /* The following inverse normal variate generator was published by Micheal J. Wichura, University of Chicago in Applied Statistics, as Algorithm AS 241.  The C function normal() was converted from the
  * Fortran function PPND7 and produces normal random variates for the lower tail of a normal distribution accurate to approx. 7 significant figures. */
-int normal(vector mu, vector stdev, int numOmega, vector observ, long long *seed) {
+int normal(vectorC mu, vectorC stdev, int numOmega, vectorC observ, long long *seed) {
 	int i;
 	float zero, one, half, split1, split2, const1, const2, a0, a1, a2, a3, b1;
 	float b2, b3, c0, c1, c2, c3, d1, d2, e0, e1, e2, e3, f1, f2, p, q, r;
@@ -205,20 +205,20 @@ int randInteger(long long *SEED, int iMax) {
 /* This function uses a sampling technique to set up a sample average approximation problem. The sampling procedure is conducted according to the continuous distribution and parameters provided in
  * stocType. The function takes number of samples as an input from the user. The function outputs the simulated observations as a matrix with each row corresponding to a random variable, and column corresponds to
  * a simulated observation. */
-vector* setupSAA(stocType *stoc, long long *seed, int *numSamples) {
-	vector* simObs;
+vectorC* setupSAA(stocType *stoc, long long *seed, int *numSamples) {
+	vectorC* simObs;
 	int 	obs;
 
 	/* number of samples in SAA */
 	printf("Enter the number of samples used for setting up the SAA : ");
 	scanf("%d", numSamples);
 
-	if ( !(simObs = (vector *) arr_alloc((*numSamples), vector)) )
+	if ( !(simObs = (vectorC *) arr_alloc((*numSamples), vectorC)) )
 		errMsg("allocation", "setupSAA", "simObs", 0);
 
 	if ( !strcmp(stoc->type, "INDEP_NORMAL") ) {
 		for (obs = 0; obs < (*numSamples); obs++ ) {
-			if ( !(simObs[obs] = (vector) arr_alloc(stoc->numOmega, double)) )
+			if ( !(simObs[obs] = (vectorC) arr_alloc(stoc->numOmega, double)) )
 				errMsg("allocation", "setupSAA", "simObs[n]", 0);
 			normal(stoc->mean, stoc->vals[0], stoc->numOmega, simObs[obs], seed);
 		}

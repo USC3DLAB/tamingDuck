@@ -1,7 +1,7 @@
 /*
- * twoSD.c
+ * integrate.c
  *
- *  Created on: Jul 6, 2017
+ *  Created on: Dec 22, 2017
  *      Author: Harsha Gangammanavar
  * Institution: Southern Methodist University
  *  
@@ -9,21 +9,17 @@
  *
  */
 
+#include "twoSD.h"
 
-#include <twoSD.h>
-
+/* Global variables for SD */
 long long	MEM_USED = 0;	/* Amount of memory allocated each iteration */
 stringC   	outputDir;		/* output directory */
 configType	config;			/* algorithm tuning parameters */
 
-int main (int argc, char *argv[]) {
-	int 	status;
-	char 	inputDir[2*BLOCKSIZE], probName[NAMESIZE];
-	oneProblem *orig = NULL;
-	timeType *tim = NULL;
-	stocType *stoc = NULL;
+int integrateSD() {
+	int status;
+	stringC inputDir;
 
-	/* open solver environment */
 	openSolver();
 
 	/* read algorithm configuration files */
@@ -33,46 +29,17 @@ int main (int argc, char *argv[]) {
 		goto TERMINATE;
 	}
 
-	/* read problem information */
-	/* request for problem name to be solved, the path should be provided in the configuration file */
-	if ( argc < 2 )
-		parseCmdLine(probName);
-	else
-		strcpy(probName, argv[1]);
+	/* Synchronize the outputDir to twoSD. */
 
-	/* read problem SMPS input files */
-	status = readFiles(inputDir, probName, &orig, &tim, &stoc);
-	if ( status ) {
-		errMsg("read", "main", "failed to read problem files using SMPS reader", 0);
-		goto TERMINATE;
-	}
+	/* Translate the problem into data structures suitable for SD */
 
-	/* set up output directory: using the outputDir in config file and the input problem name */
-	createOutputDir(outputDir, "twoSD", probName);
+	/* Invoke the algorithm */
 
-	/* launch the algorithm */
-	status = algo(orig, tim, stoc, inputDir, probName);
-	if ( status ) {
-		errMsg("allocation", "main", "failed to solve the problem using SDDP", 0);
-		goto TERMINATE;
-	}
-
-	/* release structures and close solver environment */
 	TERMINATE:
-	freeOneProblem(orig);
-	freeTimeType(tim);
-	freeStocType(stoc);
 	closeSolver();
-
 	return 0;
-}//END main()
 
-void parseCmdLine(stringC probName) {
-
-	printf("Please enter the name of the problem: ");
-	scanf("%s", probName);
-
-}//END parseCmdLine
+}
 
 int readConfig(stringC inputDir) {
 	FILE 	*fptr;
@@ -85,8 +52,8 @@ int readConfig(stringC inputDir) {
 		return 1;
 	}
 
-	if ( !(outputDir = (stringC) mem_malloc(BLOCKSIZE*sizeof(char))) )
-		errMsg("allocation", "readConfig", "outputDir", 0);
+//	if ( !(outputDir = (string) mem_malloc(BLOCKSIZE*sizeof(char))) )
+//		errMsg("allocation", "readConfig", "outputDir", 0);
 
 	while ((status = (fscanf(fptr, "%s", line) != EOF))) {
 		if (!(strcmp(line, "INPUTDIR")))

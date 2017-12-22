@@ -19,7 +19,7 @@ extern configType config;
  * Note that the new column of delta is computed before a new row in lambda is calculated and before the new row in delta is completed,
  * so that the intersection of the new row and new column in delta is only computed once (they overlap at the bottom, right-hand corner). */
 int stochasticUpdates(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, lambdaType *lambda, sigmaType *sigma,
-                       deltaType *delta, omegaType *omega, BOOL newOmegaFlag, int omegaIdx, int maxIter, int iter, vector pi, double mubBar) {
+                       deltaType *delta, omegaType *omega, BOOL newOmegaFlag, int omegaIdx, int maxIter, int iter, vectorC pi, double mubBar) {
     int 	lambdaIdx, sigmaIdx;
     BOOL 	newLambdaFlag= FALSE, newSigmaFlag= FALSE;
 
@@ -48,12 +48,12 @@ int stochasticUpdates(numType *num, coordType *coord, sparseVector *bBar, sparse
  * are calculated for all values of lambda_pi, for the new C(omega) and b(omega).  Room in the array has already been allocated, so the function
  * only fills it, in the column specified by _obs_. It is assumed that this observation is distinct from all previous ones, and thus a new column
  * must be calculated. */
-void calcDeltaCol(numType *num, coordType *coord, lambdaType *lambda, vector observ, int omegaIdx, deltaType *delta) {
+void calcDeltaCol(numType *num, coordType *coord, lambdaType *lambda, vectorC observ, int omegaIdx, deltaType *delta) {
     int piIdx;
     sparseVector bomega;
     sparseMatrix Comega;
-    vector lambPi;
-    vector piCrossC;
+    vectorC lambPi;
+    vectorC piCrossC;
 
     bomega.cnt = num->rvbOmCnt;	bomega.col = coord->omegaRow; bomega.val= observ;
     Comega.cnt = num->rvCOmCnt; Comega.col = coord->omegaCol + num->rvbOmCnt;
@@ -85,9 +85,9 @@ void calcDeltaCol(numType *num, coordType *coord, lambdaType *lambda, vector obs
  * This vector is then compared with all previous lambda_pi vectors, searching for a duplication. If a duplicate is found, the vector is not added
  * to the structure, and the function returns the index of the duplicate vector. Otherwise, it adds the vector to the end of the structure,
  *and returns an index to the last element in lambda. */
-int calcLambda(numType *num, coordType *coord, vector Pi, lambdaType *lambda, BOOL *newLambdaFlag) {
+int calcLambda(numType *num, coordType *coord, vectorC Pi, lambdaType *lambda, BOOL *newLambdaFlag) {
     int 	pi_idx;
-    vector	lambda_pi;
+    vectorC	lambda_pi;
 
     /* Pull out only those elements in dual vector which have rv's */
     lambda_pi = reduceVector(Pi, coord->rvRows, num->rvRowCnt);
@@ -107,9 +107,9 @@ int calcLambda(numType *num, coordType *coord, vector Pi, lambdaType *lambda, BO
     return lambda->cnt++;
 }//END calcLambda
 
-int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, vector pi, double mubBar,
+int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, vectorC pi, double mubBar,
               int idxLambda, BOOL newLambdaFlag, int iter, sigmaType *sigma, BOOL *newSigmaFlag) {
-    vector	piCBar, temp;
+    vectorC	piCBar, temp;
     double 	pibBar;
     int 	cnt;
 
@@ -149,7 +149,7 @@ int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *
 int calcDeltaRow(int maxIter, numType *num, coordType *coord, omegaType *omega, lambdaType *lambda, int lambdaIdx, deltaType *delta) {
     sparseVector bomega;
     sparseMatrix Comega;
-    vector 	lamb_pi, pixC;
+    vectorC 	lamb_pi, pixC;
     int		obs;
 
     bomega.cnt = num->rvbOmCnt;	bomega.col = coord->omegaRow;
@@ -187,7 +187,7 @@ int calcDeltaRow(int maxIter, numType *num, coordType *coord, omegaType *omega, 
  * a duplication.  If it finds a duplicate, it returns the index of that duplicate; otherwise, it adds the vector to the list of distinct realizations
  * and returns the index of that realization. Note that the simulated observation does not have contain one-norm, while the values stored in
  * omegaType do */
-int calcOmega(vector observ, int begin, int end, omegaType *omega, BOOL *newOmegaFlag) {
+int calcOmega(vectorC observ, int begin, int end, omegaType *omega, BOOL *newOmegaFlag) {
     int cnt;
 
     /* Compare vector with all the previous observations */
@@ -213,15 +213,15 @@ int calcOmega(vector observ, int begin, int end, omegaType *omega, BOOL *newOmeg
 
 /* This function compute the reduced cost of every second stage variables. They will be used to calculate the \mu x b and then added to the \pi x b. */
 int computeMU(LPptr lp, int numCols, double *mubBar) {
-    vector	dj, u;
+    vectorC	dj, u;
     intvec	cstat;
     int		n;
 
     (*mubBar) = 0.0;
 
-    if ( !(dj = (vector) arr_alloc(numCols+1, double)))
+    if ( !(dj = (vectorC) arr_alloc(numCols+1, double)))
         errMsg("allocation", "computeMu", "dual slacks", 0);
-    if ( !(u = (vector) arr_alloc(numCols+1, double)))
+    if ( !(u = (vectorC) arr_alloc(numCols+1, double)))
         errMsg("allocation", "computeMu", "TDA solutions", 0);
 
     if ( getPrimal(lp, u, numCols) ) {
@@ -269,7 +269,7 @@ lambdaType *newLambda(int num_iter, int numLambda, int numRVrows) {
     if (!(lambda = (lambdaType *) mem_malloc (sizeof(lambdaType))))
         errMsg("allocation", "new_lambda", "lambda",0);
 
-    if (!(lambda->vals = arr_alloc(num_iter, vector)))
+    if (!(lambda->vals = arr_alloc(num_iter, vectorC)))
         errMsg("allocation", "new_lambda", "lambda->val",0);
 
     for (cnt = 0; cnt < numLambda; cnt++)
@@ -333,7 +333,7 @@ omegaType *newOmega(int numIter) {
         errMsg("allocation","newOmega", "omega", 0);
     if ( !(omega->weight = (intvec) arr_alloc(numIter, int)) )
         errMsg("allocation", "newOmega", "omega->weight", 0);
-    if ( !(omega->vals = (vector *) arr_alloc(numIter, vector)) )
+    if ( !(omega->vals = (vectorC *) arr_alloc(numIter, vectorC)) )
         errMsg("allocation", "newOmega", "omega->vals", 0);
     omega->cnt = 0;
 

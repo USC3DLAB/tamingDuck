@@ -96,7 +96,7 @@ int replaceIncumbent(probType *prob, cellType *cell, double candidEst) {
 }//END replaceIncumbent()
 
 /* This function loops through a set of cuts and find the highest cut height at the specified position x */
-double maxCutHeight(cutsType *cuts, int currIter, vector xk, int betaLen, double lb) {
+double maxCutHeight(cutsType *cuts, int currIter, vectorC xk, int betaLen, double lb) {
 	double Sm = -INF, ht = 0.0;
 	int cnt;
 
@@ -112,7 +112,7 @@ double maxCutHeight(cutsType *cuts, int currIter, vector xk, int betaLen, double
 
 /* This function calculates and returns the height of a given cut at a given X.  It includes the k/(k-1) update, but does not include
  * the coefficients due to the cell. */
-double cutHeight(oneCut *cut, int currIter, vector xk, int betaLen, double lb) {
+double cutHeight(oneCut *cut, int currIter, vectorC xk, int betaLen, double lb) {
 	double height;
 	double t_over_k = ((double) cut->cutObs / (double) currIter);
 

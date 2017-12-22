@@ -25,16 +25,16 @@ extern runType runParam;
  */
 int setup_DUCDED(PowSys &powSys, StocProcess &stocProc) {
 	int h, t, n;
-	
+
 	/* time visualization */
 	time_t rawTime;
 	struct tm * timeInfo;
-	
+
 	time ( &rawTime );
 	timeInfo = localtime( &rawTime );
-	
+
 	string timeStamp = getCurrentDateTime();
-	
+
 	/* initializations */
 	// TODO: Move this initialization to a better place.
 	vector<string> detElems (1);
