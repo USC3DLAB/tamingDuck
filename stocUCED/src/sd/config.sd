@@ -1,0 +1,74 @@
+// absolute path to input directory
+INPUTDIR	../spInput/
+
+// absolute path to output directory
+OUTPUTDIR	../../spOutput/
+
+// Run seed
+RUN_SEED	3554548844580680
+
+// Tolerance level used to differentiate floating point numbers */
+TOLERANCE    0.000001
+
+// Minimum iterations
+MIN_ITER   1
+
+// Maximum number of iterations
+MAX_ITER   5000
+
+// 0 lp, 1 milp, 5 Qp, 7 miQp
+MASTERTYPE 5
+
+// Multiplier for the number of cuts; with QP, SD sets this to 1
+CUT_MULT  1
+
+// Number of iterations after which incumbent cut is reevaluated.
+TAU 2
+
+// The Minimum value of the cell->quad_scalar. zl
+MIN_QUAD_SCALAR 0.001
+
+// The Maximum value of the cell->quad_scalar. zl
+MAX_QUAD_SCALAR 10000.0
+
+// Amount of improvement which must be observed in order to update incumbent X.
+R1 0.2
+
+// For updating the scaling factor.
+R2 0.95
+
+// For updating the scaling factor.
+R3 2
+
+// Number of iterations before checking new pis impact
+PI_EVAL_START 1
+
+// Number of iterations between evaluation of the impact of new dual vertex
+PI_CYCLE 1
+
+// Indicate whether to employ (by setting equal to 1) evaluation of the eventual solution
+EVAL_FLAG 1
+
+// Number of resampling to take when checking optimality.
+BOOTSTRAP_REP 50 
+
+// Random number seed for resampling omegas during evaluation
+EVAL_SEED	1354874229869110
+
+// Solution tolerance for deciding the usage of mean solution.
+EVAL_MIN_ITER 250
+
+// Obj. eval. is accurate to within this much, w/95% confidence
+EVAL_ERROR 0.01
+
+// Ratio used in pre_test for optimality: (Sm - Lm) / Fk  < PRE_EPSILON.
+PRE_EPSILON 0.01 
+
+// ** STOPPING RULE TOLERANCE
+// Ratio used in test for optimality: (Sm - Lm) / Fk  < EPSILON.
+// ** SAMPLE SIZE OF THE IMPACT RATIO OF NEW SECOND STAGE DUAL INFORMATION
+// The variance of the ratio indicates the stability of the dual vertex set
+// EPSILON:
+// SCAN LENGTH: Powers of 2
+EPSILON 0.001
+SCAN_LEN 256
