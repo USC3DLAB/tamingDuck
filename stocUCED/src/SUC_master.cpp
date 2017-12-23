@@ -53,7 +53,7 @@ void SUCmaster::LazySepCallbackI::main()
 		IloExpr pi_Tx (me.env);
 		for (int g=0; g<me.numGen; g++) {
 			for (int t=0; t<me.numPeriods; t++) {
-				if ( fabs(cutCoefs->pi_T[g][t] > 1e-10) ) {
+				if ( fabs(cutCoefs->pi_T[g][t]) > 1e-10 ) {
 					pi_Tx += cutCoefs->pi_T[g][t] * me.x[g][t];
 				}
 			}
@@ -194,8 +194,6 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 		s[g] = IloNumVarArray(env, numPeriods, 0, 1, ILOBOOL);
 		x[g] = IloNumVarArray(env, numPeriods, 0, 1, ILOBOOL);
 		z[g] = IloNumVarArray(env, numPeriods, 0, 1, ILOBOOL);
-		
-		char buffer[30];
 		
 		sprintf(buffer, "s_%d", g);
 		s[g].setNames(buffer);

@@ -57,6 +57,7 @@ void SUCsubprob::preprocessing ()
 	/* initialize containers */
 	cutCoefs.initialize(numGen, numPeriods);
 	minGenerationReq.resize(numGen);					// minimum production requirements
+	maxCapacity.resize(numGen);							// maximum generator capacities
 	if (modelType == System) { sysLoad.resize(numPeriods); }					// aggregated system load
 	else					 { resize_matrix(busLoad, numBus, numPeriods); }	// individual bus loads
 	
@@ -69,10 +70,8 @@ void SUCsubprob::preprocessing ()
 			minGenerationReq[g] = min(genPtr->rampUpLim * periodLength, genPtr->rampDownLim * periodLength);
 		}
 	}
-	
+
 	/* Max Generator Capacity */
-	auto dataPtr = (probType == DayAhead) ? &(inst->stocObserv[0]) : &(inst->stocObserv[1]);
-	
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		maxCapacity[g] = genPtr->maxCapacity;
@@ -91,13 +90,12 @@ void SUCsubprob::preprocessing ()
 	}
 	
 	/* Load */
-	dataPtr = (probType == DayAhead) ? &(inst->detObserv[0]) : &(inst->detObserv[1]);
+	auto dataPtr = (probType == DayAhead) ? &(inst->detObserv[0]) : &(inst->detObserv[1]);
 	if (modelType == System) {
 		fill( sysLoad.begin(), sysLoad.end(), 0.0 );		// initialize to 0
 		for (int t=0; t<numPeriods; t++) {
 			for (int r=0; r<dataPtr->numVars; r++) {
-				//TODO: rep
-				//sysLoad[t] += dataPtr->vals[rep][t*numBaseTimePerPeriod][r];
+				sysLoad[t] += dataPtr->vals[0][t*numBaseTimePerPeriod][r];
 			}
 		}
 	}
@@ -107,11 +105,17 @@ void SUCsubprob::preprocessing ()
 			int r = dataPtr->mapVarNamesToIndex[ num2str(busPtr->regionId) ];
 			
 			for (int t=0; t<numPeriods; t++) {
-				//TODO: rep
-				//busLoad[b][t] = dataPtr->vals[rep][t*numBaseTimePerPeriod][r] * busPtr->loadPercentage;
+				busLoad[b][t] = dataPtr->vals[0][t*numBaseTimePerPeriod][r] * busPtr->loadPercentage;
 			}
 		}
 	}
+	
+	/* Uncertainty related */
+	scenSet = (probType == DayAhead) ? &(inst->stocObserv[0]) : &(inst->stocObserv[1]);
+	numScen = (int)scenSet->vals.size();
+	
+	sceProb.resize(numScen);
+	fill(sceProb.begin(), sceProb.end(), 1.0/(double)numScen);		// equal probability scenarios
 }
 
 void SUCsubprob::formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin)
@@ -121,8 +125,6 @@ void SUCsubprob::formulate (instance &inst, ProblemType probType, ModelType mode
 	this->beginMin	= beginMin;
 	this->probType	= probType;
 	this->modelType = modelType;
-	//TODO:
-	//this->rep		= rep;
 	
 	preprocessing();
 		
@@ -137,7 +139,7 @@ void SUCsubprob::formulate (instance &inst, ProblemType probType, ModelType mode
 void SUCsubprob::formulate_production()
 {
 	/** Decision Variables **/
-	p	  = IloArray< IloNumVarArray > (env, numGen);	// production amounts
+	p = IloArray< IloNumVarArray > (env, numGen);	// production amounts
 	for (int g=0; g<numGen; g++) {
 		p[g]	 = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
 		
@@ -220,18 +222,14 @@ void SUCsubprob::formulate_nodebased_system()
 	/** Constraints **/
 	// Flow upper and lower bounds
 	for (int l=0; l<numLine; l++) {			// upper bound
-		Line *linePtr = &(inst->powSys->lines[l]);
-		
 		for (int t=0; t<numPeriods; t++) {
-			IloRange con(env, -IloInfinity, F[l][t], linePtr->maxFlowLim);
+			IloRange con(env, -IloInfinity, F[l][t], inst->powSys->lines[l].maxFlowLim);
 			cons.add(con);
 		}
 	}
 	for (int l=0; l<numLine; l++) {			// lower bound
-		Line *linePtr = &(inst->powSys->lines[l]);
-		
 		for (int t=0; t<numPeriods; t++) {
-			IloRange con(env, linePtr->minFlowLim, F[l][t]);
+			IloRange con(env, inst->powSys->lines[l].minFlowLim, F[l][t]);
 			cons.add(con);
 		}
 	}
@@ -380,16 +378,16 @@ void SUCsubprob::setMasterSoln ( vector< vector<bool> > & gen_stat ) {
     
     // rest of the constraints are not a function of x
 }
-/*
+
 bool SUCsubprob::solve() {
-	
-	reset_cut_coefs();
+
+	cutCoefs.reset();
 	recourse_obj_val = 0;
 	
 	bool status = true;
 	
 	// process second-stage scenario subproblems
-	for (int s=0; s<inst->S; s++)
+	for (int s=0; s<numScen; s++)
 	{
 		setup_subproblem (s);			// prepare the subproblem
 		
@@ -406,7 +404,7 @@ bool SUCsubprob::solve() {
 			return false;
 		}
 		
-		recourse_obj_val += inst->sceProb[s] * cplex.getObjValue();	// get the obj value
+		recourse_obj_val += sceProb[s] * cplex.getObjValue();	// get the obj value
 		
 		update_optimality_cut_coefs(s);	// update benders cut coefs
 	}
@@ -421,27 +419,27 @@ void SUCsubprob::setup_subproblem(int &s)
 	
 	// capacity constraints
 	for (int g=0; g<numGen; g++) {
+		Generator *genPtr = &(inst->powSys->generators[g]);
 		
-		map<int, vector<vector<double> > >::iterator it = inst->rndSupply.find(g);
-		
-		if ( it != inst->rndSupply.end() ) {
-			for (int t=0; t<inst->T; t++, c++) {	// Note: c is iterated in the secondary-loops
+		auto it = scenSet->mapVarNamesToIndex.find(genPtr->name);
+		if ( it != scenSet->mapVarNamesToIndex.end() ) {		// if random supply generator
+			
+			for (int t=0; t<numPeriods; t++, c++) {				// Note: c is iterated in the secondary-loops
 				if ((*gen_stat)[g][t]) {
-                    if ( inst->must_run[g] ) {
-                        cons[c].setBounds( inst->rndSupply[g][s][t], inst->rndSupply[g][s][t]);
-                    } else {
-                        cons[c].setUB ( inst->rndSupply[g][s][t] );
-                    }
+					if ( genPtr->isMustRun ) {
+						cons[c].setBounds( scenSet->vals[s][t*numBaseTimePerPeriod][it->second], scenSet->vals[s][t*numBaseTimePerPeriod][it->second]);
+					}
+					else {
+						cons[c].setUB( scenSet->vals[s][t*numBaseTimePerPeriod][it->second] );
+					}
 				}
 			}
+		} else {
+			c += numPeriods;
 		}
-		else {
-			c += inst->T;
-		}
-	}    
+	}
 }
-*/
-/*
+
 void SUCsubprob::update_optimality_cut_coefs(int &s)
 {
 	// get dual multipliers
@@ -452,69 +450,74 @@ void SUCsubprob::update_optimality_cut_coefs(int &s)
 	
 	// capacity constraints
 	for (int g=0; g<numGen; g++) {
-		map<int, vector<vector<double> > >::iterator it = inst->rndSupply.find(g);
+		Generator *genPtr = &(inst->powSys->generators[g]);
 		
-		if ( it != inst->rndSupply.end() ) {
-			for (int t=0; t<inst->T; t++, c++) {	// Note: c is iterated in the secondary-loops
-				pi_T[g][t] += inst->sceProb[s] * duals[c] * ( inst->rndSupply[g][s][t] );
+		auto it = scenSet->mapVarNamesToIndex.find(genPtr->name);
+		if ( it != scenSet->mapVarNamesToIndex.end() ) {		// if random supply generator
+			for (int t=0; t<numPeriods; t++, c++) {				// Note: c is iterated in the secondary-loops
+				cutCoefs.pi_T[g][t] += sceProb[s] * duals[c] * ( scenSet->vals[s][t*numBaseTimePerPeriod][it->second] );
 			}
 		}
 		else {
-			for (int t=0; t<inst->T; t++, c++) {	// Note: c is iterated in the secondary-loops
-				pi_T[g][t] += inst->sceProb[s] * duals[c] * ( inst->capacity[g] );
+			for (int t=0; t<numPeriods; t++, c++) {				// Note: c is iterated in the secondary-loops
+				cutCoefs.pi_T[g][t] += sceProb[s] * duals[c] * ( genPtr->maxCapacity );
 			}
 		}
 	}
 	
 	// production amounts
-	for (int g=0; g<inst->G; g++) {
-		for (int t=0; t<inst->T; t++, c++) {
-			pi_T[g][t] += inst->sceProb[s] * duals[c] * inst->min_prod_lim[g];
+	for (int g=0; g<numGen; g++) {
+		for (int t=0; t<numPeriods; t++, c++) {
+			cutCoefs.pi_T[g][t] += sceProb[s] * duals[c] * minGenerationReq[g];
 		}
 	}
 	
 	// ramp up constraints
-	for (int g=0; g<inst->G; g++) {
-		for (int t=1; t<inst->T; t++, c++) {
-			pi_b += inst->sceProb[s] * duals[c] * inst->ramp_u_lim[g];
+	for (int g=0; g<numGen; g++) {
+		Generator *genPtr = &(inst->powSys->generators[g]);
+		
+		for (int t=1; t<numPeriods; t++, c++) {
+			cutCoefs.pi_b += sceProb[s] * duals[c] * genPtr->rampUpLim * periodLength;
 		}
 	}
 	
 	// ramp down constraints
-	for (int g=0; g<inst->G; g++) {
-		for (int t=1; t<inst->T; t++, c++) {
-			pi_b += inst->sceProb[s] * duals[c] * inst->ramp_d_lim[g];
+	for (int g=0; g<numGen; g++) {
+		Generator *genPtr = &(inst->powSys->generators[g]);
+		
+		for (int t=1; t<numPeriods; t++, c++) {
+			cutCoefs.pi_b += sceProb[s] * duals[c] * genPtr->rampDownLim * periodLength;
 		}
 	}
 	
 	// model-specific constraints
-	if (model_id == 0)
-	{
+	if (modelType == System) {
 		// aggregated demand constraints
-		for (int t=0; t<inst->T; t++, c++) {
-			pi_b += inst->sceProb[s] * duals[c] * inst->aggDemand[t];
+		for (int t=0; t<numPeriods; t++, c++) {
+			cutCoefs.pi_b += sceProb[s] * duals[c] * sysLoad[t];
 		}
 	}
-	else if (model_id == 1)
-	{
+	else {
 		// Flow upper bounds
-		for (int l=0; l<inst->L; l++) {
-			for (int t=0; t<inst->T; t++, c++) {
-				pi_b += inst->sceProb[s] * duals[c] * inst->max_arc_flow[l];
+		for (int l=0; l<numLine; l++) {
+			for (int t=0; t<numPeriods; t++, c++) {
+				cutCoefs.pi_b += sceProb[s] * duals[c] * inst->powSys->lines[l].maxFlowLim;
 			}
 		}
 
 		// Flow lower bounds
-		for (int l=0; l<inst->L; l++) {
-			for (int t=0; t<inst->T; t++, c++) {
-				pi_b += inst->sceProb[s] * duals[c] * inst->min_arc_flow[l];
+		for (int l=0; l<numLine; l++) {
+			for (int t=0; t<numPeriods; t++, c++) {
+				cutCoefs.pi_b += sceProb[s] * duals[c] * inst->powSys->lines[l].minFlowLim;
 			}
 		}
 		
 		// Phase-angle upper bounds
-		for (int b=0; b<inst->B; b++) {
-			for (int t=0; t<inst->T; t++, c++) {
-				pi_b += inst->sceProb[s] * duals[c] * (2*inst->pi);
+		for (int b=0; b<numBus; b++) {
+			Bus *busPtr = &(inst->powSys->buses[b]);
+			
+			for (int t=0; t<numPeriods; t++, c++) {
+				cutCoefs.pi_b += sceProb[s] * duals[c] * ( busPtr->maxPhaseAngle - busPtr->minPhaseAngle );
 			}
 		}
 
@@ -523,28 +526,22 @@ void SUCsubprob::update_optimality_cut_coefs(int &s)
 		// - important: these constraints are not added to cons array
 
 		// Flow balance
-		for (int b=0; b<inst->B; b++) {
-			for (int t=0; t<inst->T; t++, c++) {
-				pi_b += inst->sceProb[s] * duals[c] * inst->demand[b][t];
+		for (int b=0; b<numBus; b++) {
+			for (int t=0; t<numPeriods; t++, c++) {
+				cutCoefs.pi_b += sceProb[s] * duals[c] * busLoad[b][t];
 			}
 		}
-
-	}
-	else {
-		cout << "!! Error: Unknown model id" << endl;
 	}
 }
- */
 
 double SUCsubprob::getRecourseObjValue() {
 	return recourse_obj_val;
 }
 
-/*
 void SUCsubprob::get_feasibility_cut_coefs(int &s)
 {
 	// reset earlier (optimality-)cut coefficient entries
-	reset_cut_coefs();
+	cutCoefs.reset();
 	
 	// get the extreme ray (based on the algorithm used to solve the subproblem)
 	if ( cplex.getParam(IloCplex::RootAlg) == IloCplex::Dual ) {
@@ -573,69 +570,74 @@ void SUCsubprob::get_feasibility_cut_coefs(int &s)
 	
 	// capacity constraints
 	for (int g=0; g<numGen; g++) {
-		map<int, vector<vector<double> > >::iterator it = inst->rndSupply.find(g);
+		Generator *genPtr = &(inst->powSys->generators[g]);
 		
-		if ( it != inst->rndSupply.end() ) {
-			for (int t=0; t<inst->T; t++, c++) {	// Note: c is iterated in the secondary-loops
-				pi_T[g][t] += farkasMap[ cons[c].getId() ] * ( inst->rndSupply[g][s][t] );
+		auto it = scenSet->mapVarNamesToIndex.find(genPtr->name);
+		if ( it != scenSet->mapVarNamesToIndex.end() ) {		// if random supply generator
+			for (int t=0; t<numPeriods; t++, c++) {				// Note: c is iterated in the secondary-loops
+				cutCoefs.pi_T[g][t] += farkasMap[ cons[c].getId() ] * ( scenSet->vals[s][t*numBaseTimePerPeriod][it->second] );
 			}
 		}
 		else {
-			for (int t=0; t<inst->T; t++, c++) {	// Note: c is iterated in the secondary-loops
-				pi_T[g][t] += farkasMap[ cons[c].getId() ] * ( inst->capacity[g] );
+			for (int t=0; t<numPeriods; t++, c++) {				// Note: c is iterated in the secondary-loops
+				cutCoefs.pi_T[g][t] += farkasMap[ cons[c].getId() ] * ( genPtr->maxCapacity );
 			}
 		}
 	}
 	
 	// production amounts
-	for (int g=0; g<inst->G; g++) {
-		for (int t=0; t<inst->T; t++, c++) {
-			pi_T[g][t] += farkasMap[ cons[c].getId() ] * inst->min_prod_lim[g];
+	for (int g=0; g<numGen; g++) {
+		for (int t=0; t<numPeriods; t++, c++) {
+			cutCoefs.pi_T[g][t] += farkasMap[ cons[c].getId() ] * minGenerationReq[g];
 		}
 	}
 	
 	// ramp up constraints
-	for (int g=0; g<inst->G; g++) {
-		for (int t=1; t<inst->T; t++, c++) {
-			pi_b += farkasMap[ cons[c].getId() ] * inst->ramp_u_lim[g];
+	for (int g=0; g<numGen; g++) {
+		Generator *genPtr = &(inst->powSys->generators[g]);
+		
+		for (int t=1; t<numPeriods; t++, c++) {
+			cutCoefs.pi_b += farkasMap[ cons[c].getId() ] * genPtr->rampUpLim * periodLength;
 		}
 	}
 	
 	// ramp down constraints
-	for (int g=0; g<inst->G; g++) {
-		for (int t=1; t<inst->T; t++, c++) {
-			pi_b += farkasMap[ cons[c].getId() ] * inst->ramp_d_lim[g];
+	for (int g=0; g<numGen; g++) {
+		Generator *genPtr = &(inst->powSys->generators[g]);
+		
+		for (int t=1; t<numPeriods; t++, c++) {
+			cutCoefs.pi_b += farkasMap[ cons[c].getId() ] * genPtr->rampDownLim * periodLength;
 		}
 	}
 	
 	// model-specific constraints
-	if (model_id == 0)
-	{
+	if (modelType == System) {
 		// aggregated demand constraints
-		for (int t=0; t<inst->T; t++, c++) {
-			pi_b += farkasMap[ cons[c].getId() ] * inst->aggDemand[t];
+		for (int t=0; t<numPeriods; t++, c++) {
+			cutCoefs.pi_b += farkasMap[ cons[c].getId() ] * sysLoad[t];
 		}
 	}
-	else if (model_id == 1)
-	{
+	else {
 		// Flow upper bounds
-		for (int l=0; l<inst->L; l++) {
-			for (int t=0; t<inst->T; t++, c++) {
-				pi_b += farkasMap[ cons[c].getId() ] * inst->max_arc_flow[l];
+		for (int l=0; l<numLine; l++) {
+			for (int t=0; t<numPeriods; t++, c++) {
+				cutCoefs.pi_b += farkasMap[ cons[c].getId() ] * inst->powSys->lines[l].maxFlowLim;
 			}
 		}
 		
 		// Flow lower bounds
-		for (int l=0; l<inst->L; l++) {
-			for (int t=0; t<inst->T; t++, c++) {
-				pi_b += farkasMap[ cons[c].getId() ] * inst->min_arc_flow[l];
+		for (int l=0; l<numLine; l++) {
+			for (int t=0; t<numPeriods; t++, c++) {
+				cutCoefs.pi_b += farkasMap[ cons[c].getId() ] * inst->powSys->lines[l].minFlowLim;
 			}
 		}
 		
 		// Phase-angle upper bounds
-		for (int b=0; b<inst->B; b++) {
-			for (int t=0; t<inst->T; t++, c++) {
-				pi_b += farkasMap[ cons[c].getId() ] * (2*inst->pi);
+		for (int b=0; b<numBus; b++) {
+			Bus *busPtr = &(inst->powSys->buses[b]);
+			
+			for (int t=0; t<numPeriods; t++, c++) {
+				cutCoefs.pi_b += farkasMap[ cons[c].getId() ] * ( busPtr->maxPhaseAngle - busPtr->minPhaseAngle );
 			}
 		}
 		
@@ -644,18 +646,14 @@ void SUCsubprob::get_feasibility_cut_coefs(int &s)
 		// - important: these constraints are not added to cons array
 		
 		// Flow balance
-		for (int b=0; b<inst->B; b++) {
-			for (int t=0; t<inst->T; t++, c++) {
-				pi_b += farkasMap[ cons[c].getId() ] * inst->demand[b][t];
+		for (int b=0; b<numBus; b++) {
+			for (int t=0; t<numPeriods; t++, c++) {
+				cutCoefs.pi_b += farkasMap[ cons[c].getId() ] * busLoad[b][t];
 			}
 		}
-		
-	}
-	else {
-		cout << "!! Error: Unknown model id" << endl;
 	}
 }
-*/
+
 /*
 double SUCsubprob::computeLowerBound ()
 {

@@ -14,7 +14,7 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, vector<string> stoc
 	this->stocElems = stocElems;
 
 	// TODO: Move this initialization to a better place.
-	// SMH: How about the constructor? or just hardcode it in the header file?
+	// SMH: How about the constructor? or just hardcode it in the header file? Seems like the 3-layer framework quite hardcoded anyways. 
 	this->hierarchy = {"DA", "ST", "RT"};
 
 	/* Allocate memory for solution matrices */
