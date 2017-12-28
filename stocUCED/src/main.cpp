@@ -17,6 +17,10 @@
 #include <sstream>
 #include "SUC_master.hpp"
 
+extern "C" {
+#include "./sd/twoSD.c"
+}
+
 //#include "master.hpp"
 
 runType runParam;
@@ -27,6 +31,10 @@ void parseCmdLine(int argc, const char *argv[], string &inputDir, string &sysNam
 int setup_DUCDED(PowSys &powSys, StocProcess &stocProc);
 
 int main(int argc, const char * argv[]) {
+	
+	// EXECUTES SD
+	execute(argc, argv);
+	
 	string inputDir, sysName, setting;
 
 	/* Request for input if the default is missing */

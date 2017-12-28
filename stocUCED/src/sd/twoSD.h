@@ -211,6 +211,7 @@ typedef struct {
 /* twoSD.c */
 void parseCmdLine(stringC probName);
 int readConfig(stringC inputDir);
+int execute (int argc, const char *argv[]);
 
 /* algo.c */
 int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC inputDir, stringC probName);

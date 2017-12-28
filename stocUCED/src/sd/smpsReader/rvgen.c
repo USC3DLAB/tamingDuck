@@ -5,8 +5,8 @@
  *      Author: Harsha Gangammanavar
  */
 
-#include <utils.h>
-#include <smps.h>
+#include "utils.h"
+#include "smps.h"
 
 /* Currently works only for BLOCKS-DISCRETE. This subroutine generates the index of block according to the distribution provided in the stoch file. */
 int generateOmegaIdx(stocType *stoc, long long *seed) {

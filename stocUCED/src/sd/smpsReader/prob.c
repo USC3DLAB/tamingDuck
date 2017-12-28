@@ -5,10 +5,10 @@
  *      Author: Harsha Gangammanavar
  */
 
-#include <utils.h>
-#include <solver.h>
-#include <smps.h>
-#include <prob.h>
+#include "utils.h"
+#include "solver.h"
+#include "smps.h"
+#include "prob.h"
 
 /* Decomposes the problem _orig_ into subproblems as well as decomposes the stochastic information _stoc_ into stage stochastic information. The decomposition
  * is carried out using information specified in _tim_. The function also stores stage lower bound information provided in _Lb_. It returns an array of
