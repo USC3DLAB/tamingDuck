@@ -155,9 +155,13 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc) {
 				/* Economic dispatch */
 				for ( n = 0; n < runParam.ED_numSolves; n++ ) {
 					printf("\t\tEconomic Dispatch (%02d:%02d): ", timeInfo->tm_hour, timeInfo->tm_min);
+
+					/* Setup the ED model in cplex.concert */
 					EDmodel DED(inst, beginPeriod, rep);
 					DED.formulate(inst, beginPeriod);
-					integrateSD(DED);
+
+					/* Translate the data structures to suit those used in 2-SD */
+					integrateSD(DED, "rted", inst.stocObserv[2], beginPeriod);
 
 					cout << "Success." << endl;
 

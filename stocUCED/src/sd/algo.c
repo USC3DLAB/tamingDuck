@@ -14,7 +14,7 @@
 extern stringC outputDir;
 extern configType config;
 
-int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC inputDir, stringC probName) {
+int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC probName) {
 	vectorC	 xk = NULL, lb = NULL;
 	probType **prob = NULL;
 	cellType *cell = NULL;
@@ -28,7 +28,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC inputDir, stri
 
 	tic = clock();
 	/* Use two-stage algorithm to solve the problem */
-	if ( solveCell(stoc, prob, cell, inputDir, probName) ) {
+	if ( solveCell(stoc, prob, cell, probName) ) {
 		errMsg("algorithm", "algo", "failed to solve the cells using MASP algorithm", 0);
 		goto TERMINATE;
 	}
@@ -61,7 +61,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC inputDir, stri
 	return 1;
 }//END algo()
 
-int solveCell(stocType *stoc, probType **prob, cellType *cell, stringC inputDir, stringC probName) {
+int solveCell(stocType *stoc, probType **prob, cellType *cell, stringC probName) {
 	vectorC 	observ;
 	int		m, omegaIdx, candidCut;
 	BOOL 	newOmegaFlag;

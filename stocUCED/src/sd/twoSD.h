@@ -216,8 +216,8 @@ typedef struct {
 int readConfig();
 
 /* algo.c */
-int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC inputDir, stringC probName);
-int solveCell(stocType *stoc, probType **prob, cellType *cell, stringC inputDir, stringC probName);
+int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC probName);
+int solveCell(stocType *stoc, probType **prob, cellType *cell, stringC probName);
 void writeStatistic(FILE **soln, probType *prob, cellType *cell, stringC probName);
 void cleanupAlgo(probType **prob, cellType *cell, int T);
 

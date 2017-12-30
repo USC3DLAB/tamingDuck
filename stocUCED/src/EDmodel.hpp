@@ -36,6 +36,13 @@ public:
 	IloModel	model;
 	IloCplex	cplex;
 
+	/* Rows and columns which indicate the beginning of the new stage */
+	vector <string> timeCols;
+	vector <string> timeRows;
+
+	/* We assume that the randomness occurs only in the right-hand side */
+	vector <string> stocRows;
+
 private:
 	IloArray <IloNumVarArray> gen, overGen, demMet, demShed, flow, theta;
 

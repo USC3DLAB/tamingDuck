@@ -76,6 +76,11 @@ EDmodel::~EDmodel() {
 void EDmodel::formulate(instance &inst, int t0) {
 	char elemName[NAMESIZE];
 
+	/* time decomposition and stoc elements */
+	timeCols = vector <string> ();
+	timeRows = vector <string> ();
+	stocRows = vector <string> ();
+
 	/**** Decision variables *****/
 	gen = IloArray< IloNumVarArray > (env, numGen);
 	overGen = IloArray< IloNumVarArray > (env, numGen);
@@ -94,6 +99,11 @@ void EDmodel::formulate(instance &inst, int t0) {
 
 			sprintf(elemName, "gen[%d][%d]", g, t);
 			gen[g][t].setName(elemName); model.add(gen[g][t]);
+
+			if ( t == 0 && g == 0 )
+				timeCols.push_back(elemName);
+			else if ( t == 1 && g == 0 )
+				timeCols.push_back(elemName);
 
 			sprintf(elemName, "overGen[%d][%d]", g, t);
 			overGen[g][t].setName(elemName); model.add(overGen[g][t]);
@@ -149,6 +159,11 @@ void EDmodel::formulate(instance &inst, int t0) {
 
 			IloConstraint c( expr == 0 ); c.setName(elemName); model.add(c);
 			expr.end();
+
+			if ( t == 0 && b == 0 )
+				timeRows.push_back(elemName);
+			else if ( t == 0 && b == 0 )
+				timeRows.push_back(elemName);
 		}
 
 		/* Line power flow equation : DC approximation */
@@ -211,6 +226,8 @@ void EDmodel::formulate(instance &inst, int t0) {
 				for ( int t = 0; t < numPeriods; t++) {
 					sprintf(elemName, "stocAvail[%d][%d]", g, t);
 					IloConstraint c (gen[g][t] == genCap[g][t]); c.setName(elemName); model.add(c);
+
+					stocRows.push_back(elemName);
 				}
 			}
 		}
@@ -239,8 +256,6 @@ void EDmodel::formulate(instance &inst, int t0) {
 	obj.setName(elemName);
 	model.add(obj);
 	realTimeCost.end();
-
-	cplex.exportModel("ed_concertModel.lp");
 
 }//END formulate()
 
