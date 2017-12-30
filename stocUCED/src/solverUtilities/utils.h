@@ -8,6 +8,10 @@
 #ifndef UTILS_H_
 #define UTILS_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -100,5 +104,9 @@ intvec findElems(intvec allElem, int totalElem, int *numUniq);
 
 void freeSparseMatrix(sparseMatrix *M);
 void freeSparseVector(sparseVector *v);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* UTILS_H_ */

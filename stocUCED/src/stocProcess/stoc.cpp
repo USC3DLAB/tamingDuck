@@ -46,7 +46,7 @@ StocProcess::StocProcess(string inputDir, string sysName) {
 			
 			// check if the key exists, create a new key, if it doesn't exist
 			auto it = mapTypeToIndex.find(temp.type);
-			if (it == mapTypeToIndex.end()) { mapTypeToIndex.insert( pair<string, vector<int>> (temp.type, vector<int> ())); }
+			if (it == mapTypeToIndex.end()) { mapTypeToIndex.insert( pair<string, vector<int> > (temp.type, vector<int> ())); }
 
 			vector<int> *vecPtr = &(mapTypeToIndex[temp.type]);
 			vecPtr->push_back(numStocProc);
@@ -118,7 +118,7 @@ ScenarioType createScenarioList(StocProcess *stoc, vector<int> S_indices, int le
 			numVals = ceil(stoc->sp[S_indices[n]].numT - lenT)/stepSize;
 
 	for ( int rep = 0; rep < numVals; rep++ ) {
-		vector<vector<double>> M;
+		vector<vector<double> > M;
 		int offset = rep*stepSize;
 		for ( int t = offset; t < offset+lenT; t++ ) {
 			vector <double> vec;

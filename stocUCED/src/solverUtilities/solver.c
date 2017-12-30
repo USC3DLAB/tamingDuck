@@ -250,6 +250,11 @@ LPptr setupProblem(stringC name, int type, int numcols, int numrows, int objsens
 		return NULL;
 	}
 
+//	if ( loadProblem(lp, numcols, numrows, objsense, objx, rhsx, sense, matbeg, matcnt, matind, matval, lb, ub, rngval) ) {
+//		errMsg("solver", "setupProblem", "failed to load problem onto the solver", 0);
+//		return NULL;
+//	}
+
 	if ( loadProbwNames(lp, numcols, numrows, objsense, objx, rhsx, sense, matbeg, matcnt, matind, matval, lb, ub, rngval, colname, rowname) ) {
 		errMsg("solver", "setupProblem", "failed to load problem onto the solver", 0);
 		return NULL;

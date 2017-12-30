@@ -8,6 +8,10 @@
 #ifndef PROB_H_
 #define PROB_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #undef DECOMPOSE_CHECK
 
 /* Structure that holds various dimensions of the stage problem */
@@ -80,5 +84,9 @@ void freeProbType(probType **prob, int T);
 void freeCoordType (coordType *coord);
 void freeOmegastuff(omegastuff *omegas);
 void printDecomposeSummary(timeType *tim, probType **prob);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* PROB_H_ */

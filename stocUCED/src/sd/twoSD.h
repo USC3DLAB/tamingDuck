@@ -12,6 +12,10 @@
 #ifndef TWOSD_H_
 #define TWOSD_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "utils.h"
 #include "solver.h"
 #include "smps.h"
@@ -209,8 +213,7 @@ typedef struct {
 }cellType;
 
 /* twoSD.c */
-void parseCmdLine(stringC probName);
-int readConfig(stringC inputDir);
+int readConfig();
 
 /* algo.c */
 int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC inputDir, stringC probName);
@@ -298,5 +301,9 @@ void resampleOmega(intvec cdf, intvec observ, int numSamples);
 
 /* evaluate.c */
 int evaluate(FILE **soln, stocType *stoc, probType **prob, cellType *cell, vectorC Xvect);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* TWOSD_H_ */

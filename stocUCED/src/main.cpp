@@ -12,12 +12,14 @@
 #include "solution.hpp"
 #include "UCmodel.hpp"
 #include "EDmodel.hpp"
+#include "integrateSD.hpp"
 #include "./powerSys/PowSys.hpp"
 #include "./stocProcess/stoc.hpp"
 #include <sstream>
-#include "SUC_master.hpp"
 
-//#include "master.hpp"
+extern stringC outputDir;
+
+void buildOneProblem();
 
 runType runParam;
 
@@ -25,6 +27,7 @@ void readRunfile (string inputDir);
 void parseCmdLine(int argc, const char *argv[], string &inputDir, string &sysName, string &setting);
 
 int setup_DUCDED(PowSys &powSys, StocProcess &stocProc);
+int setup_DUCSED(PowSys &powSys, StocProcess &stocProc);
 
 int main(int argc, const char * argv[]) {
 	string inputDir, sysName, setting;
@@ -35,18 +38,17 @@ int main(int argc, const char * argv[]) {
 	/* Read the configuration file */
 	readRunfile (inputDir);
 
-    /* Read the power system */
+	/* Read the power system */
 	PowSys powSys;
-    powSys.readData(inputDir, sysName);
+	powSys.readData(inputDir, sysName);
 
 	/* checking scenario reader */
-    StocProcess stocProc(inputDir, sysName);
-	
-	
+	StocProcess stocProc(inputDir, sysName);
+
 	/*** Begin: Semih's Removeable Test-Content ***
 	vector<string> detElems (1);
 	detElems[0] = "Load";
-	
+
 	vector<string> stocElems (2);
 	stocElems[0] = "Solar";
 	stocElems[1] = "Wind";
@@ -58,8 +60,7 @@ int main(int argc, const char * argv[]) {
 	master.formulate(inst, DayAhead, Transmission, 0);
 	master.solve();
 	/*** End: Semih's Removeable Test-Content ***/
-	
-	
+
 	// Switch based on the chosen setting
 	if ( setting == "DUC-DED" ) {
 		if( setup_DUCDED(powSys, stocProc) ) {
@@ -67,7 +68,9 @@ int main(int argc, const char * argv[]) {
 		}
 	}
 	else if ( setting == "DUC-SED" ) {
-
+		if ( setup_DUCSED(powSys, stocProc) ) {
+			perror("Failed to complete the DUC-SED run.\n");
+		}
 	}
 	else if ( setting == "SUC-SED" ) {
 
@@ -76,37 +79,37 @@ int main(int argc, const char * argv[]) {
 		perror ("Unknown setting for the instance.\n");
 
 
-//	// Create a solution instance to hold solutions from deterministic
-//	solution detSol;
-//	detSol.allocateMem(inst.numGen, runParam.DA_horizon/runParam.ED_resolution);
-//
-//	/* Setting 1: Deterministic DA-UC + deterministic ST-UC + deterministic ED */
-//	/* Solve the deterministic DA-UC with 24 hour horizon with a forecast. */
-//	inst.read_scenarios(DayAhead);	// read day-ahead scenarios
-//	UCmodel mip;
-//	mip.formulate(inst, DayAhead, Transmission, 0);
-//	mip.solve();
-//	mip.printSolution();
-//	mip.updateSoln(detSol);
-//
-//	/* Solve the deterministic ST-UCs with "updated" forecasts. */
-//	int STUC_horizon = runParam.ST_resolution/60*runParam.ST_numPeriods;	// in hours
-//	inst.read_scenarios(ShortTerm);
-//	for (n = 0; n < runParam.DA_numPeriods/STUC_horizon; n++ ) {	/* N = 6 if ST-UC horizon is 4 hours */
-//		UCmodel mip;
-//		mip.formulate(inst, ShortTerm, Transmission, n*STUC_horizon);
-//		mip.solve();
-//		mip.printSolution();
-//		mip.updateSoln(detSol);
-//
-//		for ( m = 0; m < runParam.ST_horizon/runParam.ED_horizon; m++ ) {
-//			/* Option a: M = 4 if ED horizon is 1 hour with 10 minute period length and 1 hour steps. */
-//			/* Option b: M = 24 if ED horizon is 1 hour with 10 minute period length and 10 minute steps. */
-//			/* Solve the deterministic ED with "newest" forecast. */
-//			EDmodel edMod;
-//			edMod.formulate(inst, 0, detSol);
-//		}
-//	}
+	//	// Create a solution instance to hold solutions from deterministic
+	//	solution detSol;
+	//	detSol.allocateMem(inst.numGen, runParam.DA_horizon/runParam.ED_resolution);
+	//
+	//	/* Setting 1: Deterministic DA-UC + deterministic ST-UC + deterministic ED */
+	//	/* Solve the deterministic DA-UC with 24 hour horizon with a forecast. */
+	//	inst.read_scenarios(DayAhead);	// read day-ahead scenarios
+	//	UCmodel mip;
+	//	mip.formulate(inst, DayAhead, Transmission, 0);
+	//	mip.solve();
+	//	mip.printSolution();
+	//	mip.updateSoln(detSol);
+	//
+	//	/* Solve the deterministic ST-UCs with "updated" forecasts. */
+	//	int STUC_horizon = runParam.ST_resolution/60*runParam.ST_numPeriods;	// in hours
+	//	inst.read_scenarios(ShortTerm);
+	//	for (n = 0; n < runParam.DA_numPeriods/STUC_horizon; n++ ) {	/* N = 6 if ST-UC horizon is 4 hours */
+	//		UCmodel mip;
+	//		mip.formulate(inst, ShortTerm, Transmission, n*STUC_horizon);
+	//		mip.solve();
+	//		mip.printSolution();
+	//		mip.updateSoln(detSol);
+	//
+	//		for ( m = 0; m < runParam.ST_horizon/runParam.ED_horizon; m++ ) {
+	//			/* Option a: M = 4 if ED horizon is 1 hour with 10 minute period length and 1 hour steps. */
+	//			/* Option b: M = 24 if ED horizon is 1 hour with 10 minute period length and 10 minute steps. */
+	//			/* Solve the deterministic ED with "newest" forecast. */
+	//			EDmodel edMod;
+	//			edMod.formulate(inst, 0, detSol);
+	//		}
+	//	}
 
 	return 0;
 }
@@ -155,43 +158,43 @@ void readRunfile (string inputDir) {
 	runParam.ST_horizon = 3*60;		runParam.ST_resolution = 15; runParam.ST_frequency = 3*60;
 	runParam.ED_horizon = 60;		runParam.ED_resolution = 15; runParam.ED_frequency = 15;
 	runParam.numRep = 1;
-	
+
 	/* Read the run parameters if a run file is included in the default folder */
 	if ( open_file(fptr, (inputDir + "runParameters.txt")) ) {
 		while ( getline(fptr, line) ) {
 			istringstream iss(line);
 			if ( iss >> field1 >> field2 >> field3) {
 				/* Convert all numbers into minutes */
-				 if ( field3 == "hours" )
+				if ( field3 == "hours" )
 					temp = (double) atof(field2.c_str()) * 60.0;
-				 else
+				else
 					temp = (double) atof(field2.c_str());
 
-				 if ( field1 == "horizon" )
-					 runParam.horizon = temp;
-				 else if ( field1 == "DA_time_horizon" )
-					 runParam.DA_horizon = temp;
-				 else if ( field1 == "DA_time_resolution" )
-					 runParam.DA_resolution = temp;
-				 else if ( field1 == "DA_time_frequency" )
-					 runParam.DA_frequency = temp;
-				 else if ( field1 == "ST_time_horizon" )
-					 runParam.ST_horizon = temp;
-				 else if ( field1 == "ST_time_resolution" )
-					 runParam.ST_resolution = temp;
-				 else if ( field1 == "ST_time_frequency" )
-					 runParam.ST_frequency = temp;
-				 else if ( field1 == "ED_time_horizon" )
-					 runParam.ED_horizon = temp;
-				 else if ( field1 == "ED_time_resolution" )
-					 runParam.ED_resolution = temp;
-				 else if ( field1 == "ED_time_frequency" )
-					 runParam.ED_frequency = temp;
-				 else if ( field1 == "numRep" )
-					 runParam.numRep = temp;
-				 else {
-					 perror("Warning:: Unidentified run parameter in the file.\n");
-				 }
+				if ( field1 == "horizon" )
+					runParam.horizon = temp;
+				else if ( field1 == "DA_time_horizon" )
+					runParam.DA_horizon = temp;
+				else if ( field1 == "DA_time_resolution" )
+					runParam.DA_resolution = temp;
+				else if ( field1 == "DA_time_frequency" )
+					runParam.DA_frequency = temp;
+				else if ( field1 == "ST_time_horizon" )
+					runParam.ST_horizon = temp;
+				else if ( field1 == "ST_time_resolution" )
+					runParam.ST_resolution = temp;
+				else if ( field1 == "ST_time_frequency" )
+					runParam.ST_frequency = temp;
+				else if ( field1 == "ED_time_horizon" )
+					runParam.ED_horizon = temp;
+				else if ( field1 == "ED_time_resolution" )
+					runParam.ED_resolution = temp;
+				else if ( field1 == "ED_time_frequency" )
+					runParam.ED_frequency = temp;
+				else if ( field1 == "numRep" )
+					runParam.numRep = temp;
+				else {
+					perror("Warning:: Unidentified run parameter in the file.\n");
+				}
 			}
 		}
 	}
@@ -217,7 +220,7 @@ void readRunfile (string inputDir) {
 
 	/* Set the base time */
 	runParam.baseTime = runParam.ED_resolution;
-	
+
 	runParam.numPeriods = (int)round(runParam.horizon/runParam.baseTime);
 
 	fptr.close();

@@ -19,7 +19,9 @@
 
 using namespace std;
 
-#define NAMESIZE 64
+#ifndef NAMESIZE
+#define NAMESIZE 32
+#endif
 
 class EDmodel {
 
@@ -30,10 +32,11 @@ public:
 	void formulate(instance &inst, int t0);
 	bool solve(instance &inst, int t0);
 
-private:
 	IloEnv		env;
 	IloModel	model;
 	IloCplex	cplex;
+
+private:
 	IloArray <IloNumVarArray> gen, overGen, demMet, demShed, flow, theta;
 
 	int numGen, numBus, numLine, numLoad, numPeriods;

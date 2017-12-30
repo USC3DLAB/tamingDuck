@@ -34,7 +34,7 @@ struct ScenarioType{						// set of scenarios
 	int numVars;							// Number of random variables in the stochastic process
 	int T;									// Time horizon
 	int cnt;								// Number of scenarios
-	vector<vector<vector<double>>> vals;	// scenario/observations of random variables: dim1 (rows) - time, dim2 (columns) - random variables, and dim (3) outcomes.
+	vector<vector<vector<double> > > vals;	// scenario/observations of random variables: dim1 (rows) - time, dim2 (columns) - random variables, and dim (3) outcomes.
 };
 
 class StocProcess {
@@ -46,7 +46,7 @@ public:
 
 	int numStocProc;
 	vector <OneStocProc> sp;		// A vector of scenType with elements corresponding to each type of randomness	
-	map<string, vector<int>> mapTypeToIndex;
+	map<string, vector<int> > mapTypeToIndex;
 
 private:
 	OneStocProc read(string fname, char delimiter, bool readColNames, bool readRowNames);

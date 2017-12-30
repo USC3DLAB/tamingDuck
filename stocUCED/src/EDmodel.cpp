@@ -72,63 +72,75 @@ EDmodel::~EDmodel() {
 	env.end();
 }
 
+// TODO: Change the model to be time-consistent, so that we can use SD decomposition code */
 void EDmodel::formulate(instance &inst, int t0) {
 	char elemName[NAMESIZE];
 
 	/**** Decision variables *****/
-	/* Generation and overgeneration */
 	gen = IloArray< IloNumVarArray > (env, numGen);
 	overGen = IloArray< IloNumVarArray > (env, numGen);
-	for ( int g = 0; g < numGen; g++ ) {
-
-		sprintf(elemName, "gen[%d]", g);
-		gen[g] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
-		gen[g].setNames(elemName); model.add(gen[g]);
-
-		sprintf(elemName, "overGen[%d]", g);
-		overGen[g] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
-		overGen[g].setNames(elemName); model.add(overGen[g]);
-	}
-
-	/* Demand met, demand shed and bus angle */
-	demMet = IloArray< IloNumVarArray > (env, numBus);
-	demShed = IloArray <IloNumVarArray> (env, numBus);
-	theta = IloArray< IloNumVarArray > (env, numBus);
-	for ( int b = 0; b < numBus; b++ ) {
-		Bus *bptr = &(inst.powSys->buses[b]);
-
-		sprintf(elemName, "demMet[%d]", b);
-		demMet[b] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
-		demMet[b].setNames(elemName); model.add(demMet[b]);
-
-		sprintf(elemName, "demShed[%d]", b);
-		demShed[b] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
-		demShed[b].setNames(elemName); model.add(demShed[b]);
-
-		sprintf(elemName, "theta[%d]", b);
-		theta[b] = IloNumVarArray(env, numPeriods, bptr->minPhaseAngle, bptr->maxPhaseAngle, ILOFLOAT);
-		theta[b].setNames(elemName); model.add(theta[b]);
-	}
-
-	/* Power flows */
+	demMet = IloArray< IloNumVarArray > (env, numLoad);
+	demShed = IloArray <IloNumVarArray> (env, numLoad);
+	theta = IloArray< IloNumVarArray > (env, numLoad);
 	flow = IloArray< IloNumVarArray > (env, numLine);
-	for ( int l = 0; l < numLine; l++ ) {
-		Line *lptr = &(inst.powSys->lines[l]);
-		sprintf(elemName, "flow[%d,%d]", lptr->orig->id, lptr->dest->id);
 
-		flow[l] = IloNumVarArray(env, numPeriods, lptr->minFlowLim, lptr->maxFlowLim, ILOFLOAT);
-		flow[l].setNames(elemName); model.add(flow[l]);
+	for ( int t = 0; t < numPeriods; t++ ) {
+		/* Generation and over-generation */
+		for ( int g = 0; g < numGen; g++ ) {
+			if ( t == 0 ) {
+				gen[g] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+				overGen[g] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+			}
+
+			sprintf(elemName, "gen[%d][%d]", g, t);
+			gen[g][t].setName(elemName); model.add(gen[g][t]);
+
+			sprintf(elemName, "overGen[%d][%d]", g, t);
+			overGen[g][t].setName(elemName); model.add(overGen[g][t]);
+		}
+
+		/* Demand met, demand shed and bus angle */
+		for ( int b = 0; b < numBus; b++ ) {
+			Bus *bptr = &(inst.powSys->buses[b]);
+
+			if ( t == 0 ) {
+				demMet[b] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+				demShed[b] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+				theta[b] = IloNumVarArray(env, numPeriods, bptr->minPhaseAngle, bptr->maxPhaseAngle, ILOFLOAT);
+			}
+
+			sprintf(elemName, "demMet[%d][%d]", b, t);
+			demMet[b][t].setName(elemName); model.add(demMet[b][t]);
+
+			sprintf(elemName, "demShed[%d][%d]", b, t);
+			demShed[b][t].setName(elemName); model.add(demShed[b][t]);
+
+			sprintf(elemName, "theta[%d][%d]", b, t);
+			theta[b][t].setName(elemName); model.add(theta[b][t]);
+		}
+
+		/* Power flows */
+		for ( int l = 0; l < numLine; l++ ) {
+			Line *lptr = &(inst.powSys->lines[l]);
+
+			if ( t == 0 ) {
+				flow[l] = IloNumVarArray(env, numPeriods, lptr->minFlowLim, lptr->maxFlowLim, ILOFLOAT);
+			}
+
+			sprintf(elemName, "flow[%s][%d]", lptr->name.c_str(), t);
+			flow[l][t].setName(elemName); model.add(flow[l][t]);
+		}
 	}
 
 	/***** Constraints *****/
-	/* Flow balance equation */
 	for (int t = 0; t < numPeriods; t++ ) {
+		/* Flow balance equation */
 		for ( int b = 0; b < numBus; b++ ) {
 			IloExpr expr (env);
 			sprintf(elemName, "flowBalance[%d][%d]", b, t);
 
 			for ( int g = 0; g < numGen; g++ )
-				if ( inst.powSys->generators[g].connectedBus->id == b ) expr += (gen[g][t] - overGen[b][t]);
+				if ( inst.powSys->generators[g].connectedBus->id == b ) expr += (gen[g][t] - overGen[g][t]);
 			for ( int l = 0; l < numLine; l++ ) {
 				if ( inst.powSys->lines[l].dest->id == b ) expr += flow[l][t];
 				if ( inst.powSys->lines[l].orig->id == b ) expr -= flow[l][t];
@@ -138,52 +150,54 @@ void EDmodel::formulate(instance &inst, int t0) {
 			IloConstraint c( expr == 0 ); c.setName(elemName); model.add(c);
 			expr.end();
 		}
-	}
 
-	/* Line power flow equation : DC approximation */
-	for (int t = 0; t < numPeriods; t++ ) {
+		/* Line power flow equation : DC approximation */
 		for ( int l = 0; l < numLine; l++ ) {
 			int orig = inst.powSys->lines[l].orig->id;
 			int dest = inst.powSys->lines[l].dest->id;
-			sprintf(elemName, "dcApprox[%d,%d][%d]", orig, dest, t);
+			sprintf(elemName, "dcApprox[%s][%d]", inst.powSys->lines[l].name.c_str(), t);
 
-			IloConstraint c(  flow[l][t] == inst.powSys->lines[l].susceptance*(theta[orig][t] - theta[dest][t]) ); c.setName(elemName); model.add(c);
+			IloExpr expr (env);
+			expr = flow[l][t] - inst.powSys->lines[l].susceptance*(theta[orig][t] - theta[dest][t]);
+
+			IloConstraint c( expr == 0); c.setName(elemName); model.add(c);
 		}
-	}
 
-	/* Generation ramping constraints: applicable only if the generator continues to be ON, i.e., x[g][t] = 1. */
-	if ( t0 != 0 ) {
-		/* TODO: The initial generation level is not considered */
-		/* The first time period of the ED horizon */
-		int t = 0;
+		/* Generation ramping constraints: applicable only if the generator continues to be ON, i.e., x[g][t] = 1. */
+		if ( t == 0 ) {
+			if ( t0 == 0 ) {
+				/* TODO: The initial generation level is not considered */
+				cout << "Warning: Initial generation ignored." << endl;
+			}
+			else {
+				/* The first time period of the ED horizon */
+				for ( int g = 0; g < numGen; g++ ) {
+					/* ramp-up */
+					sprintf(elemName, "rampUp[%d][%d]", g, t);
+					IloConstraint c1( gen[g][t] -  inst.solution.g_ED[g][t0-1] <= genRampUp[g][t]); c1.setName(elemName); model.add(c1);
+
+					/* ramp-down */
+					sprintf(elemName, "rampDown[%d][%d]", g, t);
+					IloConstraint c2( inst.solution.g_ED[g][t0-1] - gen[g][t] <= genRampDown[g][t]); c2.setName(elemName); model.add(c2);
+				}
+			}
+		}
+		else {
+			/* The the remaining periods of the ED horizon */
+			for ( int g = 0; g < numGen; g++ ) {
+				/* ramp-up */
+				sprintf(elemName, "rampUp[%d][%d]", g, t);
+				IloConstraint c1( gen[g][t] - gen[g][t-1] <= genRampUp[g][t]); c1.setName(elemName); model.add(c1);
+
+				/* ramp-down */
+				sprintf(elemName, "rampDown[%d][%d]", g, t);
+				IloConstraint c2( gen[g][t-1] - gen[g][t] <= genRampDown[g][t]); c2.setName(elemName); model.add(c2);
+			}
+		}
+
+		/* Generation capacity and availability limit */
 		for ( int g = 0; g < numGen; g++ ) {
-			/* ramp-up */
-			sprintf(elemName, "rampUp[%d][%d]", g, t);
-			IloConstraint c1( gen[g][t] -  inst.solution.g_ED[g][t0-1] <= genRampUp[g][t]); c1.setName(elemName); model.add(c1);
-
-			/* ramp-down */
-			sprintf(elemName, "rampDown[%d][%d]", g, t);
-			IloConstraint c2( inst.solution.g_ED[g][t0-1] - gen[g][t] <= genRampDown[g][t]); c2.setName(elemName); model.add(c2);
-		}
-	}
-
-	for ( int t = 1; t < numPeriods; t++ ) {
-		/* The the remaining periods of the ED horizon */
-		for ( int g = 0; g < numGen; g++ ) {
-			/* ramp-up */
-			sprintf(elemName, "rampUp[%d][%d]", g, t);
-			IloConstraint c1( gen[g][t] - gen[g][t-1] <= genRampUp[g][t]); c1.setName(elemName); model.add(c1);
-
-			/* ramp-down */
-			sprintf(elemName, "rampDown[%d][%d]", g, t);
-			IloConstraint c2( gen[g][t-1] - gen[g][t] <= genRampDown[g][t]); c2.setName(elemName); model.add(c2);
-		}
-	}
-
-	/* Generation capacity and availability limit */
-	for ( int g = 0; g < numGen; g++ ) {
-		Generator genPtr = inst.powSys->generators[g];
-		for (int t = 0; t < numPeriods; t++ ) {
+			Generator genPtr = inst.powSys->generators[g];
 			/* Make sure that the generation capacity limits are met. The minimum and maximum for generators which are turned off are set to zero during pre-processing */
 			gen[g][t].setBounds(genMin[g][t], genCap[g][t]);
 
@@ -200,11 +214,9 @@ void EDmodel::formulate(instance &inst, int t0) {
 				}
 			}
 		}
-	}
 
-	/* Demand consistency */
-	for ( int d = 0; d < numBus; d++ ) {
-		for ( int t = 0; t < numPeriods; t++) {
+		/* Demand consistency */
+		for ( int d = 0; d < numBus; d++ ) {
 			sprintf(elemName, "demConsist[%d][%d]", d, t);
 			IloConstraint c(demMet[d][t] + demShed[d][t] == busLoad[d][t]); c.setName(elemName); model.add(c);
 		}
@@ -213,6 +225,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 	/***** Objective function *****/
 	IloExpr realTimeCost (env);
 	IloObjective obj;
+	sprintf(elemName, "realTimeCost");
 	for ( int t = 0; t < numPeriods; t++) {
 		/* Generation cost */
 		for ( int g = 0; g < numGen; g++ )
@@ -223,8 +236,11 @@ void EDmodel::formulate(instance &inst, int t0) {
 			realTimeCost += loadShedPenaltyCoef*demShed[d][t];
 	}
 	obj = IloMinimize(env, realTimeCost);
+	obj.setName(elemName);
 	model.add(obj);
 	realTimeCost.end();
+
+	cplex.exportModel("ed_concertModel.lp");
 
 }//END formulate()
 

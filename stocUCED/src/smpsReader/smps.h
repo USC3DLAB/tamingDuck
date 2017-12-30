@@ -7,6 +7,11 @@
 
 #ifndef SMPS_H_
 #define SMPS_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "utils.h"
 
 #undef INPUT_CHECK
@@ -114,5 +119,9 @@ float scalit(float lower, float upper, long long *RUN_SEED);
 float randUniform(long long *SEED);
 int randInteger(long long *SEED, int iMax);
 vectorC* setupSAA(stocType *stoc, long long *seed, int *numSamples);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* SMPS_H_ */
