@@ -32,29 +32,29 @@ int integrateSD(EDmodel rtED, string probName, ScenarioType stocObserv, int t0) 
 
 	/* Build the oneProblem structure */
 	if ( (orig = buildOneProblem(rtED.model, rtED.cplex, "rted")) == NULL ) {
-		perror("Failed to build the oneProblem structure for SD.\n");
+		perror("Failed to build the oneProblem structure for 2SD.\n");
 		goto TERMINATE;
 	}
 
 	/* Build the timeType structure */
 	if ( (tim = buildTimeType(rtED.model, rtED.timeRows, rtED.timeCols)) == NULL) {
-		perror("Failed to build the timeType structure for SD.\n");
+		perror("Failed to build the timeType structure for 2SD.\n");
 		goto TERMINATE;
 	}
 
 	/* Build the stocType structure */
 	if ( (stoc = buildStocType(rtED.model, rtED.stocRows, stocObserv, t0)) == NULL) {
-		perror("Failed to build the stocType structure for SD.\n");
+		perror("Failed to build the stocType structure for 2SD.\n");
 		goto TERMINATE;
 	}
 
 	/* launch the algorithm */
 	if ( algo(orig, tim, stoc, (stringC) probName.c_str()) ) {
-		perror("failed to solve the problem using SDDP");
+		perror("failed to solve the problem using 2SD");
 		goto TERMINATE;
 	}
 
-#if defined(TRANSLATE)
+#if defined(WRITE_PROB)
 	testIntegrateSD(orig);
 #endif
 
@@ -81,58 +81,58 @@ int readConfig() {
 		return 1;
 	}
 
-	//	while ((status = (fscanf(fptr, "%s", line) != EOF))) {
-	//		if (!(strcmp(line, "RUN_SEED")))
-	//			fscanf(fptr, "%lld", &config.RUN_SEED);
-	//		else if (!(strcmp(line, "TOLERANCE")))
-	//			fscanf(fptr, "%lf", &config.TOLERANCE);
-	//		else if (!(strcmp(line, "MIN_ITER")))
-	//			fscanf(fptr, "%d", &config.MIN_ITER);
-	//		else if (!(strcmp(line, "MAX_ITER")))
-	//			fscanf(fptr, "%d", &config.MAX_ITER);
-	//		else if (!(strcmp(line, "MASTERTYPE")))
-	//			fscanf(fptr, "%d", &config.MASTERTYPE);
-	//		else if (!(strcmp(line, "CUT_MULT")))
-	//			fscanf(fptr, "%d", &config.CUT_MULT);
-	//		else if (!(strcmp(line, "TAU")))
-	//			fscanf(fptr, "%d", &config.TAU);
-	//		else if (!(strcmp(line, "MIN_QUAD_SCALAR")))
-	//			fscanf(fptr, "%lf", &config.MIN_QUAD_SCALAR);
-	//		else if (!(strcmp(line, "MAX_QUAD_SCALAR")))
-	//			fscanf(fptr, "%lf", &config.MAX_QUAD_SCALAR);
-	//		else if (!(strcmp(line, "R1")))
-	//			fscanf(fptr, "%lf", &config.R1);
-	//		else if (!(strcmp(line, "R2")))
-	//			fscanf(fptr, "%lf", &config.R2);
-	//		else if (!(strcmp(line, "R3")))
-	//			fscanf(fptr, "%lf", &config.R3);
-	//		else if (!(strcmp(line, "PI_EVAL_START")))
-	//			fscanf(fptr, "%d", &config.PI_EVAL_START);
-	//		else if (!(strcmp(line, "PI_CYCLE")))
-	//			fscanf(fptr, "%d", &config.PI_CYCLE);
-	//		else if (!(strcmp(line, "SCAN_LEN")))
-	//			fscanf(fptr, "%d", &config.SCAN_LEN);
-	//		else if (!(strcmp(line, "EVAL_FLAG")))
-	//			fscanf(fptr, "%d", &config.EVAL_FLAG);
-	//		else if (!(strcmp(line, "EVAL_SEED")))
-	//			fscanf(fptr, "%lld", &config.EVAL_SEED);
-	//		else if (!(strcmp(line, "EVAL_MIN_ITER")))
-	//			fscanf(fptr, "%d", &config.EVAL_MIN_ITER);
-	//		else if (!(strcmp(line, "EVAL_ERROR")))
-	//			fscanf(fptr, "%lf", &config.EVAL_ERROR);
-	//		else if (!(strcmp(line, "PRE_EPSILON")))
-	//			fscanf(fptr, "%lf", &config.PRE_EPSILON);
-	//		else if (!(strcmp(line, "EPSILON")))
-	//			fscanf(fptr, "%lf", &config.EPSILON);
-	//		else if (!(strcmp(line, "BOOTSTRAP_REP")))
-	//			fscanf(fptr, "%d", &config.BOOTSTRAP_REP);
-	//		else if (!strcmp(line, "//"))
-	//			fgets(comment, 2*BLOCKSIZE, fptr);
-	//		else {
-	//			printf ("%s\n", line);
-	//			errMsg("read", "readConfig", "unrecognized parameter in configuration file", 1);
-	//		}
-	//	}
+	while ((status = (fscanf(fptr, "%s", line) != EOF))) {
+		if (!(strcmp(line, "RUN_SEED")))
+			fscanf(fptr, "%lld", &config.RUN_SEED);
+		else if (!(strcmp(line, "TOLERANCE")))
+			fscanf(fptr, "%lf", &config.TOLERANCE);
+		else if (!(strcmp(line, "MIN_ITER")))
+			fscanf(fptr, "%d", &config.MIN_ITER);
+		else if (!(strcmp(line, "MAX_ITER")))
+			fscanf(fptr, "%d", &config.MAX_ITER);
+		else if (!(strcmp(line, "MASTERTYPE")))
+			fscanf(fptr, "%d", &config.MASTERTYPE);
+		else if (!(strcmp(line, "CUT_MULT")))
+			fscanf(fptr, "%d", &config.CUT_MULT);
+		else if (!(strcmp(line, "TAU")))
+			fscanf(fptr, "%d", &config.TAU);
+		else if (!(strcmp(line, "MIN_QUAD_SCALAR")))
+			fscanf(fptr, "%lf", &config.MIN_QUAD_SCALAR);
+		else if (!(strcmp(line, "MAX_QUAD_SCALAR")))
+			fscanf(fptr, "%lf", &config.MAX_QUAD_SCALAR);
+		else if (!(strcmp(line, "R1")))
+			fscanf(fptr, "%lf", &config.R1);
+		else if (!(strcmp(line, "R2")))
+			fscanf(fptr, "%lf", &config.R2);
+		else if (!(strcmp(line, "R3")))
+			fscanf(fptr, "%lf", &config.R3);
+		else if (!(strcmp(line, "PI_EVAL_START")))
+			fscanf(fptr, "%d", &config.PI_EVAL_START);
+		else if (!(strcmp(line, "PI_CYCLE")))
+			fscanf(fptr, "%d", &config.PI_CYCLE);
+		else if (!(strcmp(line, "SCAN_LEN")))
+			fscanf(fptr, "%d", &config.SCAN_LEN);
+		else if (!(strcmp(line, "EVAL_FLAG")))
+			fscanf(fptr, "%d", &config.EVAL_FLAG);
+		else if (!(strcmp(line, "EVAL_SEED")))
+			fscanf(fptr, "%lld", &config.EVAL_SEED);
+		else if (!(strcmp(line, "EVAL_MIN_ITER")))
+			fscanf(fptr, "%d", &config.EVAL_MIN_ITER);
+		else if (!(strcmp(line, "EVAL_ERROR")))
+			fscanf(fptr, "%lf", &config.EVAL_ERROR);
+		else if (!(strcmp(line, "PRE_EPSILON")))
+			fscanf(fptr, "%lf", &config.PRE_EPSILON);
+		else if (!(strcmp(line, "EPSILON")))
+			fscanf(fptr, "%lf", &config.EPSILON);
+		else if (!(strcmp(line, "BOOTSTRAP_REP")))
+			fscanf(fptr, "%d", &config.BOOTSTRAP_REP);
+		else if (!strcmp(line, "//"))
+			fgets(comment, 2*BLOCKSIZE, fptr);
+		else {
+			printf ("%s\n", line);
+			errMsg("read", "readConfig", "unrecognized parameter in configuration file", 1);
+		}
+	}
 
 	fclose(fptr);
 
@@ -158,7 +158,7 @@ oneProblem *buildOneProblem(IloModel model, IloCplex cplex, string probName) {
 	orig->name 	= (stringC) malloc(NAMESIZE*sizeof(char)); probName.copy(orig->name, probName.size(), 0);
 	orig->mac   = orig->macsz = cplex.getNcols();
 	orig->mar   = orig->marsz = cplex.getNrows();
-	orig->numnz = cplex.getNNZs();
+	orig->numnz = orig->matsz = cplex.getNNZs();
 
 	/* Allocate memory for column elements of SD-oneProblem */
 	orig->bdl 	= (vectorC) calloc(orig->mac,sizeof(double));
@@ -209,9 +209,15 @@ oneProblem *buildOneProblem(IloModel model, IloCplex cplex, string probName) {
 			else if ( (*it).isVariable() ) {
 				/* Decision variable */
 				IloNumVar var = (*it).asVariable();
+
 				orig->bdl[c] = var.getLB();
 				orig->bdu[c] = var.getUB();
-				orig->ctype[c] = var.getType();
+
+				IloNumVar::Type ctype = var.getType();
+				if ( ctype == 1 ) { orig->ctype[c] = 'I'; }
+				else if ( ctype == 2 ) { orig->ctype[c] = 'C';}
+				else if ( ctype == 3 ) { orig->ctype[c] = 'B'; }
+				else { perror ("Unknown column type."); return NULL; }
 
 				string tempName = var.getName();
 				orig->cname[c] = orig->cstore + m;
@@ -303,19 +309,6 @@ oneProblem *buildOneProblem(IloModel model, IloCplex cplex, string probName) {
 timeType *buildTimeType(IloModel model, vector<string> rowNames, vector<string> colNames) {
 	timeType *tim = NULL;
 
-	/* allocate memory and initialize */
-	tim = (timeType *) malloc(sizeof(timeType));
-	tim->stgNames = (stringC *) malloc(2*sizeof(stringC));
-	tim->row = (intvec) malloc(2*sizeof(int));
-	tim->col = (intvec) malloc(2*sizeof(int));
-	tim->rowStg = tim->colStg = NULL;
-
-	/* Default parameters */
-	tim->type = 0;
-	strcpy(tim->probName, "rted");
-	tim->numStages = 2;
-	tim->numCols = 0; tim->numRows = 0;
-
 	map<string, int> colID;
 	map<string, int> rowID;
 
@@ -340,8 +333,22 @@ timeType *buildTimeType(IloModel model, vector<string> rowNames, vector<string> 
 		}
 	}
 
+	/* allocate memory and initialize */
+	tim = (timeType *) malloc(sizeof(timeType));
+	tim->stgNames = (stringC *) malloc(2*sizeof(stringC));
+	tim->row = (intvec) malloc(2*sizeof(int));
+	tim->col = (intvec) malloc(2*sizeof(int));
+	tim->rowStg = tim->colStg = NULL;
+
+	/* Default parameters */
+	tim->type = 0;
+	strcpy(tim->probName, "rted");
+	tim->numStages = 2;
+	tim->numCols = 0; tim->numRows = 0;
+
 	/* Use row and column names to set the time decomposition parameters. */
 	for ( int t = 0; t < (int) rowNames.size(); t++ ) {
+		tim->stgNames[t] = (stringC) malloc(NAMESIZE*sizeof(char));
 		sprintf(tim->stgNames[t], "stage%d", t);
 
 		auto idx = colID.find(colNames[t]);
@@ -571,7 +578,7 @@ void testIntegrateSD(oneProblem *orig) {
 			orig->matbeg, orig->matcnt, orig->matind, orig->matval, orig->bdl, orig->bdu, NULL, orig->cname, orig->rname, orig->ctype)) ) {
 		perror("failed to setup stage problem in solver");
 	}
-	sprintf(fname, "translatedOneProblem.lp");
+	sprintf(fname, "builtOneProblem.lp");
 	if ( writeProblem(lp, fname) ) {
 		perror("failed to write stage problem");
 	}

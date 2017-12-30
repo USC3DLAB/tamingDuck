@@ -72,7 +72,6 @@ EDmodel::~EDmodel() {
 	env.end();
 }
 
-// TODO: Change the model to be time-consistent, so that we can use SD decomposition code */
 void EDmodel::formulate(instance &inst, int t0) {
 	char elemName[NAMESIZE];
 
@@ -162,7 +161,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 
 			if ( t == 0 && b == 0 )
 				timeRows.push_back(elemName);
-			else if ( t == 0 && b == 0 )
+			else if ( t == 1 && b == 0 )
 				timeRows.push_back(elemName);
 		}
 
@@ -210,7 +209,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 			}
 		}
 
-		/* Generation capacity and availability limit */
+		/* TODO: Fix generation capacity for stochastic generators. Generation capacity and availability limit */
 		for ( int g = 0; g < numGen; g++ ) {
 			Generator genPtr = inst.powSys->generators[g];
 			/* Make sure that the generation capacity limits are met. The minimum and maximum for generators which are turned off are set to zero during pre-processing */
@@ -223,12 +222,11 @@ void EDmodel::formulate(instance &inst, int t0) {
 			/* Stochastic generation consistency */
 			auto it = inst.stocObserv[2].mapVarNamesToIndex.find(genPtr.name);
 			if ( it != inst.stocObserv[2].mapVarNamesToIndex.end() ) {
-				for ( int t = 0; t < numPeriods; t++) {
-					sprintf(elemName, "stocAvail[%d][%d]", g, t);
-					IloConstraint c (gen[g][t] == genCap[g][t]); c.setName(elemName); model.add(c);
+				sprintf(elemName, "stocAvail[%d][%d]", g, t);
+				IloConstraint c (gen[g][t] == genCap[g][t]); c.setName(elemName); model.add(c);
 
+				if ( t != 0 )
 					stocRows.push_back(elemName);
-				}
 			}
 		}
 
@@ -256,6 +254,10 @@ void EDmodel::formulate(instance &inst, int t0) {
 	obj.setName(elemName);
 	model.add(obj);
 	realTimeCost.end();
+
+#if defined(WRITE_PROB)
+	model.exportModel("rtED.lp")
+#endif
 
 }//END formulate()
 

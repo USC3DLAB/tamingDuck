@@ -22,6 +22,9 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC probName) {
 	FILE 	*soln;
 	clock_t	tic;
 
+	/* open solver */
+	openSolver();
+
 	/* complete necessary initialization for the algorithm */
 	if ( setupAlgo(orig, stoc, tim, &prob, &cell) )
 		goto TERMINATE;
@@ -29,7 +32,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC probName) {
 	tic = clock();
 	/* Use two-stage algorithm to solve the problem */
 	if ( solveCell(stoc, prob, cell, probName) ) {
-		errMsg("algorithm", "algo", "failed to solve the cells using MASP algorithm", 0);
+		errMsg("algorithm", "algo", "failed to solve the cells using 2SD algorithm", 0);
 		goto TERMINATE;
 	}
 	totalTime = ((double) clock() - tic)/CLOCKS_PER_SEC;
@@ -45,6 +48,8 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC probName) {
 	}
 
 	printf("\nSuccessfully completed two-stage stochastic decomposition algorithm.\n");
+
+	closeSolver();
 
 	/* free up memory before leaving */
 	if (xk) mem_free(xk);
