@@ -19,7 +19,9 @@
 
 using namespace std;
 
-#define NAMESIZE 64
+#ifndef NAMESIZE
+#define NAMESIZE 32
+#endif
 
 class EDmodel {
 
@@ -30,14 +32,22 @@ public:
 	void formulate(instance &inst, int t0);
 	bool solve(instance &inst, int t0);
 
-private:
 	IloEnv		env;
 	IloModel	model;
 	IloCplex	cplex;
-	IloArray <IloNumVarArray> gen, overGen, demMet, demShed, flow, theta;
+
+	/* Rows and columns which indicate the beginning of the new stage */
+	vector <string> timeCols;
+	vector <string> timeRows;
+
+	/* We assume that the randomness occurs only in the right-hand side */
+	vector <string> stocRows;
+
+private:
+	IloArray <IloNumVarArray> genUsed, overGen, demMet, demShed, flow, theta;
 
 	int numGen, numBus, numLine, numLoad, numPeriods;
-	vector<vector<double>> busLoad, genMin, genRampUp, genRampDown, genCap;
+	vector<vector<double>> busLoad, genMin, genMax, genRampUp, genRampDown, genAvail;
 };
 
 #endif /* EDMODEL_HPP_ */
