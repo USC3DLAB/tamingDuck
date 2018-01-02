@@ -6,14 +6,17 @@
 //  Copyright © 2017 University of Southern California. All rights reserved.
 //
 
-#ifndef subprob_hpp
-#define subprob_hpp
+#ifndef SUCsubprob_hpp
+#define SUCsubprob_hpp
 
 #include <stdio.h>
 #include <ilcplex/ilocplex.h>
 #include <vector>
+#include <set>
 
 #include "instance.hpp"
+
+using namespace std;
 
 class SUCsubprob {
 	friend class SUCmaster;
@@ -63,14 +66,25 @@ private:
 	
 	// data
 	void preprocessing();
-	int numGen, numLine, numBus, numPeriods, numBaseTimePerPeriod, beginMin;
+	
+	int numGen;
+	int numLine;
+	int numBus;
+	int numPeriods;
+	int numBaseTimePerPeriod;
+	int numScen;
+	int beginMin;
 	double periodLength;
 
+	ScenarioType *scenSet;
+	
 	vector<double> minGenerationReq;	// minimum production requirements (obeying assumptions)
 	vector<double> maxCapacity;
 	
 	vector<vector<double>> busLoad;		// load at each bus and period
 	vector<double>		   sysLoad;		// aggregated load at each period
+	
+	vector<double> sceProb;				// scenario probabilities
 
 	// Miscellaneous
 	char buffer[30];
@@ -94,4 +108,4 @@ private:
 	BendersCutCoefs cutCoefs;
 };
 
-#endif /* subprob_hpp */
+#endif /* SUCsubprob_hpp */

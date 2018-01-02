@@ -68,8 +68,10 @@ private:
 	int	beginMin;				// t=0 in the model corresponds to this minute in the planning horizon
 	int numGen, numLine, numBus, numPeriods, numBaseTimePerPeriod;
 	double periodLength;
+	
+	char buffer[30];
 };
 
 
 
-#endif /* master_hpp */
+#endif /* SUCmaster_hpp */
