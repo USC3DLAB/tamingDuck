@@ -19,7 +19,7 @@ int formSDCut(probType *prob, cellType *cell, vectorC Xvect, int omegaIdx, BOOL 
 
 	/* (a) Construct the subproblem with input observation and master solution, solve the subproblem, and complete stochastic updates */
 	if ( solveSubprob(prob, cell, Xvect, omegaIdx, newOmegaFlag) ) {
-		errMsg("algorithm", "solveAgents", "failed to solve the subproblem", 0);
+		errMsg("algorithm", "formSDCut", "failed to solve the subproblem", 0);
 		return -1;
 	}
 
@@ -362,21 +362,17 @@ double calc_var(double *x, double *mean_value, double *stdev_value, int batch_si
 	else
 		length = config.SCAN_LEN;
 
-	for (count = 1; count < length; count++)
-	{
+	for (count = 1; count < length; count++) {
 		temp = mean;
 		mean = mean + (x[count] - mean) / (double) (count + 1);
 		vari = (1 - 1 / (double) count) * vari
 				+ (count + 1) * (mean - temp) * (mean - temp);
 	}
 
-	if (mean_value != NULL)
-	{
+	if (mean_value != NULL) {
 		*mean_value = mean;
 	}
-	if (stdev_value != NULL)
-	{
-		//TODO:(HG) why divide vari by count?
+	if (stdev_value != NULL) {
 		stdev = sqrt(vari / (double) count);
 		*stdev_value = stdev;
 	}

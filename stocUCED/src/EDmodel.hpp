@@ -44,10 +44,10 @@ public:
 	vector <string> stocRows;
 
 private:
-	IloArray <IloNumVarArray> gen, overGen, demMet, demShed, flow, theta;
+	IloArray <IloNumVarArray> genUsed, overGen, demMet, demShed, flow, theta;
 
 	int numGen, numBus, numLine, numLoad, numPeriods;
-	vector<vector<double>> busLoad, genMin, genRampUp, genRampDown, genCap;
+	vector<vector<double>> busLoad, genMin, genMax, genRampUp, genRampDown, genAvail;
 };
 
 #endif /* EDMODEL_HPP_ */
