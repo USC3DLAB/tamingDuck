@@ -63,5 +63,4 @@ const double EPSzero = 1e-8;
 
 const char delimiter = ',';
 
-
 #endif /* config_h */

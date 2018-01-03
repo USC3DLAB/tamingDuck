@@ -15,9 +15,6 @@
 #include "./powerSys/PowSys.hpp"
 #include "./stocProcess/stoc.hpp"
 #include <sstream>
-#include "SUC_master.hpp"
-
-//#include "master.hpp"
 
 runType runParam;
 
@@ -25,6 +22,7 @@ void readRunfile (string inputDir);
 void parseCmdLine(int argc, const char *argv[], string &inputDir, string &sysName, string &setting);
 
 int setup_DUCDED(PowSys &powSys, StocProcess &stocProc);
+int setup_DUCSED(PowSys &powSys, StocProcess &stocProc);
 
 int main(int argc, const char * argv[]) {
 	string inputDir, sysName, setting;
@@ -42,24 +40,6 @@ int main(int argc, const char * argv[]) {
 	/* checking scenario reader */
     StocProcess stocProc(inputDir, sysName);
 	
-	
-	/*** Begin: Semih's Removeable Test-Content ***
-	vector<string> detElems (1);
-	detElems[0] = "Load";
-	
-	vector<string> stocElems (2);
-	stocElems[0] = "Solar";
-	stocElems[1] = "Wind";
-
-	instance inst;
-	inst.initialize(&powSys, &stocProc, stocElems, detElems);
-
-	SUCmaster master;
-	master.formulate(inst, DayAhead, Transmission, 0);
-	master.solve();
-	/*** End: Semih's Removeable Test-Content ***/
-	
-	
 	// Switch based on the chosen setting
 	if ( setting == "DUC-DED" ) {
 		if( setup_DUCDED(powSys, stocProc) ) {
@@ -67,7 +47,9 @@ int main(int argc, const char * argv[]) {
 		}
 	}
 	else if ( setting == "DUC-SED" ) {
-
+		if( setup_DUCSED(powSys, stocProc) ) {
+			perror("Failed to complete the DUC-DED run.\n");
+		}
 	}
 	else if ( setting == "SUC-SED" ) {
 
@@ -75,38 +57,6 @@ int main(int argc, const char * argv[]) {
 	else
 		perror ("Unknown setting for the instance.\n");
 
-
-//	// Create a solution instance to hold solutions from deterministic
-//	solution detSol;
-//	detSol.allocateMem(inst.numGen, runParam.DA_horizon/runParam.ED_resolution);
-//
-//	/* Setting 1: Deterministic DA-UC + deterministic ST-UC + deterministic ED */
-//	/* Solve the deterministic DA-UC with 24 hour horizon with a forecast. */
-//	inst.read_scenarios(DayAhead);	// read day-ahead scenarios
-//	UCmodel mip;
-//	mip.formulate(inst, DayAhead, Transmission, 0);
-//	mip.solve();
-//	mip.printSolution();
-//	mip.updateSoln(detSol);
-//
-//	/* Solve the deterministic ST-UCs with "updated" forecasts. */
-//	int STUC_horizon = runParam.ST_resolution/60*runParam.ST_numPeriods;	// in hours
-//	inst.read_scenarios(ShortTerm);
-//	for (n = 0; n < runParam.DA_numPeriods/STUC_horizon; n++ ) {	/* N = 6 if ST-UC horizon is 4 hours */
-//		UCmodel mip;
-//		mip.formulate(inst, ShortTerm, Transmission, n*STUC_horizon);
-//		mip.solve();
-//		mip.printSolution();
-//		mip.updateSoln(detSol);
-//
-//		for ( m = 0; m < runParam.ST_horizon/runParam.ED_horizon; m++ ) {
-//			/* Option a: M = 4 if ED horizon is 1 hour with 10 minute period length and 1 hour steps. */
-//			/* Option b: M = 24 if ED horizon is 1 hour with 10 minute period length and 10 minute steps. */
-//			/* Solve the deterministic ED with "newest" forecast. */
-//			EDmodel edMod;
-//			edMod.formulate(inst, 0, detSol);
-//		}
-//	}
 
 	return 0;
 }

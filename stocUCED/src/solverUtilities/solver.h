@@ -7,6 +7,10 @@
 #ifndef MTSD_SOLVER_H_
 #define MTSD_SOLVER_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "ilcplex/cplex.h"
 
 #define		ENVptr			CPXENVptr
@@ -113,5 +117,9 @@ int getBhead(LPptr lp, intvec head, vectorC x) ;
 int binvArow(LPptr lp, int i, vectorC z) ;
 int binvAcol(LPptr lp, int i, vectorC z);
 int freeProblem(LPptr lp);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* MTSD_SOLVER_H_ */
