@@ -5,8 +5,8 @@
  *      Author: Harsha Gangammanavar
  */
 
-#include <utils.h>
-#include <solver.h>
+#include "utils.h"
+#include "solver.h"
 
 extern stringC outputDir;
 ENVptr	env;

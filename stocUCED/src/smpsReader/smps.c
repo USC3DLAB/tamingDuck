@@ -6,11 +6,11 @@
  */
 
 #include <math.h>
-#include <smps.h>
-#include <solver.h>
+#include "smps.h"
+#include "solver.h"
 #include <stdio.h>
 #include <string.h>
-#include <utils.h>
+#include "utils.h"
 
 int readFiles(stringC inputDir, stringC probName, oneProblem **orig, timeType **tim, stocType **stoc) {
 
