@@ -47,9 +47,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC probName) {
 		evaluate(&soln, stoc, prob, cell, cell->incumbX);
 	}
 
-	printf("\nSuccessfully completed two-stage stochastic decomposition algorithm.\n");
-
-	closeSolver();
+	printf("\n\t\tSuccessfully completed two-stage stochastic decomposition algorithm.\n");
 
 	/* free up memory before leaving */
 	if (xk) mem_free(xk);
@@ -80,10 +78,10 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, stringC probName)
 		cell->k++;
 
 #if defined(STOCH_CHECK) || defined(ALGO_CHECK)
-		printf("\nIteration-%d :: \n", cell->k);
+		printf("\n\t\tIteration-%d :: \n", cell->k);
 #else
 		if ( (cell->k -1) % 100 == 0)
-			printf("\nIteration-%4d: ", cell->k);
+			printf("\n\t\tIteration-%4d: ", cell->k);
 #endif
 
 		/******* 1. Optimality tests *******/

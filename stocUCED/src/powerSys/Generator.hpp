@@ -43,8 +43,9 @@ public:
     int minUpTime;              // hours
     int minDownTime;            // hours
     
-    bool isMustRun;             // 1 if generator must always run, and its production must always be consumed by the grid.
-    bool isBaseLoadGen;         // 1 if generator must be scheduled in the long-term UC, 0 if it must be scheduled in short-term UC.
+    bool isMustRun;             // 1 if generator must be online, 0 otherwise.
+	bool isMustUse;				// 1 if generator capacity must be completely used, 0 otherwise.
+    bool isDAUCGen;				// 1 if generator must be scheduled in DA-UC, 0 if it must be scheduled in ST-UC.
     
     string  connectedBusName;   // name of the bus that this generator is connected to
     Bus     *connectedBus;      // bus that this generator is connected to

@@ -155,7 +155,7 @@ void SUCmaster::preprocessing ()
 		for (int g=0; g<numGen; g++) {
 			Generator *genPtr = &(inst->powSys->generators[g]);
 			
-			if (!genPtr->isBaseLoadGen) {
+			if (!genPtr->isDAUCGen) {
 				fill(expCapacity[g].begin(), expCapacity[g].end(), 0.0);
 			}
 		}
@@ -282,7 +282,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 	if (probType == DayAhead) {
 		/* ST-UC generators will not produce in the DA-UC problem. */
 		for (int g=0; g<numGen; g++) {
-			if (!(inst.powSys->generators[g].isBaseLoadGen)) {
+			if (!(inst.powSys->generators[g].isDAUCGen)) {
 				for (int t=0; t<numPeriods; t++) {
 					x[g][t].setBounds(0, 0);
 				}
@@ -296,7 +296,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 		for (int g=0; g<numGen; g++) {
 			Generator *genPtr = &(inst.powSys->generators[g]);
 			
-			if (genPtr->isBaseLoadGen) {
+			if (genPtr->isDAUCGen) {
 				for (int t=0; t<numPeriods; t++) {
 					genState = getGenState(g, t);
 					x[g][t].setBounds(genState, genState);

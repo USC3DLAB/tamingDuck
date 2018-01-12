@@ -82,7 +82,7 @@ void SUCsubprob::preprocessing ()
 		for (int g=0; g<numGen; g++) {
 			Generator *genPtr = &(inst->powSys->generators[g]);
 			
-			if (!genPtr->isBaseLoadGen) {
+			if (!genPtr->isDAUCGen) {
 				minGenerationReq[g] = 0.0;
 				maxCapacity[g] = 0.0;
 			}
@@ -155,7 +155,7 @@ void SUCsubprob::formulate_production()
 		
 		for (int t=0; t<numPeriods; t++) {
 			IloRange con;
-			if (genPtr->isMustRun) {
+			if (genPtr->isMustUse) {
                 con = IloRange (env, genPtr->maxCapacity, p[g][t], genPtr->maxCapacity);
 			} else {
                 con = IloRange (env, -IloInfinity, p[g][t], genPtr->maxCapacity);
@@ -361,7 +361,7 @@ void SUCsubprob::setMasterSoln ( vector< vector<bool> > & gen_stat ) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 
 		for (int t=0; t<numPeriods; t++, c++) {
-            if (genPtr->isMustRun) {
+            if (genPtr->isMustUse) {
                 cons[c].setBounds( gen_stat[g][t] * genPtr->maxCapacity, gen_stat[g][t] * genPtr->maxCapacity);
             } else {
                 cons[c].setUB( gen_stat[g][t] * genPtr->maxCapacity );
@@ -426,7 +426,7 @@ void SUCsubprob::setup_subproblem(int &s)
 			
 			for (int t=0; t<numPeriods; t++, c++) {				// Note: c is iterated in the secondary-loops
 				if ((*gen_stat)[g][t]) {
-					if ( genPtr->isMustRun ) {
+					if ( genPtr->isMustUse ) {
 						cons[c].setBounds( scenSet->vals[s][t*numBaseTimePerPeriod][it->second], scenSet->vals[s][t*numBaseTimePerPeriod][it->second]);
 					}
 					else {

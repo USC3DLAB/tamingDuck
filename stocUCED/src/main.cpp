@@ -19,16 +19,16 @@
 runType runParam;
 
 void readRunfile (string inputDir);
-void parseCmdLine(int argc, const char *argv[], string &inputDir, string &sysName, string &setting);
+void parseCmdLine(int argc, const char *argv[], string &inputDir, string &configPath, string &sysName, string &setting);
 
 int setup_DUCDED(PowSys &powSys, StocProcess &stocProc);
-int setup_DUCSED(PowSys &powSys, StocProcess &stocProc);
+int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath);
 
 int main(int argc, const char * argv[]) {
-	string inputDir, sysName, setting;
+	string inputDir, configPath, sysName, setting;
 
 	/* Request for input if the default is missing */
-	parseCmdLine(argc, argv, inputDir, sysName, setting);
+	parseCmdLine(argc, argv, inputDir, configPath, sysName, setting);
 
 	/* Read the configuration file */
 	readRunfile (inputDir);
@@ -47,7 +47,7 @@ int main(int argc, const char * argv[]) {
 		}
 	}
 	else if ( setting == "DUC-SED" ) {
-		if( setup_DUCSED(powSys, stocProc) ) {
+		if( setup_DUCSED(powSys, stocProc, configPath) ) {
 			perror("Failed to complete the DUC-DED run.\n");
 		}
 	}
@@ -61,11 +61,13 @@ int main(int argc, const char * argv[]) {
 	return 0;
 }
 
-void parseCmdLine(int argc, const char *argv[], string &inputDir, string &sysName, string &setting) {
+void parseCmdLine(int argc, const char *argv[], string &inputDir, string &configPath, string &sysName, string &setting) {
 
 	switch (argc) {
 	case 2:
 		inputDir = argv[1];
+		cout << "Enter the path for the config.sd : ";
+		cin >> configPath;
 		cout << "Enter the name of the instance : ";
 		cin  >> sysName;
 		cout << "Enter the setting for solve (DUC-DED, DUC-SED, SUC-SED) :";
@@ -73,18 +75,30 @@ void parseCmdLine(int argc, const char *argv[], string &inputDir, string &sysNam
 		break;
 	case 3:
 		inputDir = argv[1];
-		sysName = argv[2];
+		configPath = argv[2];
+		cout << "Enter the name of the instance : ";
+		cin  >> sysName;
 		cout << "Enter the setting for solve (DUC-DED, DUC-SED, SUC-SED) :";
 		cin  >> setting;
 		break;
 	case 4:
 		inputDir = argv[1];
-		sysName = argv[2];
-		setting = argv[3];
+		configPath = argv[2];
+		sysName = argv[3];
+		cout << "Enter the setting for solve (DUC-DED, DUC-SED, SUC-SED) :";
+		cin  >> setting;
+		break;
+	case 5:
+		inputDir = argv[1];
+		configPath = argv[2];
+		sysName = argv[3];
+		setting = argv[4];
 		break;
 	default:
 		cout << "Enter the directory : ";
 		cin >> inputDir;
+		cout << "Enter config path : ";
+		cin >> configPath;
 		cout << "Enter the name of the instance : ";
 		cin  >> sysName;
 		cout << "Enter the setting for solve (DUC-DED, DUC-SED, SUC-SED) :";

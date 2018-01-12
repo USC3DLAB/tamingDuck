@@ -101,7 +101,7 @@ void UCmodel::preprocessing ()
 		for (int g=0; g<numGen; g++) {
 			Generator *genPtr = &(inst->powSys->generators[g]);
 			
-			if (!genPtr->isBaseLoadGen) {
+			if (!genPtr->isDAUCGen) {
 				minGenerationReq[g] = 0.0;
 				fill(expCapacity[g].begin(), expCapacity[g].end(), 0.0);
 			}
@@ -240,7 +240,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	if (probType == DayAhead) {
 		/* ST-UC generators will not produce in the DA-UC problem. */
 		for (int g=0; g<numGen; g++) {
-			if (!(inst.powSys->generators[g].isBaseLoadGen)) {
+			if (!(inst.powSys->generators[g].isDAUCGen)) {
 				for (int t=0; t<numPeriods; t++) {
 					x[g][t].setBounds(0, 0);
 				}
@@ -254,7 +254,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 		for (int g=0; g<numGen; g++) {
 			Generator *genPtr = &(inst.powSys->generators[g]);
 			
-			if (genPtr->isBaseLoadGen) {
+			if (genPtr->isDAUCGen) {
 				for (int t=0; t<numPeriods; t++) {
 					genState = getGenState(g, t);
 					x[g][t].setBounds(genState, genState);
@@ -268,7 +268,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 		Generator *genPtr = &(inst.powSys->generators[g]);
 		
 		for (int t=0; t<numPeriods; t++) {
-			if (genPtr->isMustRun) {
+			if (genPtr->isMustUse) {
 				model.add( p_var[g][t] == (expCapacity[g][t] - minGenerationReq[g]) );
 			} else {
 				model.add( p_var[g][t] <= (expCapacity[g][t] - minGenerationReq[g]) * x[g][t] );
@@ -447,7 +447,7 @@ bool UCmodel::solve() {
 			for (int g=0; g<numGen; g++) {
 				Generator *genPtr = &(inst->powSys->generators[g]);
 				
-				if ( (probType == DayAhead && genPtr->isBaseLoadGen) || (probType == ShortTerm && !genPtr->isBaseLoadGen) ) {
+				if ( (probType == DayAhead && genPtr->isDAUCGen) || (probType == ShortTerm && !genPtr->isDAUCGen) ) {
 					for (int t=0; t<numPeriods; t++) {
 						setGenState(g,t, cplex.getValue(x[g][t]));
 						setGenProd (g,t, cplex.getValue(p[g][t]));

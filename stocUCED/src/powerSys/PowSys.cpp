@@ -110,11 +110,15 @@ bool PowSys::readGeneratorData(string inputPath) {
         move_cursor(input, delimiter);
         
         // must-run?
-        input >> gen.isMustRun;
+		input >> gen.isMustRun;
         move_cursor(input, delimiter);
-        
+		
+		// must-use?
+		input >> gen.isMustUse;
+		move_cursor(input, delimiter);
+		
         // day-ahead generator?
-        input >> gen.isBaseLoadGen;
+        input >> gen.isDAUCGen;
 		safeGetline(input, temp_str);
 		
         // add the generator to the list

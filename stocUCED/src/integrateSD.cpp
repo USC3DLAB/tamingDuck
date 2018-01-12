@@ -15,7 +15,7 @@ long long	MEM_USED = 0;	/* Amount of memory allocated each iteration */
 stringC	outputDir;			/* output directory */
 configType	config;			/* algorithm tuning parameters */
 
-int integrateSD(EDmodel rtED, string probName, ScenarioType stocObserv, int t0) {
+int integrateSD(EDmodel rtED, string probName, string &configPath, ScenarioType stocObserv, int t0) {
 	oneProblem *orig = NULL;
 	timeType *tim = NULL;
 	stocType *stoc = NULL;
@@ -25,7 +25,7 @@ int integrateSD(EDmodel rtED, string probName, ScenarioType stocObserv, int t0) 
 	strcpy(outputDir, "./");
 
 	/* read algorithm configuration files */
-	if ( readConfig() ) {
+	if ( readConfig(configPath) ) {
 		perror("failed to read algorithm configuration file");
 		goto TERMINATE;
 	}
@@ -35,6 +35,10 @@ int integrateSD(EDmodel rtED, string probName, ScenarioType stocObserv, int t0) 
 		perror("Failed to build the oneProblem structure for 2SD.\n");
 		goto TERMINATE;
 	}
+
+#if defined(WRITE_PROB)
+	testIntegrateSD(orig);
+#endif
 
 	/* Build the timeType structure */
 	if ( (tim = buildTimeType(rtED.model, rtED.timeRows, rtED.timeCols)) == NULL) {
@@ -54,28 +58,26 @@ int integrateSD(EDmodel rtED, string probName, ScenarioType stocObserv, int t0) 
 		goto TERMINATE;
 	}
 
-#if defined(WRITE_PROB)
-	testIntegrateSD(orig);
-#endif
-
 	freeOneProblem(orig);
 	freeTimeType(tim);
 	freeStocType(stoc);
+	closeSolver();
 	return 0;
 
 	TERMINATE:
 	freeOneProblem(orig);
 	freeTimeType(tim);
 	freeStocType(stoc);
+	closeSolver();
 	return 1;
 }//END integrateSD()
 
-int readConfig() {
+int readConfig(string &configPath) {
 	FILE 	*fptr;
 	char	line[2*BLOCKSIZE], comment[2*BLOCKSIZE];
 	int 	status;
 
-	fptr = fopen("./src/sd/config.sd", "r");
+	fptr = fopen( (configPath + "config.sd").c_str() , "r");
 	if ( fptr == NULL ) {
 		perror("failed to open configuration file");
 		return 1;
@@ -335,6 +337,7 @@ timeType *buildTimeType(IloModel model, vector<string> rowNames, vector<string> 
 
 	/* allocate memory and initialize */
 	tim = (timeType *) malloc(sizeof(timeType));
+	tim->probName = (stringC) malloc(NAMESIZE*sizeof(char));
 	tim->stgNames = (stringC *) malloc(2*sizeof(stringC));
 	tim->row = (intvec) malloc(2*sizeof(int));
 	tim->col = (intvec) malloc(2*sizeof(int));

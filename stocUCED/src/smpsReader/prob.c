@@ -530,7 +530,9 @@ vectorC meanProblem(oneProblem *orig, stocType *stoc) {
 
 	/* print results */
 	obj = getObjective(orig->lp, PROB_LP);
+#if defined (VERBOSE)
 	printf("Optimal objective function value for (relaxed) mean value problem = %lf\n", obj);
+#endif
 
 	/* obtain the primal solution */
 	getPrimal(orig->lp,	xk, orig->mac);
@@ -580,7 +582,9 @@ vectorC calcLowerBound(oneProblem *orig, timeType *tim, stocType *stoc) {
 		return NULL;
 	}
 
+#if defined (VERBOSE)
 	printf("Lower bounds computed = ");
+#endif
 
 	for ( t = 1; t < tim->numStages; t++ ) {
 		zeroLB = TRUE;
@@ -675,11 +679,16 @@ vectorC calcLowerBound(oneProblem *orig, timeType *tim, stocType *stoc) {
 		else
 			lb[t-1] = 0.0;
 
+#if defined (VERBOSE)
 		printf("%0.3lf\t", lb[t-1]);
+#endif
 	}
 	lb[t-1] = 0.0;
-	printf("\n");
 
+#if defined (VERBOSE)
+	printf("\n");
+#endif
+	
 	mem_free(indices);
 	mem_free(vals);
 	mem_free(beta);
