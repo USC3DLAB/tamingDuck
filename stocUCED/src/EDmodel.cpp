@@ -62,8 +62,13 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 				genAvail[g][t] = min(genMax[g][t], inst.stocObserv[2].vals[rep][idxT][g]);
 			}
 
-			genRampUp[g][t] = inst.solution.x[g][idxT]*inst.powSys->generators[g].rampUpLim;
-			genRampDown[g][t] = inst.solution.x[g][idxT]*inst.powSys->generators[g].rampDownLim;
+			if ( idxT != 0 ) {
+				/* It is not the first period (t0 == 0 and t == 0) of the entire run, so we have access to solutions */
+				genRampUp[g][t] = inst.solution.x[g][idxT-1]*inst.powSys->generators[g].rampUpLim +
+						inst.solution.x[g][idxT]*(1-inst.solution.x[g][idxT-1])*inst.powSys->generators[g].maxCapacity;
+				genRampDown[g][t] = inst.solution.x[g][idxT]*inst.powSys->generators[g].rampDownLim +
+						inst.solution.x[g][idxT-1]*(1-inst.solution.x[g][idxT])*inst.powSys->generators[g].maxCapacity;
+			}
 		}
 	}
 
