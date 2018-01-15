@@ -199,13 +199,18 @@ void SUCsubprob::formulate_nodebased_system()
 	
 	/** Decision Variables **/
     L = IloArray< IloNumVarArray > (env, numBus);	// load shedding
+	IloArray< IloNumVarArray > O (env, numBus);		// over generation
 	IloArray< IloNumVarArray > T (env, numBus);		// phase angles
 	for (int b=0; b<numBus; b++) {
 		L[b] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+		O[b] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
 		T[b] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
 		
 		sprintf(buffer, "L_%d", b);
 		L[b].setNames(buffer);
+		
+		sprintf(buffer, "O_%d", b);
+		O[b].setNames(buffer);
 		
 		sprintf(buffer, "T_%d", b);
 		T[b].setNames(buffer);
@@ -282,6 +287,9 @@ void SUCsubprob::formulate_nodebased_system()
 			// load shedding
 			expr += L[b][t];
 			
+			// over generation
+			expr -= O[b][t];
+			
 			// constraint
 			IloRange con(env, busLoad[b][t], expr, busLoad[b][t]);
 			cons.add(con);
@@ -304,6 +312,7 @@ void SUCsubprob::formulate_nodebased_system()
 	for (int b=0; b<numBus; b++) {
 		for (int t=0; t<numPeriods; t++) {
 			obj += loadShedPenaltyCoef * L[b][t];
+			obj -= overGenPenaltyCoef * O[b][t];
 		}
 	}
 	
@@ -319,6 +328,7 @@ void SUCsubprob::formulate_aggregate_system()
 
 	/** Decision Variables **/
 	IloNumVarArray L (env, numPeriods, 0, IloInfinity, ILOFLOAT);	// load shedding
+	IloNumVarArray O (env, numPeriods, 0, IloInfinity, ILOFLOAT);	// over generation
 
 	/** Constraints **/
 	// aggregated demand constraints
@@ -326,7 +336,8 @@ void SUCsubprob::formulate_aggregate_system()
 		IloExpr expr (env);
 		for (int g=0; g<numGen; g++)	expr += p[g][t];
 		expr += L[t];
-		IloRange con (env, sysLoad[t], expr);
+		expr -= O[t];
+		IloRange con (env, sysLoad[t], expr, sysLoad[t]);
 		cons.add( con );
 	}
 	
@@ -343,6 +354,7 @@ void SUCsubprob::formulate_aggregate_system()
 	
 	for (int t=0; t<numPeriods; t++) {
 		obj += loadShedPenaltyCoef * L[t];
+		obj -= overGenPenaltyCoef * O[t];
 	}
 	
 	// prepare the model and the solver

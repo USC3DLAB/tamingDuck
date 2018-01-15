@@ -41,7 +41,7 @@ PI_EVAL_START 1
 PI_CYCLE 1
 
 // Indicate whether to employ (by setting equal to 1) evaluation of the eventual solution
-EVAL_FLAG 1
+EVAL_FLAG 0
 
 // Number of resampling to take when checking optimality.
 BOOTSTRAP_REP 50 

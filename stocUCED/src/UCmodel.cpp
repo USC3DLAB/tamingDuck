@@ -323,6 +323,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	if (modelType == System)
 	{
 		IloNumVarArray L (env, numPeriods, 0, IloInfinity, ILOFLOAT);	// load shedding
+		IloNumVarArray O (env, numPeriods, 0, IloInfinity, ILOFLOAT);	// over generation
 		
 		// aggregated-demand constraints
 		for (int t=0; t<numPeriods; t++) {
@@ -331,26 +332,32 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 				expr += p[g][t];
 			}
 			expr += L[t];
-			model.add( IloRange (env, sysLoad[t], expr) );
+			expr -= O[t];
+			model.add( IloRange (env, sysLoad[t], expr, sysLoad[t]) );
 		}
 		
 		// load-shedding penalties
 		for (int t=0; t<numPeriods; t++) {
 			obj += loadShedPenaltyCoef * L[t];
+			obj += overGenPenaltyCoef * O[t];
 		}
 	}
 	else	// (modelType == Transmission)
 	{
 		IloArray< IloNumVarArray > L (env, numBus);		// load shedding
+		IloArray< IloNumVarArray > O (env, numBus);		// over generation
 		IloArray< IloNumVarArray > T (env, numBus);		// phase angles
 		IloArray< IloNumVarArray > F (env, numLine);	// flows
 
 		for (int b=0; b<numBus; b++) {
 			L[b] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+			O[b] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
 			T[b] = IloNumVarArray(env, numPeriods, inst.powSys->buses[b].minPhaseAngle, inst.powSys->buses[b].maxPhaseAngle, ILOFLOAT);
 			
 			sprintf(buffer, "L_%d", b);
 			L[b].setNames(buffer);
+			sprintf(buffer, "O_%d", b);
+			O[b].setNames(buffer);
 			sprintf(buffer, "T_%d", b);
 			T[b].setNames(buffer);
 		}
@@ -406,6 +413,9 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 				// load shedding
 				expr += L[b][t];
 				
+				// over generation
+				expr -= O[b][t];
+				
 				// constraint
 				model.add( expr == busLoad[b][t] );
 				
@@ -418,6 +428,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 		for (int b=0; b<numBus; b++) {
 			for (int t=0; t<numPeriods; t++) {
 				obj += loadShedPenaltyCoef * L[b][t];
+				obj += overGenPenaltyCoef * O[b][t];
 			}
 		}
 	}
