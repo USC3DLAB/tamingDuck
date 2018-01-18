@@ -15,7 +15,7 @@ long long	MEM_USED = 0;	/* Amount of memory allocated each iteration */
 stringC	outputDir;			/* output directory */
 configType	config;			/* algorithm tuning parameters */
 
-int integrateSD(EDmodel rtED, string probName, string &configPath, ScenarioType stocObserv, int t0) {
+int integrateSD(EDmodel &rtED, string probName, string &configPath, ScenarioType stocObserv, int t0) {
 	oneProblem *orig = NULL;
 	timeType *tim = NULL;
 	stocType *stoc = NULL;
@@ -141,7 +141,7 @@ int readConfig(string &configPath) {
 	return 0;
 }//END readConfig()
 
-oneProblem *buildOneProblem(IloModel model, IloCplex cplex, string probName) {
+oneProblem *buildOneProblem(IloModel &model, IloCplex &cplex, string probName) {
 	oneProblem *orig;
 
 	orig = (oneProblem *) malloc(sizeof(oneProblem));
@@ -308,7 +308,7 @@ oneProblem *buildOneProblem(IloModel model, IloCplex cplex, string probName) {
 	return orig;
 }//END buildOneProblem()
 
-timeType *buildTimeType(IloModel model, vector<string> rowNames, vector<string> colNames) {
+timeType *buildTimeType(IloModel &model, vector<string> rowNames, vector<string> colNames) {
 	timeType *tim = NULL;
 
 	map<string, int> colID;
@@ -366,7 +366,7 @@ timeType *buildTimeType(IloModel model, vector<string> rowNames, vector<string> 
 	return tim;
 }//END buildTimeType()
 
-stocType *buildStocType(IloModel model, vector<string> stocRows, ScenarioType stocObserv, int t0) {
+stocType *buildStocType(IloModel &model, vector<string> stocRows, ScenarioType stocObserv, int t0) {
 	stocType *stoc = NULL;
 
 	int maxOmegas = stocRows.size();

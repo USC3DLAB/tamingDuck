@@ -18,12 +18,12 @@
 
 #define TRANSLATE
 
-int integrateSD(EDmodel ED, string probName, string &configPath, ScenarioType stocObserv, int t0);
+int integrateSD(EDmodel &ED, string probName, string &configPath, ScenarioType stocObserv, int t0);
 int readConfig(string &configPath);
-oneProblem *buildOneProblem(IloModel model, IloCplex cplex, string probName);
+oneProblem *buildOneProblem(IloModel &model, IloCplex &cplex, string probName);
 oneProblem *buildOneProblem_file(string probName);
-timeType *buildTimeType(IloModel model, vector<string> rowNames, vector<string> colNames);
-stocType *buildStocType(IloModel model, vector<string> stocRows, ScenarioType stocObserv, int t0);
+timeType *buildTimeType(IloModel &model, vector<string> rowNames, vector<string> colNames);
+stocType *buildStocType(IloModel &model, vector<string> stocRows, ScenarioType stocObserv, int t0);
 
 #ifdef __cplusplus
 extern "C" {

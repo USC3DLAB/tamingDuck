@@ -369,10 +369,18 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 			F[l].setNames(buffer);
 		}
 		
-		// No Load-shedding in buses with 0 load
+		// No load-shedding in buses with 0 load
 		for (int b=0; b<numBus; b++) {
 			for (int t=0; t<numPeriods; t++) {
 				if (busLoad[b][t] < EPSzero) L[b][t].setUB(0);
+			}
+		}
+		// No over-generation in buses with no generators
+		for (int b=0; b<numBus; b++) {
+			if (inst.powSys->buses[b].connectedGenerators.size() == 0) {
+				for (int t=0; t<numPeriods; t++) {
+					O[b][t].setUB(0);
+				}
 			}
 		}
 		
