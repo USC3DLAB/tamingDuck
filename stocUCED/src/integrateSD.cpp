@@ -15,10 +15,12 @@ long long	MEM_USED = 0;	/* Amount of memory allocated each iteration */
 stringC	outputDir;			/* output directory */
 configType	config;			/* algorithm tuning parameters */
 
-int integrateSD(EDmodel &rtED, string probName, string &configPath, ScenarioType stocObserv, int t0) {
+int integrateSD(instance &inst, EDmodel &rtED, string probName, string &configPath, ScenarioType stocObserv, int t0) {
 	oneProblem *orig = NULL;
 	timeType *tim = NULL;
 	stocType *stoc = NULL;
+	vectorC edSols;
+	int lenSols;
 
 	/* TODO: Create a common output directory: Setup outputDir */
 	outputDir = (stringC) malloc(BLOCKSIZE*sizeof(char));
@@ -53,11 +55,15 @@ int integrateSD(EDmodel &rtED, string probName, string &configPath, ScenarioType
 	}
 
 	/* launch the algorithm */
-	if ( algo(orig, tim, stoc, (stringC) probName.c_str()) ) {
+	if ( algo(orig, tim, stoc, (stringC) probName.c_str(), &edSols, &lenSols)) {
 		perror("failed to solve the problem using 2SD");
 		goto TERMINATE;
 	}
 
+	for ( int n = 0; n < lenSols; n++ )
+		inst.solution.x[n][t0] = edSols[n];
+
+	mem_free(edSols);
 	freeOneProblem(orig);
 	freeTimeType(tim);
 	freeStocType(stoc);
@@ -65,6 +71,7 @@ int integrateSD(EDmodel &rtED, string probName, string &configPath, ScenarioType
 	return 0;
 
 	TERMINATE:
+	mem_free(edSols);
 	freeOneProblem(orig);
 	freeTimeType(tim);
 	freeStocType(stoc);
@@ -132,7 +139,7 @@ int readConfig(string &configPath) {
 			fgets(comment, 2*BLOCKSIZE, fptr);
 		else {
 			printf ("%s\n", line);
-			errMsg("read", "readConfig", "unrecognized parameter in configuration file", 1);
+			perror("unrecognized parameter in configuration file encountered while reading readConfig");
 		}
 	}
 

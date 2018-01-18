@@ -164,7 +164,7 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath) {
 					DED.formulate(inst, beginPeriod);
 
 					/* Translate the data structures to suit those used in 2-SD */
-					integrateSD(DED, "rted", configPath, inst.stocObserv[2], beginPeriod);
+					integrateSD(inst, DED, "rted", configPath, inst.stocObserv[2], beginPeriod);
 
 					cout << "Success." << endl;
 
@@ -248,7 +248,7 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath) {
 					DED.formulate(inst, beginPeriod);
 					
 					/* Translate the data structures to suit those used in 2-SD */
-					integrateSD(DED, "rted", configPath, inst.stocObserv[2], beginPeriod);
+					integrateSD(inst, DED, "rted", configPath, inst.stocObserv[2], beginPeriod);
 					
 					cout << "Success." << endl;
 					
