@@ -59,7 +59,7 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 			/* Stochastic generation set to what is available */
 			auto it = inst.stocObserv[2].mapVarNamesToIndex.find(genPtr.name);
 			if ( it != inst.stocObserv[2].mapVarNamesToIndex.end() ) {
-				genAvail[g][t] = min(genMax[g][t], inst.stocObserv[2].vals[rep][idxT][g]);
+				genAvail[g][t] = min(genMax[g][t], inst.stocObserv[2].vals[rep][idxT][it->second]);
 			}
 
 			if ( idxT != 0 ) {
