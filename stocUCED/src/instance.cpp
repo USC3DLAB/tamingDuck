@@ -24,15 +24,14 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, vector<string> stoc
 	for ( int l = 0; l < (int) this->hierarchy.size(); l++ ) {
 		
 		vector<int> indices;
-		for ( int n = 0; n < (int) detElems.size(); n++ ) {
-			for (auto it=stoc->mapTypeToIndex[this->hierarchy[l]].begin(); it != stoc->mapTypeToIndex[this->hierarchy[l]].end(); ++it) {
-				if ( find(detElems.begin(), detElems.end(), stoc->sp[*it].name) != detElems.end() ) {	// if the name is found, push it into the list of indices
-					indices.push_back(*it);
-				}
+		for (auto it=stoc->mapTypeToIndex[this->hierarchy[l]].begin(); it != stoc->mapTypeToIndex[this->hierarchy[l]].end(); ++it) {
+			if ( find(detElems.begin(), detElems.end(), stoc->sp[*it].name) != detElems.end() ) {	// if the name is found, push it into the list of indices
+				indices.push_back(*it);
 			}
 		}
 		// TODO: this num rep issue will cause trouble
 		ScenarioType temp = createScenarioList(stoc, indices, runParam.numPeriods+runParam.ED_numPeriods-1, runParam.numPeriods, runParam.numRep);
+		temp.name = this->hierarchy[l] + "_DetObs";
 		this->detObserv.push_back(temp);
 	}
 
@@ -40,15 +39,15 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, vector<string> stoc
 	for ( int l = 0; l < (int) this->hierarchy.size(); l++ ) {
 		
 		vector<int> indices;
-		for ( int n = 0; n < (int) stocElems.size(); n++ ) {
-			for (auto it=stoc->mapTypeToIndex[this->hierarchy[l]].begin(); it != stoc->mapTypeToIndex[this->hierarchy[l]].end(); ++it) {
-				if ( find(stocElems.begin(), stocElems.end(), stoc->sp[*it].name) != stocElems.end() ) {	// if the name is found, push it into the list of indices
-					indices.push_back(*it);
-				}
+		for (auto it=stoc->mapTypeToIndex[this->hierarchy[l]].begin(); it != stoc->mapTypeToIndex[this->hierarchy[l]].end(); ++it) {
+			cout << stoc->sp[*it].name << " " << this->hierarchy[l] << " " << *it << endl;
+			if ( find(stocElems.begin(), stocElems.end(), stoc->sp[*it].name) != stocElems.end() ) {	// if the name is found, push it into the list of indices
+				indices.push_back(*it);
 			}
 		}
 		// TODO: this num rep issue will cause trouble
 		ScenarioType temp = createScenarioList(stoc, indices, runParam.numPeriods+runParam.ED_numPeriods-1, runParam.numPeriods, runParam.numRep);
+		temp.name = this->hierarchy[l] + "_StochObs";
 		this->stocObserv.push_back(temp);
 	}
 
