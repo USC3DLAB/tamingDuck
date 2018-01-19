@@ -20,7 +20,6 @@ int integrateSD(instance &inst, EDmodel &rtED, string probName, string &configPa
 	timeType *tim = NULL;
 	stocType *stoc = NULL;
 	vectorC edSols;
-	int lenSols;
 
 	/* TODO: Create a common output directory: Setup outputDir */
 	outputDir = (stringC) malloc(BLOCKSIZE*sizeof(char));
@@ -55,13 +54,15 @@ int integrateSD(instance &inst, EDmodel &rtED, string probName, string &configPa
 	}
 
 	/* launch the algorithm */
-	if ( algo(orig, tim, stoc, (stringC) probName.c_str(), &edSols, &lenSols)) {
+	if ( algo(orig, tim, stoc, (stringC) probName.c_str(), &edSols)) {
 		perror("failed to solve the problem using 2SD");
 		goto TERMINATE;
 	}
 
-	for ( int n = 0; n < lenSols; n++ )
-		inst.solution.x[n][t0] = edSols[n];
+	// TODO: generalize the solution extraction
+	for ( int n = 0; n < inst.powSys->numGen; n++ ) {
+		inst.solution.g_ED[n][t0] = edSols[2*n]+edSols[2*n+1];
+	}
 
 	mem_free(edSols);
 	freeOneProblem(orig);

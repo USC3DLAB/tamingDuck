@@ -128,7 +128,7 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath) {
 	inst.initialize(&powSys, &stocProc, stocElems, detElems);
 
 	cout << "------------------------------------------------------------------" << endl;
-	cout << "------------ Deterministic Optimization / Simulation -------------" << endl;
+	cout << "---------- Det UC & Stoch ED Optimization / Simulation -----------" << endl;
 	for (int rep = 0; rep < runParam.numRep; rep++) {
 		cout << "Observation-" << rep << endl;
 
@@ -221,6 +221,10 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath) {
 		/* Long-term unit commitment */
 		for ( h = 0; h < runParam.DA_numSolves; h++ ) {
 			printf("Long-term Unit-Commitment (%02d:%02d): ", timeInfo->tm_hour, timeInfo->tm_min);
+			
+			UCmodel DA;
+			DA.formulate(inst, DayAhead, Transmission, 0, 0);
+			DA.solve();
 			
 			SUCmaster DAmodel;
 			//FIXME: Rep?

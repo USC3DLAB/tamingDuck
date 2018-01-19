@@ -116,6 +116,9 @@ void SUCsubprob::preprocessing ()
 	
 	sceProb.resize(numScen);
 	fill(sceProb.begin(), sceProb.end(), 1.0/(double)numScen);		// equal probability scenarios
+	
+	// TODO: remove this
+	cout << "Solving for " << numScen << " scenarios " << endl;
 }
 
 void SUCsubprob::formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin)

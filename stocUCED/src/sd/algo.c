@@ -14,7 +14,7 @@
 extern stringC outputDir;
 extern configType config;
 
-int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC probName, vectorC *edSols, int *lenSols) {
+int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC probName, vectorC *edSols) {
 	cellType *cell;
 	vectorC	 xk = NULL, lb = NULL;
 	probType **prob = NULL;
@@ -50,7 +50,6 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC probName, vect
 	printf("\n\t\tSuccessfully completed two-stage stochastic decomposition algorithm.\n");
 
 	/* Extract relevant part of the solutions */
-	(*lenSols) = prob[0]->num->cols;
 	(*edSols) = (vectorC) arr_alloc(prob[0]->num->cols, double);
 	for (int n = 0; n < prob[0]->num->cols; n++ ) {
 		(*edSols)[n] = cell->incumbX[n+1];

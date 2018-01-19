@@ -23,6 +23,7 @@ void parseCmdLine(int argc, const char *argv[], string &inputDir, string &config
 
 int setup_DUCDED(PowSys &powSys, StocProcess &stocProc);
 int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath);
+int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath);
 
 int main(int argc, const char * argv[]) {
 	string inputDir, configPath, sysName, setting;
@@ -48,11 +49,13 @@ int main(int argc, const char * argv[]) {
 	}
 	else if ( setting == "DUC-SED" ) {
 		if( setup_DUCSED(powSys, stocProc, configPath) ) {
-			perror("Failed to complete the DUC-DED run.\n");
+			perror("Failed to complete the DUC-SED run.\n");
 		}
 	}
 	else if ( setting == "SUC-SED" ) {
-
+		if( setup_SUCSED(powSys, stocProc, configPath) ) {
+			perror("Failed to complete the SUC-SED run.\n");
+		}
 	}
 	else
 		perror ("Unknown setting for the instance.\n");

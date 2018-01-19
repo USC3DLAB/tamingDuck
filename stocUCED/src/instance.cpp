@@ -22,30 +22,34 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, vector<string> stoc
 
 	/* Setup all the deterministic observations */
 	for ( int l = 0; l < (int) this->hierarchy.size(); l++ ) {
+		
+		vector<int> indices;
 		for ( int n = 0; n < (int) detElems.size(); n++ ) {
-			vector<int> indices;
 			for (auto it=stoc->mapTypeToIndex[this->hierarchy[l]].begin(); it != stoc->mapTypeToIndex[this->hierarchy[l]].end(); ++it) {
 				if ( find(detElems.begin(), detElems.end(), stoc->sp[*it].name) != detElems.end() ) {	// if the name is found, push it into the list of indices
 					indices.push_back(*it);
 				}
 			}
-			ScenarioType temp = createScenarioList(stoc, indices, runParam.numPeriods+runParam.ED_numPeriods-1, runParam.numPeriods, runParam.numRep);
-			this->detObserv.push_back(temp);
 		}
+		// TODO: this num rep issue will cause trouble
+		ScenarioType temp = createScenarioList(stoc, indices, runParam.numPeriods+runParam.ED_numPeriods-1, runParam.numPeriods, runParam.numRep);
+		this->detObserv.push_back(temp);
 	}
 
 	/* Setup all the stochastic observations */
 	for ( int l = 0; l < (int) this->hierarchy.size(); l++ ) {
+		
+		vector<int> indices;
 		for ( int n = 0; n < (int) stocElems.size(); n++ ) {
-			vector<int> indices;
 			for (auto it=stoc->mapTypeToIndex[this->hierarchy[l]].begin(); it != stoc->mapTypeToIndex[this->hierarchy[l]].end(); ++it) {
 				if ( find(stocElems.begin(), stocElems.end(), stoc->sp[*it].name) != stocElems.end() ) {	// if the name is found, push it into the list of indices
 					indices.push_back(*it);
 				}
 			}
-			ScenarioType temp = createScenarioList(stoc, indices, runParam.numPeriods+runParam.ED_numPeriods-1, runParam.numPeriods, runParam.numRep);
-			this->stocObserv.push_back(temp);
 		}
+		// TODO: this num rep issue will cause trouble
+		ScenarioType temp = createScenarioList(stoc, indices, runParam.numPeriods+runParam.ED_numPeriods-1, runParam.numPeriods, runParam.numRep);
+		this->stocObserv.push_back(temp);
 	}
 
 	summary();
