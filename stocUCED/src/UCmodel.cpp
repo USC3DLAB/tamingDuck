@@ -290,7 +290,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 		
 		for (int t=0; t<numPeriods; t++) {
 			if (genPtr->isMustUse) {
-				model.add( p_var[g][t] <= (expCapacity[g][t] - minGenerationReq[g]) );
+				model.add( p_var[g][t] == (expCapacity[g][t] - minGenerationReq[g]) );
 			} else {
 				model.add( p_var[g][t] <= (expCapacity[g][t] - minGenerationReq[g]) * x[g][t] );
 			}
@@ -360,7 +360,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 		// load-shedding penalties
 		for (int t=0; t<numPeriods; t++) {
 			obj += loadShedPenaltyCoef * L[t];
-			obj += overGenPenaltyCoef * O[t];
+			obj += overGenPenaltyCoef  * O[t];
 		}
 	}
 	else	// (modelType == Transmission)
@@ -370,9 +370,8 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 		IloArray< IloNumVarArray > T (env, numBus);		// phase angles
 		IloArray< IloNumVarArray > F (env, numLine);	// flows
 
-		cout << "Load shedding is not permitted" << endl;
 		for (int b=0; b<numBus; b++) {
-			L[b] = IloNumVarArray(env, numPeriods, 0, 0	, ILOFLOAT);
+			L[b] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
 			O[b] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
 			T[b] = IloNumVarArray(env, numPeriods, inst.powSys->buses[b].minPhaseAngle, inst.powSys->buses[b].maxPhaseAngle, ILOFLOAT);
 			
@@ -499,9 +498,6 @@ bool UCmodel::solve() {
 			}
 		}
 		
-		
-		cplex.exportModel("UCmodel.lp");
-		
 		double totLoadShed = 0;
 		for (int b=0; b<numBus; b++) {
 			for (int t=0; t<numPeriods; t++) {
@@ -513,13 +509,23 @@ bool UCmodel::solve() {
 					}
 					
 					totLoadShed += cplex.getValue(L[b][t]);
-					cout << cplex.getValue(L[b][t]) << " (" << b << "," << t << "), ";
+					cout << fixed << setprecision(2) << cplex.getValue(L[b][t]) << " (bus" << b << ",time" << t << "), ";
 				}
 			}
 		}
 		if (totLoadShed > 0) {
 			cout << "Total Load Shed= " << totLoadShed << ", Penalty= " << totLoadShed*loadShedPenaltyCoef << endl << endl;
-		}		
+		}
+		
+//		for (int b=0; b<numBus; b++) {
+//			cout << setw(3) << b << " ";
+//			for (int t=0; t<numPeriods; t++) {
+//				cout << fixed << setprecision(2) << cplex.getValue(O[b][t]) << ",";
+//			}
+//			cout << endl;
+//		}
+//
+//		cplex.exportModel("hasan.lp");
 	}
 	catch (IloException &e) {
 		cout << e << endl;

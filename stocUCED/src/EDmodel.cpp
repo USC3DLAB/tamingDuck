@@ -59,7 +59,8 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 					genPtr.maxCapacity;
 			genMin[g][t] = inst.solution.x[g][idxT]*
 					min(genPtr.minGenerationReq, min(genPtr.rampUpLim * runParam.ED_resolution, genPtr.rampDownLim * runParam.ED_resolution));
-
+			//TODO: Harsha, why is the minGenerationReq equal to the min of ramp... and the minGenerationReq?
+			
 			/* Stochastic generation set to what is available */
 			auto it = inst.stocObserv[2].mapVarNamesToIndex.find(genPtr.name);
 			if ( it != inst.stocObserv[2].mapVarNamesToIndex.end() ) {
@@ -75,7 +76,6 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 			}
 		}
 	}
-
 }
 
 EDmodel::~EDmodel() {
@@ -260,8 +260,10 @@ void EDmodel::formulate(instance &inst, int t0) {
 	sprintf(elemName, "realTimeCost");
 	for ( int t = 0; t < numPeriods; t++) {
 		/* Generation cost */
-		for ( int g = 0; g < numGen; g++ )
+		for ( int g = 0; g < numGen; g++ ) {
+			//TODO: Harsha, I have put penalties on overgeneration as well. Check if you think you should put extra penalties as well.
 			realTimeCost += (inst.powSys->generators[g].variableCost*runParam.ED_resolution/60)*(genUsed[g][t] + overGen[g][t]);
+		}
 
 		/* Load shedding penalty */
 		for ( int d = 0; d < numBus; d++ )
@@ -271,7 +273,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 	obj.setName(elemName);
 	model.add(obj);
 	realTimeCost.end();
-
+	
 #if defined(WRITE_PROB)
 	model.exportModel("rtED.lp")
 #endif

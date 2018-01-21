@@ -211,7 +211,12 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 
     // state constraints
     for (int g=0; g<numGen; g++) {
-        
+		Generator *genPtr = &(inst.powSys->generators[g]);
+		
+		if ( (probType == DayAhead && !genPtr->isDAUCGen) || (probType == ShortTerm && genPtr->isDAUCGen) ) {
+			continue;	// skip scheduling constraints for not-to-be-scheduled generators
+		}
+
         // t=0: generators are assumed to be turned on
         model.add( x[g][0] - getGenState(g,-1) == s[g][0] - z[g][0] );
         
@@ -222,8 +227,13 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
     }
     
     // minimum uptime/downtime constraints
-    for (int g=0; g<numGen; g++)
-    {
+    for (int g=0; g<numGen; g++) {
+		Generator *genPtr = &(inst.powSys->generators[g]);
+		
+		if ( (probType == DayAhead && !genPtr->isDAUCGen) || (probType == ShortTerm && genPtr->isDAUCGen) ) {
+			continue;	// skip scheduling constraints for not-to-be-scheduled generators
+		}
+
         // turn on inequalities
         for (int t=1; t<=numPeriods; t++)
         {
@@ -238,8 +248,13 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
         }
     }
     
-    for (int g=0; g<numGen; g++)
-    {
+    for (int g=0; g<numGen; g++) {
+		Generator *genPtr = &(inst.powSys->generators[g]);
+		
+		if ( (probType == DayAhead && !genPtr->isDAUCGen) || (probType == ShortTerm && genPtr->isDAUCGen) ) {
+			continue;	// skip scheduling constraints for not-to-be-scheduled generators
+		}
+
         // turn off inequalities
         for (int t=1; t<=numPeriods; t++)
         {

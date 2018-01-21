@@ -81,8 +81,6 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc) {
 			status = DAmodel.solve();
 			if (status)	printf("Success (Obj= %.2f).\n", DAmodel.getObjValue());
 			else		printf("Failed.\n");
-
-//			inst.printSolution( ("ucsol") );
 			
 			/* Short-term unit commitment */
 			for ( t = 0; t < runParam.ST_numSolves; t++ ) {
@@ -104,11 +102,9 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc) {
 					EDmodel DED(inst, ED_beginPeriod, rep);
 					DED.formulate(inst, ED_beginPeriod);
 					
-//					status = DED.solve(inst, ED_beginPeriod);
-//					if (status)	printf("Success (Obj= %.2f).\n", DED.getObjValue());
-//					else		printf("Failed.\n");
-
-					cout << endl;
+					status = DED.solve(inst, ED_beginPeriod);
+					if (status)	printf("Success (Obj= %.2f).\n", DED.getObjValue());
+					else		printf("Failed.\n");
 					
 					/* Move to the next period */
 					beginMin += runParam.baseTime;
