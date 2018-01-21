@@ -113,6 +113,7 @@ void SUCsubprob::preprocessing ()
 	/* Uncertainty related */
 	scenSet = (probType == DayAhead) ? &(inst->stocObserv[0]) : &(inst->stocObserv[1]);
 	numScen = 4;
+	//TODO: read the number of scenarios
 	//numScen = (int)scenSet->vals.size();
 	
 	sceProb.resize(numScen);
@@ -316,7 +317,7 @@ void SUCsubprob::formulate_nodebased_system()
 	for (int b=0; b<numBus; b++) {
 		for (int t=0; t<numPeriods; t++) {
 			obj += loadShedPenaltyCoef * L[b][t];
-			obj -= overGenPenaltyCoef * O[b][t];
+			obj += overGenPenaltyCoef * O[b][t];
 		}
 	}
 	
@@ -358,7 +359,7 @@ void SUCsubprob::formulate_aggregate_system()
 	
 	for (int t=0; t<numPeriods; t++) {
 		obj += loadShedPenaltyCoef * L[t];
-		obj -= overGenPenaltyCoef * O[t];
+		obj += overGenPenaltyCoef * O[t];
 	}
 	
 	// prepare the model and the solver
@@ -449,10 +450,11 @@ void SUCsubprob::setup_subproblem(int &s)
 					else {
 						cons[c].setUB( scenSet->vals[s][t*numBaseTimePerPeriod][it->second] );
 					}
-					
-					if ( scenSet->vals[s][t*numBaseTimePerPeriod][it->second] > genPtr->maxCapacity ) {
-						cout << "S_" << genPtr->name << "_" << t << "_" << s << " has this output and capacity: " << scenSet->vals[s][t*numBaseTimePerPeriod][it->second] << " " << genPtr->maxCapacity << endl;;
-					}
+
+					//TODO: capacity-exceeding supplies?
+//					if ( scenSet->vals[s][t*numBaseTimePerPeriod][it->second] > genPtr->maxCapacity ) {
+//						cout << "S_" << genPtr->name << "_" << t << "_" << s << " has this output and capacity: " << scenSet->vals[s][t*numBaseTimePerPeriod][it->second] << " " << genPtr->maxCapacity << endl;;
+//					}
 				}
 			}
 		} else {

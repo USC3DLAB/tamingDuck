@@ -338,6 +338,10 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 	
     // formulate the subproblem
 	sub.formulate(inst, probType, modelType, beginMin);
+	
+	// formulate the warm-up problem
+	// FIXME: rep?
+	warmUpProb.formulate(inst, probType, modelType, beginMin, 0);
 
     /*************************************************************************
      * DISABLED: Didn't improve the progress of the algorithm. Donno why..
@@ -373,12 +377,29 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 
 bool SUCmaster::solve () {
 	try{
-        bool status = cplex.solve();
-        
-		cout << "Optimization is completed with status " << cplex.getCplexStatus() << endl;
-        cout << "Obj = \t" << cplex.getObjValue() << endl;
-        cout << "LB = \t" << cplex.getBestObjValue() << endl;
-        
+		bool status;
+		
+		// warm up
+		cout << "Executing warm up MIP..." << endl;
+		status = warmUpProb.solve();
+		if (status) {
+			setWarmUp();
+			cout << "Warm up model provided " << warmUpProb.cplex.getSolnPoolNsolns() << " solutions (Best Obj= " << warmUpProb.getObjValue() << ")." << endl;
+		} else {
+			cout << "Warm up has failed." << endl;
+		}
+		
+		// Benders' decomposition
+		cout << "Executing Benders' decomposition..." << endl;
+		status = cplex.solve();
+		if (status) {
+			cout << "Optimization is completed with status " << cplex.getCplexStatus() << endl;
+			cout << "Obj = \t" << cplex.getObjValue() << endl;
+			cout << "LB = \t" << cplex.getBestObjValue() << endl;
+		} else {
+			cout << "Benders' decomposition has failed." << endl;
+		}
+		
 		return status;
 	}
 	catch (IloException &e) {
@@ -387,14 +408,39 @@ bool SUCmaster::solve () {
 	}
 }
 
+void SUCmaster::setWarmUp ()
+{
+	for (int sol=0; sol<warmUpProb.cplex.getSolnPoolNsolns(); sol++) {
+		IloNumVarArray	vars (env);
+		IloNumArray		vals (env);
+
+		for (int g=0; g<numGen; g++) {
+			for (int t=0; t<numPeriods; t++) {
+				vars.add( s[g][t] );
+				vals.add( warmUpProb.cplex.getValue(warmUpProb.s[g][t], sol) );
+				
+				vars.add( x[g][t] );
+				vals.add( warmUpProb.cplex.getValue(warmUpProb.x[g][t], sol) );
+				
+				vars.add( z[g][t] );
+				vals.add( warmUpProb.cplex.getValue(warmUpProb.z[g][t], sol) );
+			}
+		}
+		cplex.addMIPStart(vars, vals);
+		
+		vars.end();
+		vals.end();
+	}
+}
+
 /*
 void master::warmStart(Solution &soln)
 {
     this->soln = soln;
-    
+ 
     IloNumVarArray vars (env);
     IloNumArray vals (env);
-    
+ 
     for (int g=0; g<inst->G; g++) {
         for (int t=0; t<inst->T; t++) {
             vars.add( s[g][t] );
@@ -484,4 +530,12 @@ void SUCmaster::setGenState(int genId, int period, double value) {
 		cout << "Error: Setting generator state out of the bounds of the horizon" << endl;
 		exit(-1);
 	}
+}
+
+/****************************************************************************
+ * getObjValue
+ * - Returns the objective value of the last optimization.
+ ****************************************************************************/
+double SUCmaster::getObjValue() {
+	return cplex.getObjValue();
 }

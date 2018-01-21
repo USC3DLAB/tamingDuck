@@ -13,6 +13,7 @@
 #include <ilcplex/ilocplex.h>
 
 #include "SUC_subprob.hpp"
+#include "UCmodel.hpp"
 #include "instance.hpp"
 #include "config.hpp"
 #include "misc.hpp"
@@ -26,6 +27,7 @@ public:
 	void formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin);
 
 	bool solve ();
+	double getObjValue();
 	
 //    void warmStart (Solution &soln);
 //    void warmStart (vector<Solution> &soln);
@@ -52,7 +54,9 @@ private:
 	ProblemType probType;
 	ModelType	modelType;
 
-	SUCsubprob	sub;
+	SUCsubprob	sub;		// Benders' subproblem
+	UCmodel		warmUpProb;	// MIP Model for warm-starting Benders' decomposition
+	void		setWarmUp();
 	
 	void preprocessing();
 

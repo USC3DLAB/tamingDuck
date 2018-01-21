@@ -18,6 +18,8 @@
 
 class UCmodel {
 
+	friend class SUCmaster;		// SUCmaster uses UCmodel for warm up purposes
+	
 public:
 	UCmodel ();
 	~UCmodel();
