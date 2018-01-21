@@ -13,14 +13,18 @@
 #include "EDmodel.hpp"
 
 extern runType runParam;
+extern ofstream cplexLog;
 
 EDmodel::EDmodel(instance &inst, int t0, int rep) {
 
 	model = IloModel(env);
 	cplex = IloCplex(model);
 
-	cplex.setOut(env.getNullStream());
-
+	//cplex.setOut(env.getNullStream());
+	cplex.setOut(cplexLog);
+	cplex.setWarning(cplexLog);
+	
+	
 	/* Pre-process to setup some parameters: generator status (ramping and capacity), load, and stochastic generation */
 	numBus = numLoad = inst.powSys->numBus;
 	numGen = inst.powSys->numGen;
@@ -48,7 +52,7 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 		Generator genPtr = inst.powSys->generators[g];
 		for (int t = 0; t < numPeriods; t++ ) {
 			/* If the model horizon exceeds the number of periods, then the last period commitment are repeated for the remainder of horizon */
-			int idxT = min(t0+t, runParam.numPeriods);
+			int idxT = min(t0+t, runParam.numPeriods-1);
 
 			/* Make sure that the generation capacity limits are met. The minimum and maximum for generators which are turned off are set to zero during pre-processing */
 			genMax[g][t] = inst.solution.x[g][idxT]*
@@ -284,11 +288,34 @@ bool EDmodel::solve(instance &inst, int t0) {
 	try {
 		status = cplex.solve();
 
+		double totLoadShed = 0;
+		for (int b=0; b<numBus; b++) {
+			for (int t=0; t<numPeriods; t++) {
+				if ( cplex.getValue(demShed[b][t]) > 1e-6 ) {
+					
+					if (totLoadShed == 0)	// first time
+					{
+						cout << endl << "~Load Shed~" << endl;
+					}
+					
+					totLoadShed += cplex.getValue(demShed[b][t]);
+					cout << cplex.getValue(demShed[b][t]) << " (" << b << "," << t << "), ";
+				}
+			}
+		}
+		if (totLoadShed > 0) {
+			cout << "Total Load Shed= " << totLoadShed << ", Penalty= " << totLoadShed*loadShedPenaltyCoef << endl << endl;
+		}
+
+		
+		
 		// record the solution
 		if (status) {
 			for (int g = 0; g < numGen; g++) {
 				for (int t = 0; t < numPeriods; t++) {
-					inst.solution.g_ED[g][t0+t] = cplex.getValue(genUsed[g][t]) + cplex.getValue(overGen[g][t]);
+					if ( t0 + t < runParam.numPeriods ) {	// do not record for periods that exceed the planning horizon
+						inst.solution.g_ED[g][t0+t] = cplex.getValue(genUsed[g][t]) + cplex.getValue(overGen[g][t]);
+					}
 				}
 			}
 		}
@@ -298,4 +325,12 @@ bool EDmodel::solve(instance &inst, int t0) {
 	}
 
 	return status;
+}
+
+/****************************************************************************
+ * getObjValue
+ * - Returns the objective value of the last solve.
+ ****************************************************************************/
+double EDmodel::getObjValue() {
+	return cplex.getObjValue();
 }

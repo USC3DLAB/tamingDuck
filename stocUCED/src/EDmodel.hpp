@@ -31,6 +31,8 @@ public:
 
 	void formulate(instance &inst, int t0);
 	bool solve(instance &inst, int t0);
+	
+	double getObjValue();
 
 	IloEnv		env;
 	IloModel	model;

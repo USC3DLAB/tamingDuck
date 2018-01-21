@@ -112,7 +112,8 @@ void SUCsubprob::preprocessing ()
 	
 	/* Uncertainty related */
 	scenSet = (probType == DayAhead) ? &(inst->stocObserv[0]) : &(inst->stocObserv[1]);
-	numScen = (int)scenSet->vals.size();
+	numScen = 4;
+	//numScen = (int)scenSet->vals.size();
 	
 	sceProb.resize(numScen);
 	fill(sceProb.begin(), sceProb.end(), 1.0/(double)numScen);		// equal probability scenarios
@@ -407,6 +408,7 @@ bool SUCsubprob::solve() {
 		setup_subproblem (s);			// prepare the subproblem
 		
 		status = cplex.solve();			// solve the subproblem
+		
 		if (!status) {
 			if ( cplex.getCplexStatus() == IloCplex::Infeasible ) {
 				get_feasibility_cut_coefs(s);
@@ -446,6 +448,10 @@ void SUCsubprob::setup_subproblem(int &s)
 					}
 					else {
 						cons[c].setUB( scenSet->vals[s][t*numBaseTimePerPeriod][it->second] );
+					}
+					
+					if ( scenSet->vals[s][t*numBaseTimePerPeriod][it->second] > genPtr->maxCapacity ) {
+						cout << "S_" << genPtr->name << "_" << t << "_" << s << " has this output and capacity: " << scenSet->vals[s][t*numBaseTimePerPeriod][it->second] << " " << genPtr->maxCapacity << endl;;
 					}
 				}
 			}

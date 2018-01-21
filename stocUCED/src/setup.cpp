@@ -18,6 +18,10 @@
 
 extern runType runParam;
 
+ofstream cplexLog;
+
+
+
 /* Build and solve a framework for a given time series data
  *
  * Long-term UC  - deterministic
@@ -28,6 +32,9 @@ extern runType runParam;
 int setup_DUCDED(PowSys &powSys, StocProcess &stocProc) {
 	int h, t, n;
 
+	/* logging */
+	open_file(cplexLog, "cplex.log");
+	
 	/* time visualization */
 	time_t rawTime;
 	struct tm * timeInfo;
@@ -59,39 +66,54 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc) {
 		/* allocate memory to hold solutions */
 		Solution soln;
 		soln.allocateMem(powSys.numGen, runParam.DA_horizon/runParam.baseTime);
-
-		int beginPeriod = 0; 	timeInfo->tm_min = 0;	timeInfo->tm_hour = 0; mktime(timeInfo);
+		
+		int beginMin = 0; 	timeInfo->tm_min = 0;	timeInfo->tm_hour = 0; mktime(timeInfo);
+		
+		bool status = true;
 
 		/* Long-term unit commitment */
 		for ( h = 0; h < runParam.DA_numSolves; h++ ) {
 			printf("Long-term Unit-Commitment (%02d:%02d): ", timeInfo->tm_hour, timeInfo->tm_min);
 
 			UCmodel DAmodel;
-			DAmodel.formulate(inst, DayAhead, Transmission, 0, rep);
-			DAmodel.solve();
-			cout << "Success." << endl;
+			DAmodel.formulate(inst, DayAhead, Transmission, beginMin, rep);
+			
+			status = DAmodel.solve();
+			if (status)	printf("Success (Obj= %.2f).\n", DAmodel.getObjValue());
+			else		printf("Failed.\n");
 
+//			inst.printSolution( ("ucsol") );
+			
 			/* Short-term unit commitment */
 			for ( t = 0; t < runParam.ST_numSolves; t++ ) {
 				printf("\tShort-term Unit-Commitment (%02d:%02d): ", timeInfo->tm_hour, timeInfo->tm_min);
 				UCmodel STmodel;
-				STmodel.formulate(inst, ShortTerm, Transmission, 0, rep);
-				STmodel.solve();
-				cout << "Success." << endl;
+				STmodel.formulate(inst, ShortTerm, Transmission, beginMin, rep);
+				
+				status = STmodel.solve();
+				if (status)	printf("Success (Obj= %.2f).\n", STmodel.getObjValue());
+				else		printf("Failed.\n");
 
 
 				/* Economic dispatch */
 				for ( n = 0; n < runParam.ED_numSolves; n++ ) {
 					printf("\t\tEconomic Dispatch (%02d:%02d): ", timeInfo->tm_hour, timeInfo->tm_min);
-					EDmodel DED(inst, beginPeriod, rep);
-					DED.formulate(inst, beginPeriod);
-					DED.solve(inst, beginPeriod);
-					cout << "Success." << endl;
+					
+					int ED_beginPeriod = beginMin/runParam.ED_resolution;
+					
+					EDmodel DED(inst, ED_beginPeriod, rep);
+					DED.formulate(inst, ED_beginPeriod);
+					
+//					status = DED.solve(inst, ED_beginPeriod);
+//					if (status)	printf("Success (Obj= %.2f).\n", DED.getObjValue());
+//					else		printf("Failed.\n");
 
+					cout << endl;
+					
 					/* Move to the next period */
+					beginMin += runParam.baseTime;
 					timeInfo->tm_min += runParam.baseTime;
 					mktime(timeInfo);
-					beginPeriod ++;
 				}
 			}
 		}
@@ -99,6 +121,8 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc) {
 	}
 	cout << "------------------------------------------------------------------" << endl;
 
+	cplexLog.close();
+	
 	return 0;
 }
 
@@ -143,7 +167,7 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath) {
 			printf("Long-term Unit-Commitment (%02d:%02d): ", timeInfo->tm_hour, timeInfo->tm_min);
 
 			UCmodel DAmodel;
-			DAmodel.formulate(inst, DayAhead, Transmission, 0, rep);
+			DAmodel.formulate(inst, DayAhead, Transmission, h, rep);
 			DAmodel.solve();
 			cout << "Success." << endl;
 

@@ -23,6 +23,7 @@ public:
 	~UCmodel();
 
 	void formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep);
+	double getObjValue();
 	bool solve ();
 	
 private:
@@ -31,7 +32,7 @@ private:
 	IloModel	model;
 	IloCplex	cplex;
 
-	IloArray<IloNumVarArray> s, x, z, p, p_var;
+	IloArray<IloNumVarArray> s, x, z, p, p_var, L, O;
 
 	/* data */
 	instance*	inst;

@@ -9,6 +9,8 @@
 #include "UCmodel.hpp"
 
 extern runType runParam;
+extern ofstream cplexLog;
+
 
 UCmodel::UCmodel () {
 	model = IloModel(env);
@@ -61,10 +63,11 @@ void UCmodel::preprocessing ()
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
+		// do not remove this assignment, as STUC generators' minGenReqs are set to 0 later on.
 		minGenerationReq[g] = genPtr->minGenerationReq;
-		if (minGenerationReq[g] > min(genPtr->rampUpLim * periodLength, genPtr->rampDownLim * periodLength)) {
-			minGenerationReq[g] = min(genPtr->rampUpLim * periodLength, genPtr->rampDownLim * periodLength);
-		}
+//		if (minGenerationReq[g] > min(genPtr->rampUpLim * periodLength, genPtr->rampDownLim * periodLength)) {
+//			minGenerationReq[g] = min(genPtr->rampUpLim * periodLength, genPtr->rampDownLim * periodLength);
+//		}
 	}
 	
 	/* Min Up/Down */
@@ -88,7 +91,7 @@ void UCmodel::preprocessing ()
 		if ( it != dataPtr->mapVarNamesToIndex.end() ) {
 			/* random supply */
 			for (int t=0; t<numPeriods; t++) {
-				expCapacity[g][t] = dataPtr->vals[rep][t*numBaseTimePerPeriod][it->second];	// in MWs
+				expCapacity[g][t] = dataPtr->vals[rep][(beginMin/periodLength)+(t*numBaseTimePerPeriod)][it->second];	// in MWs
 			}
 		} else {
 			/* deterministic supply */
@@ -114,7 +117,7 @@ void UCmodel::preprocessing ()
 		fill( sysLoad.begin(), sysLoad.end(), 0.0 );		// initialize to 0
 		for (int t=0; t<numPeriods; t++) {
 			for (int r=0; r<dataPtr->numVars; r++) {
-				sysLoad[t] += dataPtr->vals[rep][t*numBaseTimePerPeriod][r];
+				sysLoad[t] += dataPtr->vals[rep][(beginMin/periodLength)+(t*numBaseTimePerPeriod)][r];
 			}
 		}
 	}
@@ -124,7 +127,7 @@ void UCmodel::preprocessing ()
 			int r = dataPtr->mapVarNamesToIndex[ num2str(busPtr->regionId) ];
 			
 			for (int t=0; t<numPeriods; t++) {
-				busLoad[b][t] = dataPtr->vals[rep][t*numBaseTimePerPeriod][r] * busPtr->loadPercentage;
+				busLoad[b][t] = dataPtr->vals[rep][(beginMin/periodLength)+(t*numBaseTimePerPeriod)][r] * busPtr->loadPercentage;
 			}
 		}
 	}
@@ -186,6 +189,12 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	
 	// state constraints
 	for (int g=0; g<numGen; g++) {
+		Generator *genPtr = &(inst.powSys->generators[g]);
+		
+		if ( (probType == DayAhead && !genPtr->isDAUCGen) || (probType == ShortTerm && genPtr->isDAUCGen) ) {
+			continue;	// skip scheduling constraints for not-to-be-scheduled generators
+		}
+		
 		// t=0: generators are assumed to be turned on
 		model.add( x[g][0] - getGenState(g,-1) == s[g][0] - z[g][0] );
 	
@@ -197,6 +206,12 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	
 	// minimum uptime constraints
 	for (int g=0; g<numGen; g++) {
+		Generator *genPtr = &(inst.powSys->generators[g]);
+		
+		if ( (probType == DayAhead && !genPtr->isDAUCGen) || (probType == ShortTerm && genPtr->isDAUCGen) ) {
+			continue;	// skip scheduling constraints for not-to-be-scheduled generators
+		}
+
 		// turn on inequalities
 		for (int t=1; t<=numPeriods; t++)
 		{
@@ -212,6 +227,12 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	
 	// minimum downtime constraints
 	for (int g=0; g<numGen; g++) {
+		Generator *genPtr = &(inst.powSys->generators[g]);
+		
+		if ( (probType == DayAhead && !genPtr->isDAUCGen) || (probType == ShortTerm && genPtr->isDAUCGen) ) {
+			continue;	// skip scheduling constraints for not-to-be-scheduled generators
+		}
+
 		// turn off inequalities
 		for (int t=1; t<=numPeriods; t++)
 		{
@@ -269,7 +290,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 		
 		for (int t=0; t<numPeriods; t++) {
 			if (genPtr->isMustUse) {
-				model.add( p_var[g][t] == (expCapacity[g][t] - minGenerationReq[g]) );
+				model.add( p_var[g][t] <= (expCapacity[g][t] - minGenerationReq[g]) );
 			} else {
 				model.add( p_var[g][t] <= (expCapacity[g][t] - minGenerationReq[g]) * x[g][t] );
 			}
@@ -344,13 +365,14 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	}
 	else	// (modelType == Transmission)
 	{
-		IloArray< IloNumVarArray > L (env, numBus);		// load shedding
-		IloArray< IloNumVarArray > O (env, numBus);		// over generation
+		L = IloArray< IloNumVarArray > (env, numBus);	// load shedding
+		O = IloArray< IloNumVarArray > (env, numBus);	// over generation
 		IloArray< IloNumVarArray > T (env, numBus);		// phase angles
 		IloArray< IloNumVarArray > F (env, numLine);	// flows
 
+		cout << "Load shedding is not permitted" << endl;
 		for (int b=0; b<numBus; b++) {
-			L[b] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+			L[b] = IloNumVarArray(env, numPeriods, 0, 0	, ILOFLOAT);
 			O[b] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
 			T[b] = IloNumVarArray(env, numPeriods, inst.powSys->buses[b].minPhaseAngle, inst.powSys->buses[b].maxPhaseAngle, ILOFLOAT);
 			
@@ -446,9 +468,11 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	obj.end();
 	
 	cplex.extract(model);
-	cplex.setParam(IloCplex::Threads, 1);
+//	cplex.setParam(IloCplex::Threads, 1);
 	cplex.setParam(IloCplex::EpGap, 1e-1);
 //	cplex.setOut(env.getNullStream());
+	cplex.setOut(cplexLog);
+	cplex.setWarning(cplexLog);
 }
 
 /****************************************************************************
@@ -460,7 +484,7 @@ bool UCmodel::solve() {
 	bool status;
 	try {
 		status = cplex.solve();
-		
+
 		// record the solution
 		if (status) {			
 			for (int g=0; g<numGen; g++) {
@@ -474,6 +498,28 @@ bool UCmodel::solve() {
 				}
 			}
 		}
+		
+		
+		cplex.exportModel("UCmodel.lp");
+		
+		double totLoadShed = 0;
+		for (int b=0; b<numBus; b++) {
+			for (int t=0; t<numPeriods; t++) {
+				if ( cplex.getValue(L[b][t]) > 1e-6 ) {
+					
+					if (totLoadShed == 0)	// first time
+					{
+						cout << endl << "~Load Shed~" << endl;
+					}
+					
+					totLoadShed += cplex.getValue(L[b][t]);
+					cout << cplex.getValue(L[b][t]) << " (" << b << "," << t << "), ";
+				}
+			}
+		}
+		if (totLoadShed > 0) {
+			cout << "Total Load Shed= " << totLoadShed << ", Penalty= " << totLoadShed*loadShedPenaltyCoef << endl << endl;
+		}		
 	}
 	catch (IloException &e) {
 		cout << e << endl;
@@ -542,4 +588,12 @@ void UCmodel::setGenProd(int genId, int period, double value) {
 		cout << "Error: Setting generator state out of the bounds of the horizon" << endl;
 		exit(-1);
 	}
+}
+
+/****************************************************************************
+ * getObjValue
+ * - Returns the objective value of the last optimization.
+ ****************************************************************************/
+double UCmodel::getObjValue() {
+	return cplex.getObjValue();
 }

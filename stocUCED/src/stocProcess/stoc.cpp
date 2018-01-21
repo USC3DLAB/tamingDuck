@@ -113,9 +113,11 @@ ScenarioType createScenarioList(StocProcess *stoc, vector<int> S_indices, int le
 	ScenarioType observ;
 
 	/* Compute the number of observations that can be generated */
-	for ( unsigned int n = 0; n < S_indices.size(); n++ )
-		if (numVals > ceil((stoc->sp[S_indices[n]].numT - lenT)/stepSize))
-			numVals = ceil(stoc->sp[S_indices[n]].numT - lenT)/stepSize;
+	for ( unsigned int n = 0; n < S_indices.size(); n++ ) {
+		double numValsInData = ceil(  (double) (stoc->sp[S_indices[n]].numT - (lenT-stepSize)) / (double) stepSize  );
+		if (numVals > numValsInData)
+			numVals = numValsInData;
+	}
 
 	for ( int rep = 0; rep < numVals; rep++ ) {
 		vector<vector<double> > M;
@@ -132,10 +134,17 @@ ScenarioType createScenarioList(StocProcess *stoc, vector<int> S_indices, int le
 	}
 
 	observ.T = lenT;
-	observ.cnt = observ.vals.size();
-	observ.numVars = observ.vals[0][0].size();
-	for ( unsigned int n = 0; n < S_indices.size(); n++ )
-		observ.mapVarNamesToIndex.insert( stoc->sp[S_indices[n]].mapVarNamesToIndex.begin(), stoc->sp[S_indices[n]].mapVarNamesToIndex.end() );
+	observ.cnt = (int)observ.vals.size();
+	observ.numVars = (int)observ.vals[0][0].size();
+	
+	// register the new indices (if we have solar+wind, the indices of wind generators will be numSolar+1, numSolar+2, ...)
+	int offset = 0;
+	for ( unsigned int n = 0; n < S_indices.size(); n++ ) {
+		for (auto it = stoc->sp[S_indices[n]].mapVarNamesToIndex.begin(); it != stoc->sp[S_indices[n]].mapVarNamesToIndex.end(); ++it) {
+			observ.mapVarNamesToIndex.insert( pair<string, int> (it->first, offset+it->second) );
+		}
+		offset += observ.mapVarNamesToIndex.size();
+	}
 
 	return observ;
 }//END createObservList()
