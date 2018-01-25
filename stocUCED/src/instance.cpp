@@ -110,6 +110,12 @@ bool instance::printSolution(string filepath) {
 	print_matrix(output, solution.g_ED, delimiter, 2);
 	output.close();
 
+	status = open_file(output, filepath + "_costs.sol");
+	if (!status) goto finalize;
+	// TODO: semih will calculate costs
+	
+	output.close();
+	
 	finalize:
 	return status;
 }

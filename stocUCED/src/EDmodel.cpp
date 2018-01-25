@@ -74,7 +74,7 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 			genRampUp[g][t]		= genPtr.rampUpLim * runParam.ED_resolution;
 			genRampDown[g][t]	= genPtr.rampDownLim * runParam.ED_resolution;
 			
-			if ( idxT == 0 ) {
+/*			if ( idxT == 0 ) {
 				// no ramping restrictions for time 0
 				genRampUp[g][t]		= genPtr.maxCapacity;
 				genRampDown[g][t]	= genPtr.maxCapacity;
@@ -84,15 +84,15 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 					genRampUp[g][t]		= genPtr.maxCapacity;
 				}
 				
-				if ( fabs(max(inst.solution.x[g][idxT-1]-inst.solution.x[g][idxT], 0.0) - 1.0) <= 1e-8 ) {
-					genRampDown[g][t]	= genPtr.maxCapacity;
-				}
+//				if ( fabs(max(inst.solution.x[g][idxT-1]-inst.solution.x[g][idxT], 0.0) - 1.0) <= 1e-8 ) {
+//					genRampDown[g][t]	= genPtr.maxCapacity;
+//				}
 				
 				if ( fabs(inst.solution.x[g][idxT]) <= 1e-8 ) {
 					genRampDown[g][t]	= genPtr.maxCapacity;
 				}
 			}
-
+*/
 			
 			//genRampDown[g][t] += 10000;
 			
@@ -288,11 +288,11 @@ void EDmodel::formulate(instance &inst, int t0) {
 			}
 		}
 
-		/* TODO: Fix generation capacity for stochastic generators. Generation capacity and availability limit */
+		/* TODO: Fix generation capacity for stochastic generators. Generation capacity and availability limit *
 		for ( int g = 0; g < numGen; g++ ) {
 			Generator genPtr = inst.powSys->generators[g];
 			/* Make sure that the generation capacity limits are met.
-			 * The minimum and maximum for generators which are turned off are set to zero during pre-processing */
+			 * The minimum and maximum for generators which are turned off are set to zero during pre-processing *
 			sprintf(elemName, "maxGen[%d][%d]", g, t);
 			IloConstraint c1a( genUsed[g][t] + overGen[g][t] <= genMax[g][t]);
 			c1a.setName(elemName); model.add(c1a);
@@ -301,7 +301,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 			IloConstraint c2( genUsed[g][t] + overGen[g][t] >= genMin[g][t]);
 			c2.setName(elemName); model.add(c2);
 
-			/* Stochastic generation consistency */
+			/* Stochastic generation consistency *
 			auto it = inst.stocObserv[2].mapVarNamesToIndex.find(genPtr.name);
 			if ( it != inst.stocObserv[2].mapVarNamesToIndex.end() ) {
 				sprintf(elemName, "stocAvail[%d][%d]", g, t);
@@ -314,8 +314,42 @@ void EDmodel::formulate(instance &inst, int t0) {
 				if ( t != 0 )
 					stocRows.push_back(elemName);
 			}
-		}
+		}	*/
 
+		for ( int g = 0; g < numGen; g++ ) {
+			Generator genPtr = inst.powSys->generators[g];
+			
+			auto it = inst.stocObserv[2].mapVarNamesToIndex.find(genPtr.name);
+			if ( it == inst.stocObserv[2].mapVarNamesToIndex.end() ) {
+				/* Deterministic-supply generator */
+			
+				sprintf(elemName, "maxGenA[%d][%d]", g, t);
+				IloConstraint c1a( genUsed[g][t] <= genMax[g][t]);
+				c1a.setName(elemName); model.add(c1a);
+
+				sprintf(elemName, "maxGenB[%d][%d]", g, t);
+				IloConstraint c1b( genUsed[g][t] + overGen[g][t] <= genPtr.maxCapacity);
+				c1b.setName(elemName); model.add(c1b);
+
+				sprintf(elemName, "minGen[%d][%d]", g, t);
+				IloConstraint c2( genUsed[g][t] >= genMin[g][t]);
+				c2.setName(elemName); model.add(c2);
+			}
+			else {
+				/* Stochastic-supply generator */
+				sprintf(elemName, "stocAvail[%d][%d]", g, t);
+				if (genPtr.isMustUse) {
+					IloConstraint c (genUsed[g][t] + overGen[g][t] == genAvail[g][t]); c.setName(elemName); model.add(c);
+				} else {
+					IloConstraint c (genUsed[g][t] + overGen[g][t] <= genAvail[g][t]); c.setName(elemName); model.add(c);
+				}
+
+				//TODO: Harsha, I'm not sure if this is in the right place:
+				if ( t != 0 )
+					stocRows.push_back(elemName);
+			}
+		}
+		
 		/* Demand consistency */
 		for ( int d = 0; d < numBus; d++ ) {
 			sprintf(elemName, "demConsist[%d][%d]", d, t);
