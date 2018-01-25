@@ -550,9 +550,8 @@ bool UCmodel::getGenState(int genId, int period) {
 	else if (reqSolnComp < inst->solution.x[genId].size()) {	// return the corresponding solution
 		return round(inst->solution.x[genId][reqSolnComp]);
 	}
-	else {														// error
-		cout << "Error: You cannot access a solution component that is beyond the planning horizon" << endl;
-		exit(-1);
+	else {														// asking what's beyond the planning horizon, we return the last solution
+		return round(inst->solution.x[genId][ inst->solution.x[genId].size()-1 ]);
 	}
 }
 
@@ -571,8 +570,7 @@ void UCmodel::setGenState(int genId, int period, double value) {
 		}
 	}
 	else {
-		cout << "Error: Setting generator state out of the bounds of the horizon" << endl;
-		exit(-1);
+		// Setting generator state at time that is beyond the planning horizon
 	}
 }
 
@@ -591,8 +589,7 @@ void UCmodel::setGenProd(int genId, int period, double value) {
 		}
 	}
 	else {
-		cout << "Error: Setting generator state out of the bounds of the horizon" << endl;
-		exit(-1);
+		// Setting generator production at time that is beyond the planning horizon
 	}
 }
 

@@ -359,10 +359,6 @@ bool EDmodel::solve(instance &inst, int t0) {
 	try {
 		status = cplex.solve();
 
-		if (!status) {
-			cplex.exportModel("RTED.lp");
-		}
-
 		if (status) {
 			double totLoadShed = 0;
 			for (int b=0; b<numBus; b++) {
