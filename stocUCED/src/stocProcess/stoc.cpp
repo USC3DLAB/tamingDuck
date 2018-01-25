@@ -73,12 +73,12 @@ OneStocProc StocProcess::read(string fname, char delimiter, bool readColNames, b
 	/* read the column names if they exist */
 	temp.numVars = temp.numT = 0;
 	if ( readColNames ) {
-		getline ( fptr, line );
+		safeGetline(fptr, line);
 		tokens = splitString(line, delimiter);
 		for ( n = 1; n < tokens.size(); n++ ) {
-			unsigned int first = tokens[n].find_first_of('"');
-			unsigned int last = tokens[n].find_last_of('"');
-			if ( first != std::string::npos && last != std::string::npos ) //TODO: I'm getting an interesting warning for this function, saying it will always be true
+			size_t first = tokens[n].find_first_of('"');
+			size_t last = tokens[n].find_last_of('"');
+			if ( first != std::string::npos && last != std::string::npos )
 				tokens[n] = tokens[n].substr(first+1, last-1);
 
 			temp.mapVarNamesToIndex.insert( pair<string, int> (tokens[n], n-1) );
@@ -87,8 +87,10 @@ OneStocProc StocProcess::read(string fname, char delimiter, bool readColNames, b
 	}
 
 	/* read the data */
-	while ( getline(fptr, line) ) {
+	while ( safeGetline(fptr, line) ) {
 		tokens = splitString(line, delimiter);
+		
+		if (tokens.size() == 0)	break;	// eof
 
 		n = 0;
 		if ( readRowNames )

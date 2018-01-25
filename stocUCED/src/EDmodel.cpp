@@ -11,6 +11,7 @@
 
 #include "misc.hpp"
 #include "EDmodel.hpp"
+#include "Generator.hpp"
 
 extern runType runParam;
 extern ofstream cplexLog;
@@ -47,35 +48,99 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 			busLoad[d][t] = inst.detObserv[2].vals[rep][t0+t][r]*busPtr->loadPercentage;
 		}
 	}
-
+	
 	for ( int g = 0; g < numGen; g++ ) {
 		Generator genPtr = inst.powSys->generators[g];
+		
 		for (int t = 0; t < numPeriods; t++ ) {
 			/* If the model horizon exceeds the number of periods, then the last period commitment are repeated for the remainder of horizon */
 			int idxT = min(t0+t, runParam.numPeriods-1);
 
 			/* Make sure that the generation capacity limits are met. The minimum and maximum for generators which are turned off are set to zero during pre-processing */
-			genMax[g][t] = inst.solution.x[g][idxT]*
-					genPtr.maxCapacity;
-			genMin[g][t] = inst.solution.x[g][idxT]*
-					min(genPtr.minGenerationReq, min(genPtr.rampUpLim * runParam.ED_resolution, genPtr.rampDownLim * runParam.ED_resolution));
-			//TODO: Harsha, why is the minGenerationReq equal to the min of ramp... and the minGenerationReq?
+			genMax[g][t] = inst.solution.x[g][idxT]*genPtr.maxCapacity;
+			//genMin[g][t] = inst.solution.x[g][idxT]*genPtr.minGenerationReq;
+
+			// TODO: Semih is unsure what to use for genMin
+			genMin[g][t] = inst.solution.x[g][idxT]* min(genPtr.minGenerationReq, min(genPtr.rampUpLim * runParam.ED_resolution, genPtr.rampDownLim * runParam.ED_resolution));
 			
 			/* Stochastic generation set to what is available */
 			auto it = inst.stocObserv[2].mapVarNamesToIndex.find(genPtr.name);
 			if ( it != inst.stocObserv[2].mapVarNamesToIndex.end() ) {
 				genAvail[g][t] = min(genMax[g][t], inst.stocObserv[2].vals[rep][idxT][it->second]);
 			}
-
-			if ( idxT != 0 ) {
-				/* It is not the first period (t0 == 0 and t == 0) of the entire run, so we have access to solutions */
-				genRampUp[g][t] = inst.solution.x[g][idxT-1]*inst.powSys->generators[g].rampUpLim +
-						inst.solution.x[g][idxT]*(1-inst.solution.x[g][idxT-1])*inst.powSys->generators[g].maxCapacity;
-				genRampDown[g][t] = inst.solution.x[g][idxT]*inst.powSys->generators[g].rampDownLim +
-						inst.solution.x[g][idxT-1]*(1-inst.solution.x[g][idxT])*inst.powSys->generators[g].maxCapacity;
+			
+			/* Ramping restrictions */
+			
+			genRampUp[g][t]		= genPtr.rampUpLim * runParam.ED_resolution;
+			genRampDown[g][t]	= genPtr.rampDownLim * runParam.ED_resolution;
+			
+			if ( idxT == 0 ) {
+				// no ramping restrictions for time 0
+				genRampUp[g][t]		= genPtr.maxCapacity;
+				genRampDown[g][t]	= genPtr.maxCapacity;
 			}
+			else {
+				if ( fabs(max(inst.solution.x[g][idxT]-inst.solution.x[g][idxT-1], 0.0) - 1.0) <= 1e-8 ) {
+					genRampUp[g][t]		= genPtr.maxCapacity;
+				}
+				
+				if ( fabs(max(inst.solution.x[g][idxT-1]-inst.solution.x[g][idxT], 0.0) - 1.0) <= 1e-8 ) {
+					genRampDown[g][t]	= genPtr.maxCapacity;
+				}
+				
+				if ( fabs(inst.solution.x[g][idxT]) <= 1e-8 ) {
+					genRampDown[g][t]	= genPtr.maxCapacity;
+				}
+			}
+
+			
+			//genRampDown[g][t] += 10000;
+			
+			/*
+			if ( idxT == 0 ) {
+				// no ramping restriction at time 0
+				genRampUp[g][t]		= genPtr.maxCapacity;
+				genRampDown[g][t]	= genPtr.maxCapacity;
+			}
+			else if ( fabs(max(inst.solution.x[g][idxT]-inst.solution.x[g][idxT-1], 0.0) - 1.0) <= 1e-8 ) {
+				// generator is turned on at t
+				genRampUp[g][t]		= max( genPtr.minGenerationReq, genPtr.rampUpLim*runParam.ED_resolution );
+				genRampDown[g][t]	= 0.0;
+			}
+			else if ( fabs(inst.solution.x[g][idxT]) <= 1e-8 ) {
+				// generator is off at t
+				genRampDown[g][t]	= 0.0;
+				genRampDown[g][t]	= 0.0;
+			}
+			else {
+				genRampUp[g][t]		= genPtr.rampUpLim * runParam.ED_resolution;
+				genRampDown[g][t]	= genPtr.rampDownLim * runParam.ED_resolution;
+			}
+			*/
+
+/*
+			if ( idxT != 0 ) {
+				/* It is not the first period (t0 == 0 and t == 0) of the entire run, so we have access to solutions *
+				genRampUp[g][t] = inst.solution.x[g][idxT-1] * genPtr.rampUpLim +
+					inst.solution.x[g][idxT]*(1-inst.solution.x[g][idxT-1])*genPtr.maxCapacity;
+				genRampDown[g][t] = inst.solution.x[g][idxT]*genPtr.rampDownLim +
+					inst.solution.x[g][idxT-1]*(1-inst.solution.x[g][idxT])*genPtr.maxCapacity;
+			}
+			else {	// TODO: Semih added these lines, please confirm:
+				genRampUp[g][t] = genPtr.rampUpLim;
+				genRampDown[g][t] = genPtr.rampDownLim;
+			}
+ */
+//			genRampUp[g][t] = genPtr.maxCapacity;
+//			genRampDown[g][t] = genPtr.maxCapacity;
+			
+			// original ramp rates are given in minutes
+	//		genRampUp[g][t]		*= runParam.ED_resolution;
+	//		genRampDown[g][t]	*= runParam.ED_resolution;
 		}
 	}
+	
+	
 }
 
 EDmodel::~EDmodel() {
@@ -209,7 +274,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 			}
 		}
 		else {
-			/* The the remaining periods of the ED horizon */
+			/* The remaining periods of the ED horizon */
 			for ( int g = 0; g < numGen; g++ ) {
 				/* ramp-up */
 				sprintf(elemName, "rampUp[%d][%d]", g, t);
@@ -229,8 +294,8 @@ void EDmodel::formulate(instance &inst, int t0) {
 			/* Make sure that the generation capacity limits are met.
 			 * The minimum and maximum for generators which are turned off are set to zero during pre-processing */
 			sprintf(elemName, "maxGen[%d][%d]", g, t);
-			IloConstraint c1( genUsed[g][t] + overGen[g][t] <= genMax[g][t]);
-			c1.setName(elemName); model.add(c1);
+			IloConstraint c1a( genUsed[g][t] + overGen[g][t] <= genMax[g][t]);
+			c1a.setName(elemName); model.add(c1a);
 
 			sprintf(elemName, "minGen[%d][%d]", g, t);
 			IloConstraint c2( genUsed[g][t] + overGen[g][t] >= genMin[g][t]);
@@ -240,7 +305,11 @@ void EDmodel::formulate(instance &inst, int t0) {
 			auto it = inst.stocObserv[2].mapVarNamesToIndex.find(genPtr.name);
 			if ( it != inst.stocObserv[2].mapVarNamesToIndex.end() ) {
 				sprintf(elemName, "stocAvail[%d][%d]", g, t);
-				IloConstraint c (genUsed[g][t] + overGen[g][t] <= genAvail[g][t]); c.setName(elemName); model.add(c);
+				if (genPtr.isMustUse) {	//TODO: Semih added this if-statement, please confirm.
+					IloConstraint c (genUsed[g][t] + overGen[g][t] == genAvail[g][t]); c.setName(elemName); model.add(c);
+				} else {
+					IloConstraint c (genUsed[g][t] + overGen[g][t] <= genAvail[g][t]); c.setName(elemName); model.add(c);
+				}
 
 				if ( t != 0 )
 					stocRows.push_back(elemName);
@@ -262,7 +331,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 		/* Generation cost */
 		for ( int g = 0; g < numGen; g++ ) {
 			//TODO: Harsha, I have put penalties on overgeneration as well. Check if you think you should put extra penalties as well.
-			realTimeCost += (inst.powSys->generators[g].variableCost*runParam.ED_resolution/60)*(genUsed[g][t] + overGen[g][t]);
+			realTimeCost += (inst.powSys->generators[g].variableCost*runParam.ED_resolution/60.0)*(genUsed[g][t] + overGen[g][t]);
 		}
 
 		/* Load shedding penalty */
@@ -290,25 +359,33 @@ bool EDmodel::solve(instance &inst, int t0) {
 	try {
 		status = cplex.solve();
 
-		double totLoadShed = 0;
-		for (int b=0; b<numBus; b++) {
-			for (int t=0; t<numPeriods; t++) {
-				if ( cplex.getValue(demShed[b][t]) > 1e-6 ) {
-					
-					if (totLoadShed == 0)	// first time
-					{
-						cout << endl << "~Load Shed~" << endl;
-					}
-					
-					totLoadShed += cplex.getValue(demShed[b][t]);
-					cout << cplex.getValue(demShed[b][t]) << " (" << b << "," << t << "), ";
-				}
-			}
-		}
-		if (totLoadShed > 0) {
-			cout << "Total Load Shed= " << totLoadShed << ", Penalty= " << totLoadShed*loadShedPenaltyCoef << endl << endl;
+		if (!status) {
+			cplex.exportModel("RTED.lp");
 		}
 
+		if (status) {
+			double totLoadShed = 0;
+			for (int b=0; b<numBus; b++) {
+				for (int t=0; t<numPeriods; t++) {
+					try {
+						if ( cplex.getValue(demShed[b][t]) > 1e-6 ) {
+							
+							if (totLoadShed == 0)	// first time
+							{
+								cout << endl << "~Load Shed~" << endl;
+							}
+							
+							totLoadShed += cplex.getValue(demShed[b][t]);
+							cout << cplex.getValue(demShed[b][t]) << " (" << b << "," << t << "), ";
+						}
+					}
+					catch (IloException &e) { }
+				}
+			}
+			if (totLoadShed > 0) {
+				cout << "Total Load Shed= " << totLoadShed << ", Penalty= " << totLoadShed*loadShedPenaltyCoef << endl << endl;
+			}
+		}
 		
 		
 		// record the solution

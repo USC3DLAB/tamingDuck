@@ -110,6 +110,7 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc) {
 					beginMin += runParam.baseTime;
 					timeInfo->tm_min += runParam.baseTime;
 					mktime(timeInfo);
+					
 				}
 			}
 		}

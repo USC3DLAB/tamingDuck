@@ -65,9 +65,9 @@ void UCmodel::preprocessing ()
 		
 		// do not remove this assignment, as STUC generators' minGenReqs are set to 0 later on.
 		minGenerationReq[g] = genPtr->minGenerationReq;
-//		if (minGenerationReq[g] > min(genPtr->rampUpLim * periodLength, genPtr->rampDownLim * periodLength)) {
-//			minGenerationReq[g] = min(genPtr->rampUpLim * periodLength, genPtr->rampDownLim * periodLength);
-//		}
+		if (minGenerationReq[g] > min(genPtr->rampUpLim * periodLength, genPtr->rampDownLim * periodLength)) {
+			minGenerationReq[g] = min(genPtr->rampUpLim * periodLength, genPtr->rampDownLim * periodLength);
+		}
 	}
 	
 	/* Min Up/Down */
@@ -91,7 +91,7 @@ void UCmodel::preprocessing ()
 		if ( it != dataPtr->mapVarNamesToIndex.end() ) {
 			/* random supply */
 			for (int t=0; t<numPeriods; t++) {
-				expCapacity[g][t] = dataPtr->vals[rep][(beginMin/periodLength)+(t*numBaseTimePerPeriod)][it->second];	// in MWs
+				expCapacity[g][t] = min(dataPtr->vals[rep][(beginMin/periodLength)+(t*numBaseTimePerPeriod)][it->second], genPtr->maxCapacity);
 			}
 		} else {
 			/* deterministic supply */

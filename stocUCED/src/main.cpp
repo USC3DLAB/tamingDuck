@@ -179,8 +179,8 @@ void readRunfile (string inputDir) {
 
 	/* Compute the remaining run parameters */
 	runParam.DA_numPeriods = runParam.DA_horizon/runParam.DA_resolution; runParam.DA_numSolves = runParam.horizon/runParam.DA_frequency;
-	runParam.ST_numPeriods = runParam.ST_horizon/runParam.ST_resolution; runParam.ST_numSolves = runParam.DA_horizon/runParam.ST_frequency;
-	runParam.ED_numPeriods = runParam.ED_horizon/runParam.ED_resolution; runParam.ED_numSolves = runParam.ST_horizon/runParam.ED_frequency;
+	runParam.ST_numPeriods = runParam.ST_horizon/runParam.ST_resolution; runParam.ST_numSolves = runParam.DA_frequency/runParam.ST_frequency;
+	runParam.ED_numPeriods = runParam.ED_horizon/runParam.ED_resolution; runParam.ED_numSolves = runParam.ST_frequency/runParam.ED_frequency;
 
 	/* Set the base time */
 	runParam.baseTime = runParam.ED_resolution;
