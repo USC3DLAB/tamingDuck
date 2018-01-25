@@ -20,6 +20,7 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, vector<string> stoc
 	/* Allocate memory for solution matrices */
 	solution.allocateMem(powSys->numGen, runParam.numPeriods);
 
+	int lookahead = max(runParam.ED_numPeriods-1, runParam.ST_numPeriods-1);
 	/* Setup all the deterministic observations */
 	for ( int l = 0; l < (int) this->hierarchy.size(); l++ ) {
 		
@@ -29,7 +30,7 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, vector<string> stoc
 				indices.push_back(*it);
 			}
 		}
-		ScenarioType temp = createScenarioList(stoc, indices, runParam.numPeriods+runParam.ED_numPeriods-1, runParam.numPeriods, runParam.numRep);
+		ScenarioType temp = createScenarioList(stoc, indices, runParam.numPeriods+lookahead, runParam.numPeriods, runParam.numRep);
 		temp.name = this->hierarchy[l] + "_DetObs";
 		this->detObserv.push_back(temp);
 	}
@@ -49,7 +50,7 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, vector<string> stoc
 		 Accordingly, for instance, for a 24-hour problem, a set of realizations must 
 		 include 24*ED_resolution + runParam.ED_numPeriods-1 elements
 		 *******************************************************************************/
-		ScenarioType temp = createScenarioList(stoc, indices, runParam.numPeriods+runParam.ED_numPeriods-1, runParam.numPeriods, runParam.numRep);
+		ScenarioType temp = createScenarioList(stoc, indices, runParam.numPeriods+lookahead, runParam.numPeriods, runParam.numRep);
 		temp.name = this->hierarchy[l] + "_StochObs";
 		this->stocObserv.push_back(temp);
 	}

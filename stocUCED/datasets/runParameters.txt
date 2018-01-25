@@ -6,6 +6,6 @@ DA_time_resolution 1 hours
 ST_time_resolution 15 minutes
 ED_time_resolution 15 minutes
 DA_time_frequency 24 hours
-ST_time_frequency 3 hours
+ST_time_frequency 1 hours
 ED_time_frequency 15 minutes
 numRep 300 scenarios

@@ -116,7 +116,7 @@ ScenarioType createScenarioList(StocProcess *stoc, vector<int> S_indices, int le
 
 	/* Compute the number of observations that can be generated */
 	for ( unsigned int n = 0; n < S_indices.size(); n++ ) {
-		double numValsInData = ceil(  (double) (stoc->sp[S_indices[n]].numT - (lenT-stepSize)) / (double) stepSize  );
+		double numValsInData = floor(  (double) (stoc->sp[S_indices[n]].numT - (lenT-stepSize)) / (double) stepSize  );
 		if (numVals > numValsInData)
 			numVals = numValsInData;
 	}
