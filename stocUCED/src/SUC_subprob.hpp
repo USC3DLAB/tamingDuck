@@ -29,6 +29,8 @@ public:
 	void formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin);
 	bool solve ();
 	void setMasterSoln		(vector< vector<bool> > & gen_stat);
+	double getEDGenProd		(int genId, int period);				// reads from inst->Solution.gED
+	bool getGenState		(int genId, int period);				// reads from inst->Solution.x
     
 //    double computeLowerBound();          // a lower bound on the subproblem
     

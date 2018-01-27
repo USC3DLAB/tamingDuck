@@ -59,7 +59,7 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc) {
 
 	cout << "------------------------------------------------------------------" << endl;
 	cout << "------------ Deterministic Optimization / Simulation -------------" << endl;
-	for (int rep = 1; rep < runParam.numRep; rep++) {
+	for (int rep = 0; rep < runParam.numRep; rep++) {
 		cout << "------------------------------------------------------------------" << endl;
 		cout << "Observation-" << rep << endl;
 
@@ -218,6 +218,9 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath) {
 int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath) {
 	int h, t, n;
 	
+	/* logging */
+	open_file(cplexLog, "cplex.log");
+
 	/* time visualization */
 	time_t rawTime;
 	struct tm * timeInfo;
@@ -302,6 +305,8 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath) {
 		inst.printSolution( ("./" + timeStamp + "_rep" + num2str(rep)) );
 	}
 	cout << "------------------------------------------------------------------" << endl;
+	
+	cplexLog.close();
 	
 	return 0;
 }

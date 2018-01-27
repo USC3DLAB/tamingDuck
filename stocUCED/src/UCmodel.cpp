@@ -565,16 +565,6 @@ bool UCmodel::solve() {
 		if (totLoadShed > 0) {
 			cout << "Total Load Shed= " << totLoadShed << ", Penalty= " << totLoadShed*loadShedPenaltyCoef << endl << endl;
 		}
-		
-//		for (int b=0; b<numBus; b++) {
-//			cout << setw(3) << b << " ";
-//			for (int t=0; t<numPeriods; t++) {
-//				cout << fixed << setprecision(2) << cplex.getValue(O[b][t]) << ",";
-//			}
-//			cout << endl;
-//		}
-//
-//		cplex.exportModel("hasan.lp");
 	}
 	catch (IloException &e) {
 		cout << e << endl;
@@ -603,6 +593,7 @@ bool UCmodel::getGenState(int genId, int period) {
 		return round(inst->solution.x[genId][ inst->solution.x[genId].size()-1 ]);
 	}
 }
+
 
 /****************************************************************************
  * getEDGenProd

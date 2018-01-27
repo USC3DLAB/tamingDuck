@@ -256,6 +256,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 		if ( t == 0 ) {
 			if ( t0 == 0 ) {
 				/* TODO: The initial generation level is not considered */
+				//TODO: SMH: Initial generation is no longer ignored??
 				cout << "Warning: Initial generation ignored." << endl;
 				for ( int g = 0; g < numGen; g++ ) {
 					/* ramp-up */

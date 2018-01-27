@@ -95,7 +95,7 @@ void SUCsubprob::preprocessing ()
 		fill( sysLoad.begin(), sysLoad.end(), 0.0 );		// initialize to 0
 		for (int t=0; t<numPeriods; t++) {
 			for (int r=0; r<dataPtr->numVars; r++) {
-				sysLoad[t] += dataPtr->vals[0][t*numBaseTimePerPeriod][r];
+				sysLoad[t] += dataPtr->vals[0][(beginMin/periodLength)+(t*numBaseTimePerPeriod)][r];
 			}
 		}
 	}
@@ -105,7 +105,7 @@ void SUCsubprob::preprocessing ()
 			int r = dataPtr->mapVarNamesToIndex[ num2str(busPtr->regionId) ];
 			
 			for (int t=0; t<numPeriods; t++) {
-				busLoad[b][t] = dataPtr->vals[0][t*numBaseTimePerPeriod][r] * busPtr->loadPercentage;
+				busLoad[b][t] = dataPtr->vals[0][(beginMin/periodLength)+(t*numBaseTimePerPeriod)][r] * busPtr->loadPercentage;
 			}
 		}
 	}
@@ -181,7 +181,11 @@ void SUCsubprob::formulate_production()
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
-		for (int t=1; t<numPeriods; t++) {
+		int t=0;
+		if (beginMin != 0) {
+			IloRange con (env, -IloInfinity, p[g][t] - getEDGenProd(g, t-1), genPtr->rampUpLim * periodLength);
+		}
+		for (t=1; t<numPeriods; t++) {
 			IloRange con (env, -IloInfinity, p[g][t] - p[g][t-1], genPtr->rampUpLim * periodLength);
 			cons.add( con );
 		}
@@ -191,9 +195,43 @@ void SUCsubprob::formulate_production()
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
-		for (int t=1; t<numPeriods; t++) {
-			IloRange con (env, -IloInfinity, p[g][t-1] - p[g][t], genPtr->rampDownLim * periodLength);
-			cons.add( con );
+		int shutDownPeriod = -9999;
+		if ( probType == ShortTerm && genPtr->isDAUCGen && beginMin != 0 ) {
+			// check if this generator was producing at t-1
+			bool wasProducing = (getEDGenProd(g, -1) > 1e-8);
+			
+			if (wasProducing) {
+				// check if this generator is shutting down at some point in ST-UC planning horizon
+				bool willShutDown = false;
+				int t;
+				for (t=0; t<numPeriods; t++) {
+					if (!getGenState(g, t)) {
+						willShutDown = true;
+						break;
+					}
+				}
+				
+				if (willShutDown) {
+					// check if it can ramp down
+					if ( genPtr->rampDownLim*periodLength*(double)(t+1) < getEDGenProd(g, -1) ) {
+						shutDownPeriod = t;
+					}
+				}
+			}
+		}
+		
+		int t=0;
+		if (beginMin != 0) {
+			double rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
+			
+			IloRange con (env, -IloInfinity, getEDGenProd(g, t-1) - p[g][t], rampDownRate);
+			cons.add(con);
+		}
+		for (t=1; t<numPeriods; t++) {
+			double rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
+			
+			IloRange con (env, -IloInfinity, p[g][t-1] - p[g][t], rampDownRate);
+			cons.add(con);
 		}
 	}
 }
@@ -339,7 +377,7 @@ void SUCsubprob::formulate_aggregate_system()
 	// aggregated demand constraints
 	for (int t=0; t<numPeriods; t++) {
 		IloExpr expr (env);
-		for (int g=0; g<numGen; g++)	expr += p[g][t];
+		for (int g=0; g<numGen; g++) expr += p[g][t];
 		expr += L[t];
 		expr -= O[t];
 		IloRange con (env, sysLoad[t], expr, sysLoad[t]);
@@ -432,6 +470,8 @@ bool SUCsubprob::solve() {
 
 void SUCsubprob::setup_subproblem(int &s)
 {
+	double supply;
+	
 	// iterate over capacity constraints
 	int c=0;
 	
@@ -441,20 +481,16 @@ void SUCsubprob::setup_subproblem(int &s)
 		
 		auto it = scenSet->mapVarNamesToIndex.find(genPtr->name);
 		if ( it != scenSet->mapVarNamesToIndex.end() ) {		// if random supply generator
-			
 			for (int t=0; t<numPeriods; t++, c++) {				// Note: c is iterated in the secondary-loops
 				if ((*gen_stat)[g][t]) {
+					supply = min(scenSet->vals[s][(beginMin/periodLength)+(t*numBaseTimePerPeriod)][it->second], genPtr->maxCapacity);
+					
 					if ( genPtr->isMustUse ) {
-						cons[c].setBounds( scenSet->vals[s][t*numBaseTimePerPeriod][it->second], scenSet->vals[s][t*numBaseTimePerPeriod][it->second]);
+						cons[c].setBounds(supply, supply);
 					}
 					else {
-						cons[c].setUB( scenSet->vals[s][t*numBaseTimePerPeriod][it->second] );
+						cons[c].setUB(supply);
 					}
-
-					//TODO: capacity-exceeding supplies?
-//					if ( scenSet->vals[s][t*numBaseTimePerPeriod][it->second] > genPtr->maxCapacity ) {
-//						cout << "S_" << genPtr->name << "_" << t << "_" << s << " has this output and capacity: " << scenSet->vals[s][t*numBaseTimePerPeriod][it->second] << " " << genPtr->maxCapacity << endl;;
-//					}
 				}
 			}
 		} else {
@@ -465,6 +501,8 @@ void SUCsubprob::setup_subproblem(int &s)
 
 void SUCsubprob::update_optimality_cut_coefs(int &s)
 {
+	double supply;
+	
 	// get dual multipliers
 	cplex.getDuals(duals, cons);
 	
@@ -478,7 +516,8 @@ void SUCsubprob::update_optimality_cut_coefs(int &s)
 		auto it = scenSet->mapVarNamesToIndex.find(genPtr->name);
 		if ( it != scenSet->mapVarNamesToIndex.end() ) {		// if random supply generator
 			for (int t=0; t<numPeriods; t++, c++) {				// Note: c is iterated in the secondary-loops
-				cutCoefs.pi_T[g][t] += sceProb[s] * duals[c] * ( scenSet->vals[s][t*numBaseTimePerPeriod][it->second] );
+				supply = min(scenSet->vals[s][(beginMin/periodLength)+(t*numBaseTimePerPeriod)][it->second], genPtr->maxCapacity);
+				cutCoefs.pi_T[g][t] += sceProb[s] * duals[c] * ( supply );
 			}
 		}
 		else {
@@ -498,8 +537,13 @@ void SUCsubprob::update_optimality_cut_coefs(int &s)
 	// ramp up constraints
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
-		
-		for (int t=1; t<numPeriods; t++, c++) {
+
+		int t=0;
+		if (beginMin != 0) {
+			cutCoefs.pi_b += sceProb[s] * duals[c] * (genPtr->rampUpLim*periodLength + getEDGenProd(g, t-1));
+			c++;
+		}
+		for (t=1; t<numPeriods; t++, c++) {
 			cutCoefs.pi_b += sceProb[s] * duals[c] * genPtr->rampUpLim * periodLength;
 		}
 	}
@@ -508,9 +552,44 @@ void SUCsubprob::update_optimality_cut_coefs(int &s)
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
-		for (int t=1; t<numPeriods; t++, c++) {
-			cutCoefs.pi_b += sceProb[s] * duals[c] * genPtr->rampDownLim * periodLength;
+		int shutDownPeriod = -9999;
+		if ( probType == ShortTerm && genPtr->isDAUCGen && beginMin != 0 ) {
+			// check if this generator was producing at t-1
+			bool wasProducing = (getEDGenProd(g, -1) > 1e-8);
+			
+			if (wasProducing) {
+				// check if this generator is shutting down at some point in ST-UC planning horizon
+				bool willShutDown = false;
+				int t;
+				for (t=0; t<numPeriods; t++) {
+					if (!getGenState(g, t)) {
+						willShutDown = true;
+						break;
+					}
+				}
+				
+				if (willShutDown) {
+					// check if it can ramp down
+					if ( genPtr->rampDownLim*periodLength*(double)(t+1) < getEDGenProd(g, -1) ) {
+						shutDownPeriod = t;
+					}
+				}
+			}
 		}
+		
+		int t=0;
+		if (beginMin != 0) {
+			double rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
+			
+			cutCoefs.pi_b += sceProb[s] * duals[c] * (rampDownRate - getEDGenProd(g,t-1));
+			c++;
+		}
+		for (t=1; t<numPeriods; t++, c++) {
+			double rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
+
+			cutCoefs.pi_b += sceProb[s] * duals[c] * rampDownRate;
+		}
+
 	}
 	
 	// model-specific constraints
@@ -563,6 +642,8 @@ double SUCsubprob::getRecourseObjValue() {
 
 void SUCsubprob::get_feasibility_cut_coefs(int &s)
 {
+	double supply;
+	
 	// reset earlier (optimality-)cut coefficient entries
 	cutCoefs.reset();
 	
@@ -598,7 +679,8 @@ void SUCsubprob::get_feasibility_cut_coefs(int &s)
 		auto it = scenSet->mapVarNamesToIndex.find(genPtr->name);
 		if ( it != scenSet->mapVarNamesToIndex.end() ) {		// if random supply generator
 			for (int t=0; t<numPeriods; t++, c++) {				// Note: c is iterated in the secondary-loops
-				cutCoefs.pi_T[g][t] += farkasMap[ cons[c].getId() ] * ( scenSet->vals[s][t*numBaseTimePerPeriod][it->second] );
+				supply = min(scenSet->vals[s][(beginMin/periodLength)+(t*numBaseTimePerPeriod)][it->second], genPtr->maxCapacity);
+				cutCoefs.pi_T[g][t] += farkasMap[ cons[c].getId() ] * ( supply );
 			}
 		}
 		else {
@@ -619,7 +701,12 @@ void SUCsubprob::get_feasibility_cut_coefs(int &s)
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
-		for (int t=1; t<numPeriods; t++, c++) {
+		int t=0;
+		if (beginMin != 0) {
+			cutCoefs.pi_b += farkasMap[ cons[c].getId() ] * (genPtr->rampUpLim*periodLength + getEDGenProd(g, t-1));
+			c++;
+		}
+		for (t=1; t<numPeriods; t++, c++) {
 			cutCoefs.pi_b += farkasMap[ cons[c].getId() ] * genPtr->rampUpLim * periodLength;
 		}
 	}
@@ -628,11 +715,45 @@ void SUCsubprob::get_feasibility_cut_coefs(int &s)
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
-		for (int t=1; t<numPeriods; t++, c++) {
-			cutCoefs.pi_b += farkasMap[ cons[c].getId() ] * genPtr->rampDownLim * periodLength;
+		int shutDownPeriod = -9999;
+		if ( probType == ShortTerm && genPtr->isDAUCGen && beginMin != 0 ) {
+			// check if this generator was producing at t-1
+			bool wasProducing = (getEDGenProd(g, -1) > 1e-8);
+			
+			if (wasProducing) {
+				// check if this generator is shutting down at some point in ST-UC planning horizon
+				bool willShutDown = false;
+				int t;
+				for (t=0; t<numPeriods; t++) {
+					if (!getGenState(g, t)) {
+						willShutDown = true;
+						break;
+					}
+				}
+				
+				if (willShutDown) {
+					// check if it can ramp down
+					if ( genPtr->rampDownLim*periodLength*(double)(t+1) < getEDGenProd(g, -1) ) {
+						shutDownPeriod = t;
+					}
+				}
+			}
+		}
+
+		int t=0;
+		if (beginMin != 0) {
+			double rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
+			
+			cutCoefs.pi_b += farkasMap[ cons[c].getId() ] * (rampDownRate - getEDGenProd(g,t-1));
+			c++;
+		}
+		for (t=1; t<numPeriods; t++, c++) {
+			double rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
+			
+			cutCoefs.pi_b += farkasMap[ cons[c].getId() ] * rampDownRate;
 		}
 	}
-	
+		
 	// model-specific constraints
 	if (modelType == System) {
 		// aggregated demand constraints
@@ -927,3 +1048,48 @@ double SUCsubprob::computeLowerBound ()
     return bound;
 }
 	 */
+
+
+/****************************************************************************
+ * getEDGenProd
+ * - Converts the model period, into the desired component of the Solution
+ * object. Returns the recorded generation of the generator by the ED model.
+ ****************************************************************************/
+double SUCsubprob::getEDGenProd(int genId, int period) {
+	// which Solution component is requested?
+	int reqSolnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
+	
+	// return the requested generator state
+	if (reqSolnComp < 0) {										// all generators are assumed to be online, for a long time, at t=0.
+		cout << "Error: Initial production levels are not available" << endl;
+		exit(1);
+	}
+	else if (reqSolnComp < inst->solution.x[genId].size()) {	// return the corresponding solution
+		return inst->solution.g_ED[genId][reqSolnComp];
+	}
+	else {														// asking what's beyond the planning horizon, we return the last solution
+		cout << "Error: Production levels beyond the planning horizon are not available" << endl;
+		exit(1);
+	}
+}
+
+/****************************************************************************
+ * getGenState
+ * - Converts the model period, into the desired component of the Solution
+ * object. Returns the recorded status of the generator.
+ ****************************************************************************/
+bool SUCsubprob::getGenState(int genId, int period) {
+	// which Solution component is requested?
+	int reqSolnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
+	
+	// return the requested generator state
+	if (reqSolnComp < 0) {										// all generators are assumed to be online, for a long time, at t=0.
+		return true;
+	}
+	else if (reqSolnComp < inst->solution.x[genId].size()) {	// return the corresponding solution
+		return round(inst->solution.x[genId][reqSolnComp]);
+	}
+	else {														// asking what's beyond the planning horizon, we return the last solution
+		return round(inst->solution.x[genId][ inst->solution.x[genId].size()-1 ]);
+	}
+}
