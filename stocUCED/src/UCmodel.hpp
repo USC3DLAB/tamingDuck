@@ -55,9 +55,11 @@ private:
 
 	void preprocessing ();		// see the implementation
 
-	bool getGenState(int genId, int period);				// reads from Solution.x
-	void setGenState(int genId, int period, double value);	// writes to Solution.x
-	void setGenProd(int genId, int period, double value);	// writes to Solution.g
+	bool	getGenState(int genId, int period);					// reads from Solution.x
+	void	setGenState(int genId, int period, double value);	// writes to Solution.x
+	void	setGenProd(int genId, int period, double value);	// writes to Solution.g
+	double	getEDGenProd(int genId, int period);				// reads from Solution.gED
+
 
 	
 	vector<double>	minGenerationReq;	// minimum production requirements (obeying assumptions)

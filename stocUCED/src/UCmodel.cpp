@@ -308,17 +308,66 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst.powSys->generators[g]);
 		
-		for (int t=1; t<numPeriods; t++) {
-			model.add( p_var[g][t] - p_var[g][t-1] <= genPtr->rampUpLim*periodLength * x[g][t] - minGenerationReq[g] * s[g][t]);
+		int t=0;
+		if ( beginMin != 0 ) {
+			IloConstraint c ( p[g][t] - getEDGenProd(g, t-1) <= genPtr->rampUpLim*periodLength );
+			sprintf(buffer, "RU_%d_%d", g, t);
+			c.setName(buffer);
+			model.add(c);
+		}
+		for (t=1; t<numPeriods; t++) {
+			IloConstraint c ( p_var[g][t] - p_var[g][t-1] <= genPtr->rampUpLim*periodLength * x[g][t] - minGenerationReq[g] * s[g][t]);
+			sprintf(buffer, "RU_%d_%d", g, t);
+			c.setName(buffer);
+			model.add(c);
 		}
 	}
 	
 	// ramp down constraints
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst.powSys->generators[g]);
+	
+		int shutDownPeriod = -9999;
+		if ( probType == ShortTerm && genPtr->isDAUCGen && beginMin != 0 ) {
+			// check if this generator was producing at t-1
+			bool wasProducing = (getEDGenProd(g, -1) > 1e-8);
+			
+			if (wasProducing) {
+				// check if this generator is shutting down at some point in ST-UC planning horizon
+				bool willShutDown = false;
+				int t;
+				for (t=0; t<numPeriods; t++) {
+					if (!getGenState(g, t)) {
+						willShutDown = true;
+						break;
+					}
+				}
+				
+				if (willShutDown) {
+					// check if it can ramp down
+					if ( genPtr->rampDownLim*periodLength*(double)(t+1) < getEDGenProd(g, -1) ) {
+						shutDownPeriod = t;
+					}
+				}
+			}
+		}
 		
-		for (int t=1; t<numPeriods; t++) {
-			model.add( p_var[g][t-1] - p_var[g][t] <= genPtr->rampDownLim*periodLength * x[g][t-1] - minGenerationReq[g] * z[g][t] );
+		if (shutDownPeriod >= 0) {
+			cplexLog << "Warning: Generator " << g << " (" << genPtr->name << ") cannot ramp down to 0 in the ST-UC problem" << endl;
+		}
+		
+		int t=0;
+		if ( beginMin != 0 ) {
+			double rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
+			
+			IloConstraint c ( getEDGenProd(g, t-1) - p[g][t] <= rampDownRate );
+			sprintf(buffer, "RD_%d_%d", g, t); c.setName(buffer); model.add(c);
+		}
+		for (t=1; t<numPeriods; t++) {
+			double rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
+			
+			IloConstraint c ( p_var[g][t-1] - p_var[g][t] <= rampDownRate * x[g][t-1] - minGenerationReq[g] * z[g][t] );
+			sprintf(buffer, "RD_%d_%d", g, t); c.setName(buffer); model.add(c);
 		}
 	}
 	
@@ -468,7 +517,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	
 	cplex.extract(model);
 //	cplex.setParam(IloCplex::Threads, 1);
-	cplex.setParam(IloCplex::EpGap, 1e-1);
+	cplex.setParam(IloCplex::EpGap, 1e-2);
 //	cplex.setOut(env.getNullStream());
 	cplex.setOut(cplexLog);
 	cplex.setWarning(cplexLog);
@@ -483,7 +532,7 @@ bool UCmodel::solve() {
 	bool status;
 	try {
 		status = cplex.solve();
-
+		
 		// record the solution
 		if (status) {			
 			for (int g=0; g<numGen; g++) {
@@ -554,6 +603,30 @@ bool UCmodel::getGenState(int genId, int period) {
 		return round(inst->solution.x[genId][ inst->solution.x[genId].size()-1 ]);
 	}
 }
+
+/****************************************************************************
+ * getEDGenProd
+ * - Converts the model period, into the desired component of the Solution
+ * object. Returns the recorded generation of the generator by the ED model.
+ ****************************************************************************/
+double UCmodel::getEDGenProd(int genId, int period) {
+	// which Solution component is requested?
+	int reqSolnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
+	
+	// return the requested generator state
+	if (reqSolnComp < 0) {										// all generators are assumed to be online, for a long time, at t=0.
+		cout << "Error: Initial production levels are not available" << endl;
+		exit(1);
+	}
+	else if (reqSolnComp < inst->solution.x[genId].size()) {	// return the corresponding solution
+		return inst->solution.g_ED[genId][reqSolnComp];
+	}
+	else {														// asking what's beyond the planning horizon, we return the last solution
+		cout << "Error: Production levels beyond the planning horizon are not available" << endl;
+		exit(1);
+	}
+}
+
 
 /****************************************************************************
  * setGenState
