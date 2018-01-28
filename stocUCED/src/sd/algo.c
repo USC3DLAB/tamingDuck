@@ -14,7 +14,7 @@
 extern stringC outputDir;
 extern configType config;
 
-int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC probName, vectorC *edSols) {
+int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC probName, vectorC *edSols, double *objVal) {
 	cellType *cell;
 	vectorC	 xk = NULL, lb = NULL;
 	probType **prob = NULL;
@@ -54,6 +54,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC probName, vect
 	for (int n = 0; n < prob[0]->num->cols; n++ ) {
 		(*edSols)[n] = cell->incumbX[n+1];
 	}
+	*objVal = cell->incumbEst;
 
 	/* free up memory before leaving */
 	if (xk) mem_free(xk);

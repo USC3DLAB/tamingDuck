@@ -167,6 +167,8 @@ void EDmodel::formulate(instance &inst, int t0) {
 		/* Generation and over-generation */
 		for ( int g = 0; g < numGen; g++ ) {
 			if ( t == 0 ) {
+				// Important: Variable declaration orders must not be altered.
+				// Otherwise, SD solution-extraction needs to be updated.
 				genUsed[g] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
 				overGen[g] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
 			}
@@ -188,6 +190,8 @@ void EDmodel::formulate(instance &inst, int t0) {
 			Bus *bptr = &(inst.powSys->buses[b]);
 
 			if ( t == 0 ) {
+				// Important: Variable declaration orders must not be altered.
+				// Otherwise, SD solution-extraction needs to be updated.
 				demMet[b] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
 				demShed[b] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
 				theta[b] = IloNumVarArray(env, numPeriods, bptr->minPhaseAngle, bptr->maxPhaseAngle, ILOFLOAT);
@@ -386,9 +390,9 @@ void EDmodel::formulate(instance &inst, int t0) {
 	obj.setName(elemName);
 	model.add(obj);
 	realTimeCost.end();
-	
+		
 #if defined(WRITE_PROB)
-	model.exportModel("rtED.lp")
+	cplex.exportModel("rtED.lp")
 #endif
 
 }//END formulate()

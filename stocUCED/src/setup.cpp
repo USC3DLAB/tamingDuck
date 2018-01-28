@@ -187,9 +187,9 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath) {
 					DED.formulate(inst, ED_beginPeriod);
 
 					/* Translate the data structures to suit those used in 2-SD */
-					int stat = integrateSD(inst, DED, "rted", configPath, inst.stocObserv[2], ED_beginPeriod);
-					//if (status)	printf("Success (Obj= %.2f).\n", obj_val);
-					if (stat != 1)	printf("Success (Obj= ??)\n");
+					double SD_objVal;
+					int stat = integrateSD(inst, DED, "rted", configPath, inst.stocObserv[2], ED_beginPeriod, SD_objVal);
+					if (stat != 1)	printf("Success (Obj= %.2f).\n", SD_objVal);
 					else			printf("Failed.\n");
 
 					/* Move to the next period */
@@ -280,9 +280,9 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath) {
 					DED.formulate(inst, ED_beginPeriod);
 					
 					/* Translate the data structures to suit those used in 2-SD */
-					int stat = integrateSD(inst, DED, "rted", configPath, inst.stocObserv[2], ED_beginPeriod);
-					//if (status)	printf("Success (Obj= %.2f).\n", obj_val);
-					if (stat != 1)	printf("Success (Obj= ??)\n");
+					double SD_objVal;
+					int stat = integrateSD(inst, DED, "rted", configPath, inst.stocObserv[2], ED_beginPeriod, SD_objVal);
+					if (stat != 1)	printf("Success (Obj= %.2f).\n", SD_objVal);
 					else			printf("Failed.\n");
 					
 					/* Move to the next period */

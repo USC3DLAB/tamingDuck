@@ -15,12 +15,14 @@ long long	MEM_USED = 0;	/* Amount of memory allocated each iteration */
 stringC	outputDir;			/* output directory */
 configType	config;			/* algorithm tuning parameters */
 
-int integrateSD(instance &inst, EDmodel &rtED, string probName, string &configPath, ScenarioType stocObserv, int t0) {
+int integrateSD(instance &inst, EDmodel &rtED, string probName, string &configPath, ScenarioType stocObserv, int t0, double &objVal) {
 	oneProblem *orig = NULL;
 	timeType *tim = NULL;
 	stocType *stoc = NULL;
 	vectorC edSols;
 
+	int j=0;
+	
 	/* TODO: Create a common output directory: Setup outputDir */
 	outputDir = (stringC) malloc(BLOCKSIZE*sizeof(char));
 	strcpy(outputDir, "./");
@@ -54,16 +56,25 @@ int integrateSD(instance &inst, EDmodel &rtED, string probName, string &configPa
 	}
 
 	/* launch the algorithm */
-	if ( algo(orig, tim, stoc, (stringC) probName.c_str(), &edSols)) {
+	if ( algo(orig, tim, stoc, (stringC) probName.c_str(), &edSols, &objVal) ) {
 		perror("failed to solve the problem using 2SD");
 		goto TERMINATE;
 	}
 
-	// TODO: generalize the solution extraction
-	for ( int n = 0; n < inst.powSys->numGen; n++ ) {
-		inst.solution.g_ED[n][t0] = edSols[2*n]+edSols[2*n+1];
+	/* extract the solution */
+	// Important: Variable declaration order must not be altered.
+	j=0;
+	for (int g=0; j<inst.powSys->numGen*2; g++, j=j+2) {
+		inst.solution.usedGen_ED[g][t0] = edSols[j];
+		inst.solution.overGen_ED[g][t0] = edSols[j+1];
+		inst.solution.g_ED[g][t0]		= edSols[j] + edSols[j+1];
+	}
+	
+	for (int b=0; j<inst.powSys->numGen*2+inst.powSys->numBus*3; b++, j=j+3) {
+		inst.solution.loadShed_ED[b][t0] = edSols[j+1];
 	}
 
+	/* free memory */
 	mem_free(edSols);
 	freeOneProblem(orig);
 	freeTimeType(tim);
