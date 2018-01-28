@@ -18,8 +18,7 @@
 
 extern runType runParam;
 
-ofstream cplexLog;
-
+ofstream optLog;
 
 
 /* Build and solve a framework for a given time series data
@@ -33,7 +32,7 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc) {
 	int h, t, n;
 
 	/* logging */
-	open_file(cplexLog, "cplex.log");
+	open_file(optLog, "optimization.log");
 	
 	/* time visualization */
 	time_t rawTime;
@@ -64,9 +63,6 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc) {
 		cout << "Observation-" << rep << endl;
 
 		/* allocate memory to hold solutions */
-		Solution soln;
-		soln.allocateMem(powSys.numGen, runParam.DA_horizon/runParam.baseTime);
-		
 		int beginMin = 0; 	timeInfo->tm_min = 0;	timeInfo->tm_hour = 0; mktime(timeInfo);
 		
 		bool status = true;
@@ -118,7 +114,7 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc) {
 	}
 	cout << "------------------------------------------------------------------" << endl;
 
-	cplexLog.close();
+	optLog.close();
 	
 	return 0;
 }
@@ -127,7 +123,7 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath) {
 	int h, t, n;
 
 	/* logging */
-	open_file(cplexLog, "cplex.log");
+	open_file(optLog, "optimization.log");
 
 	/* time visualization */
 	time_t rawTime;
@@ -157,9 +153,6 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath) {
 		cout << "Observation-" << rep << endl;
 
 		/* allocate memory to hold solutions */
-		Solution soln;
-		soln.allocateMem(powSys.numGen, runParam.DA_horizon/runParam.baseTime);
-
 		int beginMin = 0; 	timeInfo->tm_min = 0;	timeInfo->tm_hour = 0; mktime(timeInfo);
 
 		bool status;
@@ -194,10 +187,10 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath) {
 					DED.formulate(inst, ED_beginPeriod);
 
 					/* Translate the data structures to suit those used in 2-SD */
-					status = integrateSD(inst, DED, "rted", configPath, inst.stocObserv[2], ED_beginPeriod);
+					int stat = integrateSD(inst, DED, "rted", configPath, inst.stocObserv[2], ED_beginPeriod);
 					//if (status)	printf("Success (Obj= %.2f).\n", obj_val);
-					if (status)	printf("Success (Obj= ??)\n");
-					else		printf("Failed.\n");
+					if (stat != 1)	printf("Success (Obj= ??)\n");
+					else			printf("Failed.\n");
 
 					/* Move to the next period */
 					beginMin += runParam.baseTime;
@@ -210,7 +203,7 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath) {
 	}
 	cout << "------------------------------------------------------------------" << endl;
 
-	cplexLog.close();
+	optLog.close();
 	
 	return 0;
 }
@@ -219,7 +212,7 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath) {
 	int h, t, n;
 	
 	/* logging */
-	open_file(cplexLog, "cplex.log");
+	open_file(optLog, "optimization.log");
 
 	/* time visualization */
 	time_t rawTime;
@@ -249,9 +242,6 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath) {
 		cout << "Observation-" << rep << endl;
 		
 		/* allocate memory to hold solutions */
-		Solution soln;
-		soln.allocateMem(powSys.numGen, runParam.DA_horizon/runParam.baseTime);
-		
 		int beginMin = 0; 	timeInfo->tm_min = 0;	timeInfo->tm_hour = 0; mktime(timeInfo);
 		
 		bool status;
@@ -290,10 +280,10 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath) {
 					DED.formulate(inst, ED_beginPeriod);
 					
 					/* Translate the data structures to suit those used in 2-SD */
-					status = integrateSD(inst, DED, "rted", configPath, inst.stocObserv[2], ED_beginPeriod);
+					int stat = integrateSD(inst, DED, "rted", configPath, inst.stocObserv[2], ED_beginPeriod);
 					//if (status)	printf("Success (Obj= %.2f).\n", obj_val);
-					if (status)	printf("Success (Obj= ??)\n");
-					else		printf("Failed.\n");
+					if (stat != 1)	printf("Success (Obj= ??)\n");
+					else			printf("Failed.\n");
 					
 					/* Move to the next period */
 					beginMin += runParam.baseTime;
@@ -306,7 +296,7 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath) {
 	}
 	cout << "------------------------------------------------------------------" << endl;
 	
-	cplexLog.close();
+	optLog.close();
 	
 	return 0;
 }

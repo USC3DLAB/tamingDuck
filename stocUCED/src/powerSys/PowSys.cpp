@@ -108,7 +108,28 @@ bool PowSys::readGeneratorData(string inputPath) {
         // start up cost
         input >> gen.startupCost;
         move_cursor(input, delimiter);
-        
+		
+		// CO2 emissions
+		input >> gen.CO2_emission_base;
+		move_cursor(input, delimiter);
+		
+		input >> gen.CO2_emission_var;
+		move_cursor(input, delimiter);
+		
+		// NOX emissions
+		input >> gen.NOX_emission_base;
+		move_cursor(input, delimiter);
+		
+		input >> gen.NOX_emission_var;
+		move_cursor(input, delimiter);
+		
+		// SO2 emissions
+		input >> gen.SO2_emission_base;
+		move_cursor(input, delimiter);
+		
+		input >> gen.SO2_emission_var;
+		move_cursor(input, delimiter);
+		
         // must-run?
 		input >> gen.isMustRun;
         move_cursor(input, delimiter);

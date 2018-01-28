@@ -14,7 +14,7 @@
 #include "Generator.hpp"
 
 extern runType runParam;
-extern ofstream cplexLog;
+extern ofstream optLog;
 
 EDmodel::EDmodel(instance &inst, int t0, int rep) {
 
@@ -22,8 +22,8 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 	cplex = IloCplex(model);
 
 	//cplex.setOut(env.getNullStream());
-	cplex.setOut(cplexLog);
-	cplex.setWarning(cplexLog);
+	cplex.setOut(optLog);
+	cplex.setWarning(optLog);
 	
 	
 	/* Pre-process to setup some parameters: generator status (ramping and capacity), load, and stochastic generation */
@@ -255,9 +255,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 		/* Generation ramping constraints: applicable only if the generator continues to be ON, i.e., x[g][t] = 1. */
 		if ( t == 0 ) {
 			if ( t0 == 0 ) {
-				/* TODO: The initial generation level is not considered */
-				//TODO: SMH: Initial generation is no longer ignored??
-				cout << "Warning: Initial generation ignored." << endl;
+				// Note: Initial generation is assumed to be the 1st-period generation quantities of ST-UC model
 				for ( int g = 0; g < numGen; g++ ) {
 					/* ramp-up */
 					sprintf(elemName, "rampUp[%d][%d]", g, t);
@@ -432,10 +430,18 @@ bool EDmodel::solve(instance &inst, int t0) {
 		
 		// record the solution
 		if (status) {
-			for (int g = 0; g < numGen; g++) {
-				for (int t = 0; t < numPeriods; t++) {
-					if ( t0 + t < runParam.numPeriods ) {	// do not record for periods that exceed the planning horizon
-						inst.solution.g_ED[g][t0+t] = cplex.getValue(genUsed[g][t]) + cplex.getValue(overGen[g][t]);
+			for (int t = 0; t < numPeriods; t++) {
+				if ( t0 + t < runParam.numPeriods ) {	// do not record for periods that exceed the planning horizon
+					// record used and over-generation amounts
+					for (int g = 0; g < numGen; g++) {
+						inst.solution.usedGen_ED[g][t0+t] = cplex.getValue(genUsed[g][t]);
+						inst.solution.overGen_ED[g][t0+t] = cplex.getValue(overGen[g][t]);
+						inst.solution.g_ED[g][t0+t]		  = inst.solution.usedGen_ED[g][t0+t] + inst.solution.overGen_ED[g][t0+t];
+					}
+					
+					// record load-shedding amounts
+					for (int b = 0; b < numBus; b++) {
+						inst.solution.loadShed_ED[b][t0+t] = cplex.getValue(demShed[b][t]);
 					}
 				}
 			}

@@ -39,7 +39,16 @@ public:
     double variableCost;        // $ / MWh
     double startupCost;         // $ / startup
     double noLoadCost;          // $ / hour
-    
+	
+	double CO2_emission_base;	// kg / hour CO2 (incurred, whenever a generator is operational)
+	double CO2_emission_var;	// kg / MWh CO2 (incurred per production)
+	
+	double NOX_emission_base;	// kg / hour NOX (incurred, whenever a generator is operational)
+	double NOX_emission_var;	// kg / MWh NOX (incurred per production)
+
+	double SO2_emission_base;	// kg / hour SO2 (incurred, whenever a generator is operational)
+	double SO2_emission_var;	// kg / MWh SO2 (incurred per production)
+	
     int minUpTime;              // hours
     int minDownTime;            // hours
     

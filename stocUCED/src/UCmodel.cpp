@@ -9,7 +9,7 @@
 #include "UCmodel.hpp"
 
 extern runType runParam;
-extern ofstream cplexLog;
+extern ofstream optLog;
 
 
 UCmodel::UCmodel () {
@@ -353,7 +353,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 		}
 		
 		if (shutDownPeriod >= 0) {
-			cplexLog << "Warning: Generator " << g << " (" << genPtr->name << ") cannot ramp down to 0 in the ST-UC problem" << endl;
+			optLog << "Warning: Generator " << g << " (" << genPtr->name << ") cannot ramp down to 0 in the ST-UC problem" << endl;
 		}
 		
 		int t=0;
@@ -519,8 +519,8 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 //	cplex.setParam(IloCplex::Threads, 1);
 	cplex.setParam(IloCplex::EpGap, 1e-2);
 //	cplex.setOut(env.getNullStream());
-	cplex.setOut(cplexLog);
-	cplex.setWarning(cplexLog);
+	cplex.setOut(optLog);
+	cplex.setWarning(optLog);
 }
 
 /****************************************************************************
@@ -538,11 +538,11 @@ bool UCmodel::solve() {
 			for (int g=0; g<numGen; g++) {
 				Generator *genPtr = &(inst->powSys->generators[g]);
 				
-				if ( (probType == DayAhead && genPtr->isDAUCGen) || (probType == ShortTerm && !genPtr->isDAUCGen) ) {
-					for (int t=0; t<numPeriods; t++) {
+				for (int t=0; t<numPeriods; t++) {
+					if ( (probType == DayAhead && genPtr->isDAUCGen) || (probType == ShortTerm && !genPtr->isDAUCGen) ) {
 						setGenState(g,t, cplex.getValue(x[g][t]));
-						setGenProd (g,t, cplex.getValue(p[g][t]));
 					}
+					setGenProd (g,t, cplex.getValue(p[g][t]));
 				}
 			}
 		}

@@ -26,8 +26,8 @@ extern "C" {
 #define INF	DBL_MAX
 
 #undef STOCH_CHECK
-//#undef ALGO_CHECK
-#define ALGO_CHECK
+#undef ALGO_CHECK
+//#define ALGO_CHECK
 
 typedef struct{
 	long long RUN_SEED;			/* seed used during optimization */

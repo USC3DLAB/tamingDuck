@@ -18,7 +18,7 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, vector<string> stoc
 	this->hierarchy = {"DA", "ST", "RT"};
 
 	/* Allocate memory for solution matrices */
-	solution.allocateMem(powSys->numGen, runParam.numPeriods);
+	solution.allocateMem(powSys->numGen, runParam.numPeriods, powSys->numBus);
 
 	int lookahead = max(runParam.ED_numPeriods-1, runParam.ST_numPeriods-1);
 	/* Setup all the deterministic observations */
@@ -90,7 +90,15 @@ void instance::summary() {
 
 bool instance::printSolution(string filepath) {
 	bool status;
+	
+	/* time related */
+	time_t rawTime;
+	struct tm * timeInfo;
+	time ( &rawTime );
+	timeInfo = localtime( &rawTime );
+	timeInfo->tm_min = 0;	timeInfo->tm_hour = 0; mktime(timeInfo);
 
+	/* print solutions */
 	ofstream output;
 	status = open_file(output, filepath + "_commitments.sol");
 	if (!status) goto finalize;
@@ -110,9 +118,51 @@ bool instance::printSolution(string filepath) {
 	print_matrix(output, solution.g_ED, delimiter, 2);
 	output.close();
 
-	status = open_file(output, filepath + "_costs.sol");
+	status = open_file(output, filepath + "_stats.sol");
 	if (!status) goto finalize;
-	// TODO: semih will calculate costs
+	output << "Time\tUsedGen\tOverGen\tUsedGenCost\tOverGenCost\tNoLoadCost\tStartUpCost\tLoadShed\tCO2(kg)\tNOX(kg)\tSO2(kg)" << endl;
+	for (int t=0; t<runParam.numPeriods; t++) {
+		output << setfill('0') << setw(2) << timeInfo->tm_hour << ":" << timeInfo->tm_min << "\t";
+		
+		double coef = 60.0/runParam.ED_resolution;
+		
+		vector<double> stats (10, 0.0);
+		for (int g=0; g<powSys->numGen; g++) {
+			// production amounts
+			stats[0] += solution.usedGen_ED[g][t];
+			stats[1] += solution.overGen_ED[g][t];
+			
+			// costs
+			stats[2] += powSys->generators[g].variableCost * coef * solution.usedGen_ED[g][t];
+			stats[3] += powSys->generators[g].variableCost * coef * solution.overGen_ED[g][t];
+			stats[4] += powSys->generators[g].noLoadCost   * coef * solution.x[g][t];
+			
+			if (t > 0) {
+				stats[5] += powSys->generators[g].startupCost * max(solution.x[g][t]-solution.x[g][t-1], 0.0);
+			}
+			
+			// emissions
+			stats[7] += powSys->generators[g].CO2_emission_base * coef * solution.x[g][t];
+			stats[7] += powSys->generators[g].CO2_emission_var * coef * solution.g_ED[g][t];
+			stats[8] += powSys->generators[g].NOX_emission_base * coef * solution.x[g][t];
+			stats[8] += powSys->generators[g].NOX_emission_var * coef * solution.g_ED[g][t];
+			stats[9] += powSys->generators[g].SO2_emission_base * coef * solution.x[g][t];
+			stats[9] += powSys->generators[g].SO2_emission_var * coef * solution.g_ED[g][t];
+		}
+		
+		// shed demand
+		for (int b=0; b<powSys->numBus; b++) {
+			stats[6] += solution.loadShed_ED[b][t];
+		}
+		
+		for (int i=0; i<stats.size()-1; i++) {
+			output << stats[i] << "\t";
+		}
+		output << stats[ stats.size()-1 ] << endl;
+		
+		timeInfo->tm_min += runParam.baseTime;
+		mktime(timeInfo);
+	}
 	
 	output.close();
 	
