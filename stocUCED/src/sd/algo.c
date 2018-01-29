@@ -14,6 +14,8 @@
 extern stringC outputDir;
 extern configType config;
 
+FILE *file;
+
 int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC probName, vectorC *edSols, double *objVal) {
 	cellType *cell;
 	vectorC	 xk = NULL, lb = NULL;
@@ -24,6 +26,9 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC probName, vect
 
 	/* open solver */
 	openSolver();
+	
+	/* open output */
+	file = fopen("optimization.log", "a");
 
 	/* complete necessary initialization for the algorithm */
 	if ( setupAlgo(orig, stoc, tim, &prob, &cell) )
@@ -38,8 +43,8 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC probName, vect
 	totalTime = ((double) clock() - tic)/CLOCKS_PER_SEC;
 
 	/* Write solution statistics for optimization process */
-	printf("\n\nLower bound estimate                   : %f\n", cell->incumbEst);
-	printf("Total time = %f\n", totalTime);
+	fprintf(file, "\n\nLower bound estimate                   : %f\n", cell->incumbEst);
+	fprintf(file, "Total time = %f\n", totalTime);
 	writeStatistic(&soln, prob[0], cell, probName);
 
 	/* evaluating the optimal solution*/
@@ -47,7 +52,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC probName, vect
 		evaluate(&soln, stoc, prob, cell, cell->incumbX);
 	}
 
-	printf("\n\t\tSuccessfully completed two-stage stochastic decomposition algorithm.\n");
+	fprintf(file, "\n\t\tSuccessfully completed two-stage stochastic decomposition algorithm.\n");
 
 	/* Extract relevant part of the solutions */
 	(*edSols) = (vectorC) arr_alloc(prob[0]->num->cols, double);
@@ -57,6 +62,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC probName, vect
 	*objVal = cell->incumbEst;
 
 	/* free up memory before leaving */
+	fclose(file);
 	if (xk) mem_free(xk);
 	if (lb) mem_free(lb);
 	if(cell) freeCellType(cell);
@@ -64,6 +70,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC probName, vect
 	return 0;
 
 	TERMINATE:
+	fclose(file);
 	if(xk) mem_free(xk);
 	if(lb) mem_free(lb);
 	if(cell) freeCellType(cell);
@@ -87,8 +94,10 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, stringC probName)
 #if defined(STOCH_CHECK) || defined(ALGO_CHECK)
 		printf("\n\t\tIteration-%d :: \n", cell->k);
 #else
-		if ( (cell->k -1) % 100 == 0)
-			printf("\n\t\tIteration-%4d: ", cell->k);
+		if ( (cell->k -1) % 100 == 0) {
+			fprintf(file, "\n\t\tIteration-%4d: ", cell->k);
+			fflush(file);
+		}		
 #endif
 
 		/******* 1. Optimality tests *******/

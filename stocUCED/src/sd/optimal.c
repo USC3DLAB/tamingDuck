@@ -12,6 +12,7 @@
 #include "twoSD.h"
 
 extern configType config;
+extern FILE *file;
 
 /* This function determines whether or not the current incumbent solution is considered to be optimal. Optimality is guarenteed if the
  * following criteria are satisfied:
@@ -29,11 +30,11 @@ BOOL optimal(probType **prob, cellType *cell) {
 			if (fullTest(prob, cell)) {
 				/* full test satisfied */
 				cell->optFlag = TRUE;
-				printf (">"); fflush(stdout);
+				fprintf (file, ">"); fflush(file);
 				return TRUE;
 			}
 			else {
-				printf(">"); fflush(stdout);
+				fprintf(file, ">"); fflush(file);
 			}
 
 		}

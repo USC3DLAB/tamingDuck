@@ -12,6 +12,7 @@
 #include "twoSD.h"
 
 extern configType config;
+extern FILE* file;
 
 /***********************************************************************\
  ** This function determines whether the "stagewise descent property" is
@@ -41,7 +42,7 @@ int checkImprovement(probType *prob, cellType *cell, int candidCut) {
 		}
 		cell->iCutIdx = candidCut;
 		cell->incumbChg = FALSE;
-		printf("+"); fflush(stdout);
+		fprintf(file, "+"); fflush(file);
 	}
 	else {
 		/* Update quad_scalar when no incumbent is found. */
