@@ -16,6 +16,8 @@
 #include "./stocProcess/stoc.hpp"
 #include <sstream>
 
+#include <Rinside.h>
+
 runType runParam;
 
 void readRunfile (string inputDir);
@@ -28,6 +30,39 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath);
 int main(int argc, const char * argv[]) {
 	string inputDir, configPath, sysName, setting;
 
+	
+	/* BOF Semih's R-related Tests */
+	cout << "Semih's R-related tests begin..." << endl;
+	
+	RInside R(argc, argv);
+	R["txt"] = "Hello, world!\n";      // assign a char* (string) to 'txt'
+	
+	R.parseEvalQ("cat(txt)");           // eval the init string, ignoring any returns
+	
+	R.parseEval("set.seed(0)");
+	R.parseEval("x <- rnorm(4)");
+	R.parseEval("print(x)");
+	R.parseEval("print(x[1])");
+	
+	Rcpp::NumericVector myRcppVector = R.parseEval("x");
+	cout << myRcppVector.size() << endl;
+	for (int i=0; i<myRcppVector.size(); i++) {
+		cout << myRcppVector[i] << endl;
+	}
+	
+	R["txt"] = "\nDear Harsha,\n\nPlease make sure that the location of the file \"sample_script.R\" is specified in the below line, correctly.\n\nYours sincerely,\nSemih Theodore Atakhan.\n\n";
+	
+	R.parseEval("cat(txt)");
+	R.parseEval("source(\"/Users/semihatakan/Desktop/sample_script.R\")");
+	
+	// another example:
+	// https://stackoverflow.com/questions/7457635/calling-r-function-from-c
+	
+	cout << "Semih's R-related tests ended" << endl;
+	exit (99);
+	/* EOF Semih's R-related Tests */
+	
+	
 	/* Request for input if the default is missing */
 	parseCmdLine(argc, argv, inputDir, configPath, sysName, setting);
 

@@ -120,39 +120,42 @@ bool instance::printSolution(string filepath) {
 
 	status = open_file(output, filepath + "_stats.sol");
 	if (!status) goto finalize;
-	output << "Time\tUsedGen\tOverGen\tUsedGenCost\tOverGenCost\tNoLoadCost\tStartUpCost\tLoadShed\tCO2(kg)\tNOX(kg)\tSO2(kg)" << endl;
+	output << "Time\t#ofOnGen\tUsedGen\tOverGen\tUsedGenCost\tOverGenCost\tNoLoadCost\tStartUpCost\tLoadShed\tCO2(kg)\tNOX(kg)\tSO2(kg)" << endl;
 	for (int t=0; t<runParam.numPeriods; t++) {
-		output << setfill('0') << setw(2) << timeInfo->tm_hour << ":" << timeInfo->tm_min << "\t";
+		output << setfill('0') << setw(2) << timeInfo->tm_hour << ":" << setfill('0') << setw(2) << timeInfo->tm_min << "\t";
 		
 		double coef = 60.0/runParam.ED_resolution;
 		
-		vector<double> stats (10, 0.0);
+		vector<double> stats (11, 0.0);
 		for (int g=0; g<powSys->numGen; g++) {
+			// open generator count
+			stats[0] += solution.x[g][t];
+			
 			// production amounts
-			stats[0] += solution.usedGen_ED[g][t];
-			stats[1] += solution.overGen_ED[g][t];
+			stats[1] += solution.usedGen_ED[g][t];
+			stats[2] += solution.overGen_ED[g][t];
 			
 			// costs
-			stats[2] += powSys->generators[g].variableCost * coef * solution.usedGen_ED[g][t];
-			stats[3] += powSys->generators[g].variableCost * coef * solution.overGen_ED[g][t];
-			stats[4] += powSys->generators[g].noLoadCost   * coef * solution.x[g][t];
+			stats[3] += powSys->generators[g].variableCost * coef * solution.usedGen_ED[g][t];
+			stats[4] += powSys->generators[g].variableCost * coef * solution.overGen_ED[g][t];
+			stats[5] += powSys->generators[g].noLoadCost   * coef * solution.x[g][t];
 			
 			if (t > 0) {
-				stats[5] += powSys->generators[g].startupCost * max(solution.x[g][t]-solution.x[g][t-1], 0.0);
+				stats[6] += powSys->generators[g].startupCost * max(solution.x[g][t]-solution.x[g][t-1], 0.0);
 			}
 			
 			// emissions
-			stats[7] += powSys->generators[g].CO2_emission_base * coef * solution.x[g][t];
-			stats[7] += powSys->generators[g].CO2_emission_var * coef * solution.g_ED[g][t];
-			stats[8] += powSys->generators[g].NOX_emission_base * coef * solution.x[g][t];
-			stats[8] += powSys->generators[g].NOX_emission_var * coef * solution.g_ED[g][t];
-			stats[9] += powSys->generators[g].SO2_emission_base * coef * solution.x[g][t];
-			stats[9] += powSys->generators[g].SO2_emission_var * coef * solution.g_ED[g][t];
+			stats[8] += powSys->generators[g].CO2_emission_base * coef * solution.x[g][t];
+			stats[8] += powSys->generators[g].CO2_emission_var * coef * solution.g_ED[g][t];
+			stats[9] += powSys->generators[g].NOX_emission_base * coef * solution.x[g][t];
+			stats[9] += powSys->generators[g].NOX_emission_var * coef * solution.g_ED[g][t];
+			stats[10] += powSys->generators[g].SO2_emission_base * coef * solution.x[g][t];
+			stats[10] += powSys->generators[g].SO2_emission_var * coef * solution.g_ED[g][t];
 		}
 		
 		// shed demand
 		for (int b=0; b<powSys->numBus; b++) {
-			stats[6] += solution.loadShed_ED[b][t];
+			stats[7] += solution.loadShed_ED[b][t];
 		}
 		
 		for (int i=0; i<stats.size()-1; i++) {
