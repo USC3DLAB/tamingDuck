@@ -27,9 +27,16 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc);
 int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath);
 int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath);
 
+void Rsubroutine (RInside &R) {
+	Rcpp::NumericVector myRcppVector = R.parseEval("x");
+	cout << myRcppVector.size() << endl;
+	for (int i=0; i<myRcppVector.size(); i++) {
+		cout << myRcppVector[i] << endl;
+	}
+}
+
 int main(int argc, const char * argv[]) {
 	string inputDir, configPath, sysName, setting;
-
 	
 	/* BOF Semih's R-related Tests */
 	cout << "Semih's R-related tests begin..." << endl;
@@ -44,11 +51,9 @@ int main(int argc, const char * argv[]) {
 	R.parseEval("print(x)");
 	R.parseEval("print(x[1])");
 	
-	Rcpp::NumericVector myRcppVector = R.parseEval("x");
-	cout << myRcppVector.size() << endl;
-	for (int i=0; i<myRcppVector.size(); i++) {
-		cout << myRcppVector[i] << endl;
-	}
+	cout << "Hello, I'm in C++" << endl;
+	
+	Rsubroutine(R);
 	
 	R["txt"] = "\nDear Harsha,\n\nPlease make sure that the location of the file \"sample_script.R\" is specified in the below line, correctly.\n\nYours sincerely,\nSemih Theodore Atakhan.\n\n";
 	
@@ -62,10 +67,9 @@ int main(int argc, const char * argv[]) {
 	exit (99);
 	/* EOF Semih's R-related Tests */
 	
-	
 	/* Request for input if the default is missing */
 	parseCmdLine(argc, argv, inputDir, configPath, sysName, setting);
-
+	
 	/* Read the configuration file */
 	readRunfile (inputDir);
 
