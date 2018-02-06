@@ -39,9 +39,12 @@ varSimulate <- function(varModel, simLength, numScenarios, simFrequency, type) {
     
     oneSample <- windowSim$noises + trend;
     oneSample[oneSample < 0] <- 0
-    if ( type == "Solar" )
-      oneSample[trend == 0] <- 0;
-    
+	  if ( type == "Solar" ) {
+		  for (g in 1:varModel$ts$N) {
+		    oneSample[ trend[,g]/max(trend[,g]) < 1e-2 , g] = 0; 
+		  }
+	  }
+	
     samplePaths <- abind(samplePaths, oneSample, along = 3);
   }
   

@@ -38,38 +38,42 @@ void Rsubroutine (RInside &R) {
 int main(int argc, const char * argv[]) {
 	string inputDir, configPath, sysName, setting;
 	
-	/* BOF Semih's R-related Tests */
-	cout << "Semih's R-related tests begin..." << endl;
-	
-	RInside R(argc, argv);
-	R["txt"] = "Hello, world!\n";      // assign a char* (string) to 'txt'
-	
-	R.parseEvalQ("cat(txt)");           // eval the init string, ignoring any returns
-	
-	R.parseEval("set.seed(0)");
-	R.parseEval("x <- rnorm(4)");
-	R.parseEval("print(x)");
-	R.parseEval("print(x[1])");
-	
-	cout << "Hello, I'm in C++" << endl;
-	
-	Rsubroutine(R);
-	
-	R["txt"] = "\nDear Harsha,\n\nPlease make sure that the location of the file \"sample_script.R\" is specified in the below line, correctly.\n\nYours sincerely,\nSemih Theodore Atakhan.\n\n";
-	
-	R.parseEval("cat(txt)");
-	R.parseEval("source(\"/Users/semihatakan/Desktop/sample_script.R\")");
-	
-	// another example:
-	// https://stackoverflow.com/questions/7457635/calling-r-function-from-c
-	
-	cout << "Semih's R-related tests ended" << endl;
-	exit (99);
-	/* EOF Semih's R-related Tests */
-	
 	/* Request for input if the default is missing */
 	parseCmdLine(argc, argv, inputDir, configPath, sysName, setting);
 	
+	/* BOF Semih's R-related Tests */
+	cout << "Semih's R-related tests begin..." << endl;
+	
+	string RScriptsPath = "/Users/semihatakan/Documents/Coding\ Projects/Power\ Systems/tamingDuck/tamingDuck/stocUCED/Rscripts/";
+	
+	RInside R(argc, argv);
+	
+	R.parseEval("setwd(\"" + RScriptsPath + "\")");			// set the working directory
+	R["dataFolder"] = inputDir + "/" + sysName + "/";		// set the data folder
+	R["dataType"]   = "Solar";								// set the data type
+	R["fileName"]   = "DA.csv";								// set the file name
+	R["fitModel"]	= "TRUE";
+	R.parseEval("source(\"runScript.R\")");
+	R["fitModel"]	= "FALSE";
+	R.parseEval("source(\"runScript.R\")");
+	Rcpp::NumericVector scenList = R.parseEval("scenarios");
+	cout << scenList.size() << endl;
+	int i=0;
+	vector< vector< vector<double> > > temp;
+	for (int s=0; s<2; s++) {
+		temp.push_back( vector< vector<double> > () );
+		for (int g=0; g<75; g++) {
+			temp[s].push_back( vector<double> () );
+			for (int t=0; t<96; t++) {
+				temp[s][g].push_back( scenList[i++] );
+			}
+		}
+	}
+
+	cout << "Semih's R-related tests ended" << endl;
+	exit (99);
+	/* EOF Semih's R-related Tests */
+
 	/* Read the configuration file */
 	readRunfile (inputDir);
 
