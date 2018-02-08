@@ -60,7 +60,7 @@ int main(int argc, const char * argv[]) {
 		}
 	}
 	else {
-		perror ("Unknown setting for the instance.\n");
+		perror ("Unknown framework.\n");
 	}
 
 	return 0;

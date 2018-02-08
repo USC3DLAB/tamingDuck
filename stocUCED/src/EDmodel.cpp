@@ -39,13 +39,23 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 	resize_matrix(genRampDown, numGen, numPeriods);
 	resize_matrix(genRampUp, numGen, numPeriods);
 	resize_matrix(genAvail, numGen, numPeriods);
-
-	for ( int d = 0; d < numBus; d++ ) {
-		Bus *busPtr = &(inst.powSys->buses[d]);
-		int r = inst.detObserv[2].mapVarNamesToIndex[num2str(busPtr->regionId)];
-
-		for ( int t = 0; t < runParam.ED_numPeriods; t++) {
-			busLoad[d][t] = inst.detObserv[2].vals[rep][t0+t][r]*busPtr->loadPercentage;
+	
+	/* Load */
+	for (int b=0; b<numBus; b++) {
+		Bus *busPtr = &(inst.powSys->buses[b]);
+		
+		auto it = inst.observations["RT"].mapVarNamesToIndex.find( num2str(busPtr->regionId) );
+		
+		for (int t=0; t<numPeriods; t++) {
+			
+			if ( t==0 ) {
+				it = inst.observations["RT"].mapVarNamesToIndex.find( num2str(busPtr->regionId) );
+				busLoad[b][t] = inst.observations["RT"].vals[rep][t0+t][it->second] * busPtr->loadPercentage;
+			}
+			else {
+				it = inst.observations["DA"].mapVarNamesToIndex.find( num2str(busPtr->regionId) );
+				busLoad[b][t] = inst.observations["DA"].vals[rep][t0+t][it->second] * busPtr->loadPercentage;
+			}
 		}
 	}
 	
@@ -64,13 +74,28 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 			genMin[g][t] = inst.solution.x[g][idxT]* min(genPtr.minGenerationReq, min(genPtr.rampUpLim * runParam.ED_resolution, genPtr.rampDownLim * runParam.ED_resolution));
 			
 			/* Stochastic generation set to what is available */
-			auto it = inst.stocObserv[2].mapVarNamesToIndex.find(genPtr.name);
+/*			auto it = inst.stocObserv[2].mapVarNamesToIndex.find(genPtr.name);
 			if ( it != inst.stocObserv[2].mapVarNamesToIndex.end() ) {
 				genAvail[g][t] = min(genMax[g][t], inst.stocObserv[2].vals[rep][idxT][it->second]);
 			}
+*/
+			/* Stochastic generation set to what is available */
+			auto it = inst.observations["RT"].mapVarNamesToIndex.find(genPtr.name);
+			bool stocSupply = (it != inst.observations["RT"].mapVarNamesToIndex.end()) ? true : false;
+			
+			if (stocSupply) {
+				if ( t==0 ) {
+					it = inst.observations["RT"].mapVarNamesToIndex.find(genPtr.name);
+					genAvail[g][t] = min( inst.observations["RT"].vals[rep][idxT][it->second], genMax[g][t] );
+				}
+				else {
+					it = inst.observations["DA"].mapVarNamesToIndex.find(genPtr.name);
+					genAvail[g][t] = min( inst.observations["DA"].vals[rep][idxT][it->second], genMax[g][t] );
+				}
+			}
+			
 			
 			/* Ramping restrictions */
-			
 			genRampUp[g][t]		= genPtr.rampUpLim * runParam.ED_resolution;
 			genRampDown[g][t]	= genPtr.rampDownLim * runParam.ED_resolution;
 			
@@ -332,9 +357,12 @@ void EDmodel::formulate(instance &inst, int t0) {
 
 		for ( int g = 0; g < numGen; g++ ) {
 			Generator genPtr = inst.powSys->generators[g];
+
+			/* Stochastic generation set to what is available */
+			auto it = inst.observations["RT"].mapVarNamesToIndex.find(genPtr.name);
+			bool stocSupply = (it != inst.observations["RT"].mapVarNamesToIndex.end()) ? true : false;
 			
-			auto it = inst.stocObserv[2].mapVarNamesToIndex.find(genPtr.name);
-			if ( it == inst.stocObserv[2].mapVarNamesToIndex.end() ) {
+			if ( !stocSupply ) {
 				/* Deterministic-supply generator */
 			
 				sprintf(elemName, "maxGenA[%d][%d]", g, t);
@@ -413,21 +441,22 @@ bool EDmodel::solve(instance &inst, int t0) {
 				for (int t=0; t<numPeriods; t++) {
 					try {
 						if ( cplex.getValue(demShed[b][t]) > 1e-6 ) {
-							
+							/*
 							if (totLoadShed == 0)	// first time
 							{
 								cout << endl << "~Load Shed~" << endl;
 							}
-							
+							*/
 							totLoadShed += cplex.getValue(demShed[b][t]);
-							cout << cplex.getValue(demShed[b][t]) << " (" << b << "," << t << "), ";
+							//cout << cplex.getValue(demShed[b][t]) << " (" << b << "," << t << "), ";
 						}
 					}
 					catch (IloException &e) { }
 				}
 			}
 			if (totLoadShed > 0) {
-				cout << "Total Load Shed= " << totLoadShed << ", Penalty= " << totLoadShed*loadShedPenaltyCoef << endl << endl;
+				cout << " [LS!] ";
+				//cout << "Total Load Shed= " << totLoadShed << ", Penalty= " << totLoadShed*loadShedPenaltyCoef << endl << endl;
 			}
 		}
 		

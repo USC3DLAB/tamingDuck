@@ -5,11 +5,11 @@ extern runType runParam;
 
 instance::instance () {}
 
-void instance::simulateScenarios() {
+void instance::simulateScenarios(int numScen, bool fitModel) {
 	int maxLookAhead = max(runParam.ED_numPeriods-1, runParam.ST_numPeriods-1);
 	int numSimLengthInDays = ceil( (double)(runParam.numPeriods+maxLookAhead)/(60.0/runParam.baseTime) );
 	
-	simulations = createScenarioList(R, true, powSys->path, stocElems, numSimLengthInDays, runParam.numLSScen);
+	simulations = createScenarioList(R, fitModel, powSys->path, stocElems, numSimLengthInDays, numScen);
 	simulations.name = "ForecastData_simulations";
 }
 
@@ -49,9 +49,10 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, string RScriptsPath
 		observations[fileNames[f]].name = fileNames[f] + "_observations";
 	}
 	
-	/* Simulate Time Series */
-	simulateScenarios();
+	/* simulate scenarios */
+	simulateScenarios(1, true);			// no sampling, but only model fitting in here. 1 is set to avoid bugs.
 	
+
 	summary();
 
 	return true;

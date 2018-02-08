@@ -22,8 +22,9 @@ class instance {
 
 public:
     instance ();
-	bool initialize (PowSys *powSys, StocProcess *stoc, string RScriptsPath);
-	bool printSolution(string filepath);
+	bool initialize			(PowSys *powSys, StocProcess *stoc, string RScriptsPath);
+	bool printSolution		(string filepath);
+	void simulateScenarios	(int numScen, bool fitModel);
 	
 	PowSys		*powSys;
 	StocProcess	*stoc;
@@ -33,7 +34,6 @@ public:
 	vector<string> detElems;		// list of deterministic elements in the model
 	vector<string> stocElems;		// list of stochastic elements in the model
 	
-	void simulateScenarios();
 	ScenarioType simulations;
 	
 	map< string, ScenarioType > observations;

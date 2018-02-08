@@ -143,7 +143,15 @@ void UCmodel::preprocessing ()
 			}
 		}
 	}
+
+	/* Spinning Reserve */
+	for (int b=0; b<numBus; b++) {
+		for (int t=0; t<numPeriods; t++) {
+			busLoad[b][t] *= (1+spinReservePerc);
+		}
+	}
 	
+	/* System-level loads */
 	fill( sysLoad.begin(), sysLoad.end(), 0.0 );		// reset system load to 0
 	for (int t=0; t<numPeriods; t++) {
 		for (int b=0; b<numBus; b++) {
@@ -566,23 +574,25 @@ bool UCmodel::solve() {
 			}
 		}
 		
+		
 		double totLoadShed = 0;
 		for (int b=0; b<numBus; b++) {
 			for (int t=0; t<numPeriods; t++) {
 				if ( cplex.getValue(L[b][t]) > 1e-6 ) {
-					
+					/*
 					if (totLoadShed == 0)	// first time
 					{
 						cout << endl << "~Load Shed~" << endl;
 					}
-					
+					*/
 					totLoadShed += cplex.getValue(L[b][t]);
-					cout << fixed << setprecision(2) << cplex.getValue(L[b][t]) << " (bus" << b << ",time" << t << "), ";
+					//cout << fixed << setprecision(2) << cplex.getValue(L[b][t]) << " (bus" << b << ",time" << t << "), ";
 				}
 			}
 		}
 		if (totLoadShed > 0) {
-			cout << "Total Load Shed= " << totLoadShed << ", Penalty= " << totLoadShed*loadShedPenaltyCoef << endl << endl;
+			cout << " [LS!] ";
+			//cout << "Total Load Shed= " << totLoadShed << ", Penalty= " << totLoadShed*loadShedPenaltyCoef << endl << endl;
 		}
 	}
 	catch (IloException &e) {

@@ -24,7 +24,7 @@ public:
 	SUCmaster ();
 	~SUCmaster();
 	
-	void formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin);
+	void formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep);
 
 	bool solve ();
 	double getObjValue();
@@ -66,11 +66,11 @@ private:
 	vector<int>		minUpTimePeriods;	// minimum uptime in periods (obeying assumptions)
 	vector<int>		minDownTimePeriods;	// minimum downtime in periods (obeying assumptions)
 	
-	vector<vector<double>> expCapacity;	// expected generator capacity
+	vector<vector<double>> maxCapacity;	// expected generator capacity
 	vector<double>		   sysLoad;		// aggregated load at each period
 	
 	int	beginMin;				// t=0 in the model corresponds to this minute in the planning horizon
-	int numGen, numLine, numBus, numPeriods, numBaseTimePerPeriod;
+	int numGen, numLine, numBus, numPeriods, numBaseTimePerPeriod, rep;
 	double periodLength;
 	
 	char buffer[30];

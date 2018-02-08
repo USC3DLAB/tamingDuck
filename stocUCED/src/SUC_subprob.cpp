@@ -18,8 +18,13 @@ SUCsubprob::SUCsubprob () {
 	duals = IloNumArray (env);
 
 	cplex.setOut(env.getNullStream());
+	cplex.setWarning(env.getNullStream());
 	cplex.setParam(IloCplex::PreInd, 0);
 	cplex.setParam(IloCplex::RootAlg, IloCplex::Dual);	// Important
+	
+	solve_t = 0;
+	cut_t	= 0;
+	setup_t = 0;
 }
 
 SUCsubprob::~SUCsubprob () {
@@ -58,8 +63,8 @@ void SUCsubprob::preprocessing ()
 	cutCoefs.initialize(numGen, numPeriods);
 	minGenerationReq.resize(numGen);					// minimum production requirements
 	maxCapacity.resize(numGen);							// maximum generator capacities
-	if (modelType == System) { sysLoad.resize(numPeriods); }					// aggregated system load
-	else					 { resize_matrix(busLoad, numBus, numPeriods); }	// individual bus loads
+	sysLoad.resize(numPeriods);							// aggregated system load
+	resize_matrix(busLoad, numBus, numPeriods);			// individual bus loads
 	
 	/* Min Generation Amounts */
 	for (int g=0; g<numGen; g++) {
@@ -90,46 +95,65 @@ void SUCsubprob::preprocessing ()
 	}
 	
 	/* Load */
-	auto dataPtr = (probType == DayAhead) ? &(inst->detObserv[0]) : &(inst->detObserv[1]);
-	if (modelType == System) {
-		fill( sysLoad.begin(), sysLoad.end(), 0.0 );		// initialize to 0
+	for (int b=0; b<numBus; b++) {
+		Bus *busPtr = &(inst->powSys->buses[b]);
+		
+		auto it = inst->observations["RT"].mapVarNamesToIndex.find( num2str(busPtr->regionId) );
+		
+		int period;
 		for (int t=0; t<numPeriods; t++) {
-			for (int r=0; r<dataPtr->numVars; r++) {
-				sysLoad[t] += dataPtr->vals[0][(beginMin/periodLength)+(t*numBaseTimePerPeriod)][r];
+			period = (beginMin/periodLength)+(t*numBaseTimePerPeriod);
+			
+			if ( t==0 && probType==ShortTerm ) {
+				it = inst->observations["RT"].mapVarNamesToIndex.find( num2str(busPtr->regionId) );
+				busLoad[b][t] = inst->observations["RT"].vals[rep][period][it->second] * busPtr->loadPercentage;
+			}
+			else {
+				it = inst->observations["DA"].mapVarNamesToIndex.find( num2str(busPtr->regionId) );
+				busLoad[b][t] = inst->observations["DA"].vals[rep][period][it->second] * busPtr->loadPercentage;
 			}
 		}
 	}
-	else {
+	
+	/* Spinning Reserve */
+	for (int b=0; b<numBus; b++) {
+		for (int t=0; t<numPeriods; t++) {
+			busLoad[b][t] *= (1+spinReservePerc);
+		}
+	}
+	
+	/* System-level loads */
+	fill( sysLoad.begin(), sysLoad.end(), 0.0 );		// reset system load to 0
+	for (int t=0; t<numPeriods; t++) {
 		for (int b=0; b<numBus; b++) {
-			Bus *busPtr = &(inst->powSys->buses[b]);
-			int r = dataPtr->mapVarNamesToIndex[ num2str(busPtr->regionId) ];
-			
-			for (int t=0; t<numPeriods; t++) {
-				busLoad[b][t] = dataPtr->vals[0][(beginMin/periodLength)+(t*numBaseTimePerPeriod)][r] * busPtr->loadPercentage;
-			}
+			sysLoad[t] += busLoad[b][t];
 		}
 	}
 	
 	/* Uncertainty related */
-	scenSet = (probType == DayAhead) ? &(inst->stocObserv[0]) : &(inst->stocObserv[1]);
-	numScen = 4;
-	//TODO: read the number of scenarios
-	//numScen = (int)scenSet->vals.size();
+	numScen = runParam.numLSScen;
 	
 	sceProb.resize(numScen);
 	fill(sceProb.begin(), sceProb.end(), 1.0/(double)numScen);		// equal probability scenarios
-	
-	// TODO: remove this
-	cout << "Solving for " << numScen << " scenarios " << endl;
 }
 
-void SUCsubprob::formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin)
+double SUCsubprob::getRandomCoef (int &s, int &t, int &loc) {
+	if (t == 0 && probType == ShortTerm) {
+		return inst->observations["RT"].vals[rep][t][loc];
+	}
+	else {
+		return inst->simulations.vals[s][t][loc];
+	}
+}
+
+void SUCsubprob::formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep)
 {
 	// get a handle on the instance and model type
 	this->inst		= &inst;
 	this->beginMin	= beginMin;
 	this->probType	= probType;
 	this->modelType = modelType;
+	this->rep		= rep;
 	
 	preprocessing();
 		
@@ -436,6 +460,8 @@ void SUCsubprob::setMasterSoln ( vector< vector<bool> > & gen_stat ) {
 
 bool SUCsubprob::solve() {
 
+	double time;
+	
 	cutCoefs.reset();
 	recourse_obj_val = 0;
 	
@@ -444,9 +470,13 @@ bool SUCsubprob::solve() {
 	// process second-stage scenario subproblems
 	for (int s=0; s<numScen; s++)
 	{
+		time = get_wall_time();
 		setup_subproblem (s);			// prepare the subproblem
+		setup_t += get_wall_time() - time;
 		
+		time = get_wall_time();
 		status = cplex.solve();			// solve the subproblem
+		solve_t += get_wall_time() - time;
 		
 		if (!status) {
 			if ( cplex.getCplexStatus() == IloCplex::Infeasible ) {
@@ -462,7 +492,9 @@ bool SUCsubprob::solve() {
 		
 		recourse_obj_val += sceProb[s] * cplex.getObjValue();	// get the obj value
 		
+		time = get_wall_time();
 		update_optimality_cut_coefs(s);	// update benders cut coefs
+		solve_t += get_wall_time() - time;
 	}
 	
 	return true;
@@ -473,24 +505,24 @@ void SUCsubprob::setup_subproblem(int &s)
 	double supply;
 	
 	// iterate over capacity constraints
-	int c=0;
+	int c=0, period;
 	
 	// capacity constraints
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
-		auto it = scenSet->mapVarNamesToIndex.find(genPtr->name);
-		if ( it != scenSet->mapVarNamesToIndex.end() ) {		// if random supply generator
-			for (int t=0; t<numPeriods; t++, c++) {				// Note: c is iterated in the secondary-loops
+		auto it = inst->simulations.mapVarNamesToIndex.find(genPtr->name);
+		
+		if ( it != inst->simulations.mapVarNamesToIndex.end() ) {		// if random supply generator
+			for (int t=0; t<numPeriods; t++, c++) 						// Note: c is iterated in the secondary-loops
+			{
 				if ((*gen_stat)[g][t]) {
-					supply = min(scenSet->vals[s][(beginMin/periodLength)+(t*numBaseTimePerPeriod)][it->second], genPtr->maxCapacity);
+					period = (beginMin/periodLength)+(t*numBaseTimePerPeriod);
 					
-					if ( genPtr->isMustUse ) {
-						cons[c].setBounds(supply, supply);
-					}
-					else {
-						cons[c].setUB(supply);
-					}
+					supply = min(getRandomCoef(s, period, it->second), genPtr->maxCapacity);
+
+					if ( genPtr->isMustUse )	{ cons[c].setBounds(supply, supply); }
+					else						{ cons[c].setUB(supply); }
 				}
 			}
 		} else {
@@ -507,16 +539,20 @@ void SUCsubprob::update_optimality_cut_coefs(int &s)
 	cplex.getDuals(duals, cons);
 	
 	// iterate over the constraints to write the Benders' cut
-	int c=0;
+	int c=0, period;
 	
 	// capacity constraints
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
-		auto it = scenSet->mapVarNamesToIndex.find(genPtr->name);
-		if ( it != scenSet->mapVarNamesToIndex.end() ) {		// if random supply generator
-			for (int t=0; t<numPeriods; t++, c++) {				// Note: c is iterated in the secondary-loops
-				supply = min(scenSet->vals[s][(beginMin/periodLength)+(t*numBaseTimePerPeriod)][it->second], genPtr->maxCapacity);
+		auto it = inst->simulations.mapVarNamesToIndex.find(genPtr->name);
+		
+		if ( it != inst->simulations.mapVarNamesToIndex.end() ) {		// if random supply generator
+			for (int t=0; t<numPeriods; t++, c++) 						// Note: c is iterated in the secondary-loops
+			{
+				period = (beginMin/periodLength)+(t*numBaseTimePerPeriod);
+				supply = min(getRandomCoef(s, period, it->second), genPtr->maxCapacity);
+
 				cutCoefs.pi_T[g][t] += sceProb[s] * duals[c] * ( supply );
 			}
 		}
@@ -644,6 +680,8 @@ void SUCsubprob::get_feasibility_cut_coefs(int &s)
 {
 	double supply;
 	
+	int period;
+	
 	// reset earlier (optimality-)cut coefficient entries
 	cutCoefs.reset();
 	
@@ -676,10 +714,14 @@ void SUCsubprob::get_feasibility_cut_coefs(int &s)
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
-		auto it = scenSet->mapVarNamesToIndex.find(genPtr->name);
-		if ( it != scenSet->mapVarNamesToIndex.end() ) {		// if random supply generator
-			for (int t=0; t<numPeriods; t++, c++) {				// Note: c is iterated in the secondary-loops
-				supply = min(scenSet->vals[s][(beginMin/periodLength)+(t*numBaseTimePerPeriod)][it->second], genPtr->maxCapacity);
+		auto it = inst->simulations.mapVarNamesToIndex.find(genPtr->name);
+		if ( it != inst->simulations.mapVarNamesToIndex.end() ) {		// if random supply generator
+			for (int t=0; t<numPeriods; t++, c++) 						// Note: c is iterated in the secondary-loops
+			{
+				period = (beginMin/periodLength)+(t*numBaseTimePerPeriod);
+				
+				supply = min(getRandomCoef(s, period, it->second), genPtr->maxCapacity);
+				
 				cutCoefs.pi_T[g][t] += farkasMap[ cons[c].getId() ] * ( supply );
 			}
 		}

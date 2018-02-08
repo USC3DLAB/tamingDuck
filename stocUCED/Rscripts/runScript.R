@@ -1,7 +1,7 @@
 # Remove all except functions
 # rm(list = setdiff(ls(), lsf.str()))
 # cat("\014");
-print("Initiating simulation scripts");
+# print("Initiating simulation scripts");
 
 # load packages
 options(warn=-1);
@@ -38,10 +38,10 @@ simFrequency = 4;
 # numScenarios <- 2;
 day = 1;
 
-set.seed(11)
-
 # Fit model
 if (fitModel) {
+	set.seed(11)
+	
 	varModel = NULL;
 	colNames = NULL;
 	for (i in 1:length(dataTypes)) {
@@ -51,11 +51,11 @@ if (fitModel) {
 	}
 }
 
-#Simulate scenarios
-print("Simulating Scenarios")
+# Simulate scenarios
+# print("Simulating Scenarios")
 numComponents = 0;
 for (i in 1:length(dataTypes)) {
-  numComponents = numComponents + varModel[[i]]$ts$N;
+	numComponents = numComponents + varModel[[i]]$ts$N;
 }
 
 scenarios = array(0, dim = c(simLength*simFrequency, numComponents, numScenarios))
@@ -63,10 +63,10 @@ scenarios = array(0, dim = c(simLength*simFrequency, numComponents, numScenarios
 
 j = 1;
 for (i in 1:length(dataTypes)) {
-  tmp <- varSimulate(varModel[[i]], simLength, numScenarios, simFrequency, dataTypes[i])
-  # tmp[time, generator, scenario]
-
-  scenarios[, j:(j+varModel[[i]]$ts$N-1), ] = tmp;
-  j = j + varModel[[i]]$ts$N;
+	tmp <- varSimulate(varModel[[i]], simLength, numScenarios, simFrequency, dataTypes[i])
+	# tmp[time, generator, scenario]
+	
+	scenarios[, j:(j+varModel[[i]]$ts$N-1), ] = tmp;
+	j = j + varModel[[i]]$ts$N;
 }
-print("Simulation is completed")
+# print("Simulation is completed")

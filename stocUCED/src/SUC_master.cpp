@@ -9,6 +9,7 @@
 #include "SUC_master.hpp"
 
 extern runType runParam;
+extern ofstream optLog;
 
 IloCplex::Callback LazySepCallback(IloEnv env, SUCmaster & me) {
 	return (IloCplex::Callback(new(env) SUCmaster::LazySepCallbackI(env, me)));
@@ -61,8 +62,10 @@ void SUCmaster::LazySepCallbackI::main()
 		
 		IloRange BendersCut;
 		if (isFeasible) {
+			optLog << "-    Opt Cut" << endl;
 			BendersCut = IloRange(me.env, cutCoefs->pi_b, me.eta-pi_Tx);	// optimality cut
 		} else {
+			optLog << "-    Feas Cut" << endl;
 			BendersCut = IloRange(me.env, cutCoefs->pi_b, -pi_Tx);			// feasibility cut
 		}
 		
@@ -118,7 +121,7 @@ void SUCmaster::preprocessing ()
 	/* initialize containers */
 	minUpTimePeriods.resize(numGen);					// minimum uptime in periods
 	minDownTimePeriods.resize(numGen);					// minimum downtime in periods
-	resize_matrix(expCapacity, numGen, numPeriods);		// mean generator capacities
+	resize_matrix(maxCapacity, numGen, numPeriods);		// max generator capacities
 	sysLoad.resize(numPeriods);							// aggregated system load
 	
 	/* Min Up/Down */
@@ -133,22 +136,13 @@ void SUCmaster::preprocessing ()
 	}
 	
 	/* Mean Generator Capacity */
-	auto dataPtr = (probType == DayAhead) ? &(inst->stocObserv[0]) : &(inst->stocObserv[1]);
-	
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
-		auto it = dataPtr->mapVarNamesToIndex.find(genPtr->name);
-		if ( it != dataPtr->mapVarNamesToIndex.end() ) {
-			/* random supply */
-			for (int t=0; t<numPeriods; t++) {
-				expCapacity[g][t] = dataPtr->vals[0][t*numBaseTimePerPeriod][it->second];	// in MWs
-			}
-		} else {
-			/* deterministic supply */
-			fill(expCapacity[g].begin(), expCapacity[g].end(), genPtr->maxCapacity);	// in MWs
-		}
+		// assuming deterministic supply
+		fill(maxCapacity[g].begin(), maxCapacity[g].end(), genPtr->maxCapacity);	// in MWs
 	}
+	 
 	
 	/* Misc: Generators which are scheduled in ST-UC, must have 0 min-generation-requirement & capacity in DA-UC problem */
 	if (probType == DayAhead) {
@@ -156,29 +150,42 @@ void SUCmaster::preprocessing ()
 			Generator *genPtr = &(inst->powSys->generators[g]);
 			
 			if (!genPtr->isDAUCGen) {
-				fill(expCapacity[g].begin(), expCapacity[g].end(), 0.0);
+				fill(maxCapacity[g].begin(), maxCapacity[g].end(), 0.0);
 			}
 		}
 	}
 	
 	/* Load */
-	dataPtr = (probType == DayAhead) ? &(inst->detObserv[0]) : &(inst->detObserv[1]);
-	fill( sysLoad.begin(), sysLoad.end(), 0.0 );		// initialize to 0
 	for (int t=0; t<numPeriods; t++) {
-		for (int r=0; r<dataPtr->numVars; r++) {
-			sysLoad[t] += dataPtr->vals[0][t*numBaseTimePerPeriod][r];
+		int period = (beginMin/periodLength)+(t*numBaseTimePerPeriod);
+		
+		sysLoad[t] = 0;
+		for (int b=0; b<numBus; b++) {
+			Bus *busPtr = &(inst->powSys->buses[b]);
+			auto it = inst->observations["RT"].mapVarNamesToIndex.find( num2str(busPtr->regionId) );
+			
+			
+			if ( t==0 && probType==ShortTerm ) {
+				it = inst->observations["RT"].mapVarNamesToIndex.find( num2str(busPtr->regionId) );
+				sysLoad[t] += inst->observations["RT"].vals[rep][period][it->second] * busPtr->loadPercentage;
+			}
+			else {
+				it = inst->observations["DA"].mapVarNamesToIndex.find( num2str(busPtr->regionId) );
+				sysLoad[t] += inst->observations["DA"].vals[rep][period][it->second] * busPtr->loadPercentage;
+			}
 		}
 	}
 }
 
 
-void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin) {
+void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep) {
 	
 	/* Initializations */
 	this->inst		= &inst;
 	this->beginMin	= beginMin;
 	this->probType	= probType;
 	this->modelType = modelType;
+	this->rep		= rep;
 	
 	/* Prepare Model-Dependent Input Data */
 	preprocessing();
@@ -272,18 +279,16 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
     }
     
     // demand-based valid inequality
-	// TODO: Revisit this 'valid' inequality
     // the capacities of operational generators must exceed the system demand at any point
-/*    for (int t=0; t<numPeriods; t++) {
+    for (int t=0; t<numPeriods; t++) {
         IloExpr expr (env);
         for (int g=0; g<numGen; g++) {
-            expr += expCapacity[g] * x[g][t];
+            expr += maxCapacity[g][t] * x[g][t];
         }
-        model.add( expr >= inst.aggDemand[t] );
+        model.add( expr >= sysLoad[t] * (1+spinReservePerc));
         expr.end();
     }
- */
-    
+	
 	// must-run units must be committed
 	for (int g=0; g<numGen; g++) {
 		if ( inst.powSys->generators[g].isMustRun ) {
@@ -337,11 +342,10 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 	model.add( IloMinimize(env, obj) );
 	
     // formulate the subproblem
-	sub.formulate(inst, probType, modelType, beginMin);
+	sub.formulate(inst, probType, modelType, beginMin, rep);
 	
 	// formulate the warm-up problem
-	// FIXME: rep?
-	warmUpProb.formulate(inst, probType, modelType, beginMin, 0);
+	warmUpProb.formulate(inst, probType, modelType, beginMin, rep);
 
     /*************************************************************************
      * DISABLED: Didn't improve the progress of the algorithm. Donno why..
@@ -365,40 +369,46 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
      * }
      ************************************************************************/
     
-	cplex.use( LazySepCallback(env, *this) );
+	cplex.use(LazySepCallback(env, *this));
+	cplex.setOut(optLog);
+	cplex.setWarning(optLog);
 	cplex.setParam(IloCplex::Threads, 1);
     cplex.setParam(IloCplex::FPHeur, 2);
-    cplex.setParam(IloCplex::HeurFreq, 10);
+//    cplex.setParam(IloCplex::HeurFreq, 10);
     cplex.setParam(IloCplex::LBHeur, 1);    // ??
     cplex.setParam(IloCplex::EpGap, 1e-2);
-    cplex.setParam(IloCplex::Reduce, 0);    // due to callbacks
-    cplex.setParam(IloCplex::PreLinear, 0); // due to callbacks
+//    cplex.setParam(IloCplex::Reduce, 0);    // due to callbacks
+//    cplex.setParam(IloCplex::PreLinear, 0); // due to callbacks
+	cplex.setParam(IloCplex::TiLim, 7200);
 }
 
 bool SUCmaster::solve () {
 	try{
 		bool status;
 		
-		// warm up
-		cout << "Executing warm up MIP..." << endl;
+		/* warm up */
+		optLog << "Executing warm up MIP..." << endl;
 		status = warmUpProb.solve();
 		if (status) {
 			setWarmUp();
-			cout << "Warm up model provided " << warmUpProb.cplex.getSolnPoolNsolns() << " solutions (Best Obj= " << warmUpProb.getObjValue() << ")." << endl;
+			optLog << "Warm up model provided " << warmUpProb.cplex.getSolnPoolNsolns() << " solutions (Best Obj= " << warmUpProb.getObjValue() << ")." << endl;
 		} else {
-			cout << "Warm up has failed." << endl;
+			optLog << "Warm up has failed." << endl;
 		}
 		
 		// Benders' decomposition
-		cout << "Executing Benders' decomposition..." << endl;
+		optLog << "Executing Benders' decomposition..." << endl;
 		status = cplex.solve();
 		if (status) {
-			cout << "Optimization is completed with status " << cplex.getCplexStatus() << endl;
-			cout << "Obj = \t" << cplex.getObjValue() << endl;
-			cout << "LB = \t" << cplex.getBestObjValue() << endl;
+			optLog << "Optimization is completed with status " << cplex.getCplexStatus() << endl;
+			optLog << "Obj = \t" << cplex.getObjValue() << endl;
+			optLog << "LB = \t" << cplex.getBestObjValue() << endl;
 		} else {
-			cout << "Benders' decomposition has failed." << endl;
+			optLog << "Benders' decomposition has failed." << endl;
 		}
+		cout << sub.solve_t << endl;
+		cout << sub.setup_t << endl;
+		cout << sub.cut_t << endl;
 		
 		return status;
 	}

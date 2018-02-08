@@ -26,7 +26,7 @@ public:
 	SUCsubprob ();
 	~SUCsubprob ();
 	
-	void formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin);
+	void formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep);
 	bool solve ();
 	void setMasterSoln		(vector< vector<bool> > & gen_stat);
 	double getEDGenProd		(int genId, int period);				// reads from inst->Solution.gED
@@ -54,6 +54,7 @@ private:
 	void formulate_production ();
 	
 	void setup_subproblem (int &s);
+	double getRandomCoef (int &s, int &t, int &loc);
 	
 	double recourse_obj_val;
 	
@@ -69,16 +70,8 @@ private:
 	// data
 	void preprocessing();
 	
-	int numGen;
-	int numLine;
-	int numBus;
-	int numPeriods;
-	int numBaseTimePerPeriod;
-	int numScen;
-	int beginMin;
+	int numGen, numLine, numBus, numPeriods, numBaseTimePerPeriod, numScen, beginMin, rep;
 	double periodLength;
-
-	ScenarioType *scenSet;
 	
 	vector<double> minGenerationReq;	// minimum production requirements (obeying assumptions)
 	vector<double> maxCapacity;
@@ -91,6 +84,8 @@ private:
 	// Miscellaneous
 	char buffer[30];
 	map< IloInt, double > farkasMap;
+	
+	double solve_t, setup_t, cut_t;
 	
 	
 	// Benders' Cut

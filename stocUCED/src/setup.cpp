@@ -79,7 +79,6 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc, string &RScriptsPath) {
 				if (status)	printf("Success (Obj= %.2f).\n", STmodel.getObjValue());
 				else		printf("Failed.\n");
 
-
 				/* Economic dispatch */
 				for ( n = 0; n < runParam.ED_numSolves; n++ ) {
 					printf("\t\tEconomic Dispatch (%02d:%02d): ", timeInfo->tm_hour, timeInfo->tm_min);
@@ -164,17 +163,20 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 
 					int ED_beginPeriod = beginMin/runParam.ED_resolution;
 					
-					/* Setup the ED model in cplex.concert */
+					/* setup the ED model in cplex.concert */
 					EDmodel DED(inst, ED_beginPeriod, rep);
 					DED.formulate(inst, ED_beginPeriod);
 
-					/* Translate the data structures to suit those used in 2-SD */
+					/* simulate scenarios */
+					inst.simulateScenarios(runParam.numSDScen, false);
+
+					/* translate the data structures to suit those used in 2-SD */
 					double SD_objVal;
 					int stat = integrateSD(inst, DED, "rted", configPath, inst.stocObserv[2], ED_beginPeriod, SD_objVal);
 					if (stat != 1)	printf("Success (Obj= %.2f).\n", SD_objVal);
 					else			printf("Failed.\n");
 
-					/* Move to the next period */
+					/* move to the next period */
 					beginMin += runParam.baseTime;
 					timeInfo->tm_min += runParam.baseTime;
 					mktime(timeInfo);
@@ -223,10 +225,13 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 		for ( h = 0; h < runParam.DA_numSolves; h++ ) {
 			printf("Long-term Unit-Commitment (%02d:%02d): ", timeInfo->tm_hour, timeInfo->tm_min);
 			
+			/* simulate scenarios */
+			inst.simulateScenarios(runParam.numLSScen, false);
+			
+			/* solve the problem */
 			SUCmaster DAmodel;
-			//FIXME: Rep?
-			//DAmodel.formulate(inst, DayAhead, Transmission, 0, rep);
-			DAmodel.formulate(inst, DayAhead, Transmission, beginMin);
+			DAmodel.formulate(inst, DayAhead, Transmission, beginMin, rep);
+			
 			status = DAmodel.solve();
 			if (status)	printf("Success (Obj= %.2f).\n", DAmodel.getObjValue());
 			else		printf("Failed.\n");
@@ -234,10 +239,14 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 			/* Short-term unit commitment */
 			for ( t = 0; t < runParam.ST_numSolves; t++ ) {
 				printf("\tShort-term Unit-Commitment (%02d:%02d): ", timeInfo->tm_hour, timeInfo->tm_min);
+				
+				/* simulate scenarios */
+				inst.simulateScenarios(runParam.numLSScen, false);
+				
+				/* solve the problem */
 				SUCmaster STmodel;
-				//FIXME: Rep?
-				//STmodel.formulate(inst, ShortTerm, Transmission, 0, rep);
-				STmodel.formulate(inst, ShortTerm, Transmission, beginMin);
+				STmodel.formulate(inst, ShortTerm, Transmission, beginMin, rep);
+				
 				status = STmodel.solve();
 				if (status)	printf("Success (Obj= %.2f).\n", STmodel.getObjValue());
 				else		printf("Failed.\n");
@@ -248,17 +257,20 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 					
 					int ED_beginPeriod = beginMin/runParam.ED_resolution;
 					
-					/* Setup the ED model in cplex.concert */
+					/* setup the ED model in cplex.concert */
 					EDmodel DED(inst, ED_beginPeriod, rep);
 					DED.formulate(inst, ED_beginPeriod);
 					
-					/* Translate the data structures to suit those used in 2-SD */
+					/* simulate scenarios */
+					inst.simulateScenarios(runParam.numSDScen, false);
+					
+					/* translate the data structures to suit those used in 2-SD */
 					double SD_objVal;
 					int stat = integrateSD(inst, DED, "rted", configPath, inst.stocObserv[2], ED_beginPeriod, SD_objVal);
 					if (stat != 1)	printf("Success (Obj= %.2f).\n", SD_objVal);
 					else			printf("Failed.\n");
 					
-					/* Move to the next period */
+					/* move to the next period */
 					beginMin += runParam.baseTime;
 					timeInfo->tm_min += runParam.baseTime;
 					mktime(timeInfo);
