@@ -377,7 +377,7 @@ stocType *readStoc(stringC inputDir, stringC probName, oneProblem *orig, timeTyp
 	stoc->numCipher = 0;
 	stoc->numOmega = 0;
 	stoc->numGroups = 0;
-	stoc->sim = FALSE;
+	stoc->sim = CFALSE;
 	stoc->arma = NULL;
 
 	/* STOCH section: read problem name and compare with that read earlier */
@@ -442,7 +442,7 @@ int readIndep(FILE *fptr, stringC *fields, oneProblem *orig, int maxOmegas, int 
 		/* store the type of stochastic process encountered */
 		sprintf(stoc->type, "INDEP_DISCRETE");
 
-		while (TRUE) {
+		while (CTRUE) {
 			getLine(&fptr, fields, &strType, &numFields);
 			if (strType != 'f')
 				break;										//Encountered ENDATA
@@ -523,14 +523,14 @@ int readIndep(FILE *fptr, stringC *fields, oneProblem *orig, int maxOmegas, int 
 	else if ( strstr(fields[1], "NORMAL") != NULL ) {
 		/* store the type of stochastic process encountered */
 		if ( strcmp(fields[1], "NORMAL") )
-			stoc->sim = TRUE;
+			stoc->sim = CTRUE;
 		sprintf(stoc->type, "INDEP_%s",fields[1]);
 
 		if ( !(stoc->vals[0] = (vectorC) arr_alloc(maxOmegas, double)) )
 			errMsg("allocation", "readIndep","omega.vals[n]", 0);
 		mem_free(stoc->probs); stoc->probs = NULL;
 
-		while (TRUE) {
+		while (CTRUE) {
 			getLine(&fptr, fields, &strType, &numFields);
 			if (strType != 'f')
 				break;
@@ -644,7 +644,7 @@ int readBlocks(FILE *fptr, stringC *fields, oneProblem *orig, int maxOmegas, int
 	if ( !(strcmp(fields[1], "DISCRETE")) ) {
 		/* store the type of stochastic process encountered */
 		sprintf(stoc->type, "BLOCKS_DISCRETE");
-		status = readBlk(fptr, fields, orig, maxOmegas, maxVals, TRUE, stoc);
+		status = readBlk(fptr, fields, orig, maxOmegas, maxVals, CTRUE, stoc);
 		if ( status ) {
 			errMsg("read", "readBlocks", "failed to read independent blocks structure", 0);
 			return 1;
@@ -692,7 +692,7 @@ int readBlk(FILE *fptr, stringC *fields, oneProblem *orig, int maxOmegas, int ma
 			errMsg("allocation", "readBlk", "rvRows", 0);
 	}
 
-	while (TRUE) {
+	while (CTRUE) {
 		getLine(&fptr, fields, &strType, &numFields);
 		if (strType != 'f')
 			break;
@@ -700,7 +700,7 @@ int readBlk(FILE *fptr, stringC *fields, oneProblem *orig, int maxOmegas, int ma
 			/* new realization of the block */
 			if ( strcmp(currBlock, fields[1]) ) {
 				/* first encounter with the block, prepare to record names of random variables */
-				newBlk = TRUE;
+				newBlk = CTRUE;
 				strcpy(currBlock, fields[1]);
 				stoc->groupBeg[stoc->numGroups] = stoc->numOmega;
 				stoc->numPerGroup[stoc->numGroups] = numRV = 0;
@@ -710,7 +710,7 @@ int readBlk(FILE *fptr, stringC *fields, oneProblem *orig, int maxOmegas, int ma
 				stoc->numGroups++;
 			}
 			else {
-				newBlk = FALSE;
+				newBlk = CFALSE;
 				if ( stoc->numVals[stoc->numGroups-1] == maxVals )
 					errMsg("allocation", "readBlock", "exceeded memory limit on maxVals", 1);
 				stoc->probs[stoc->numGroups-1][stoc->numVals[stoc->numGroups-1]++] = str2float(fields[3]);
@@ -774,9 +774,9 @@ int readBlk(FILE *fptr, stringC *fields, oneProblem *orig, int maxOmegas, int ma
 				/* locate the random variable in the list and record realization */
 				n = 0;
 				while (n < numRV) {
-					if ( origRV == 	FALSE && !(strcmp(rvCols[n], fields[0])) )
+					if ( origRV == 	CFALSE && !(strcmp(rvCols[n], fields[0])) )
 						break;
-					else if ( origRV == TRUE && !(strcmp(rvCols[n], fields[0])) && !(strcmp(rvRows[n], fields[1])) )
+					else if ( origRV == CTRUE && !(strcmp(rvCols[n], fields[0])) && !(strcmp(rvRows[n], fields[1])) )
 						break;
 					n++;
 				}
@@ -811,12 +811,12 @@ int readARMA(FILE *fptr, stringC *fields, oneProblem *orig, stocType *stoc, int 
 	armaType *arma;
 	char 	strType, currBlock[NAMESIZE] = "\0";
 	int		numFields, numRV = 0, maxP = 10, maxQ = 10, maxEps = 10, maxT = 365, armaR = 0, armaE = 0, armaS = 0, j, n;
-	BOOL	newBlk = FALSE;
+	BOOL	newBlk = CFALSE;
 
 	/* set up elements of stocType. Free-up elements not used, and trim down the number of groups to two (one for problem stochastic elements and
 	 * one for the residuals) */
 	strcpy(stoc->type, "ARMA");
-	stoc->sim = FALSE;
+	stoc->sim = CFALSE;
 	mem_free(stoc->numVals); stoc->numVals = NULL;
 	mem_free(stoc->vals); stoc->vals = NULL;
 	mem_free(stoc->probs); stoc->probs = NULL;
@@ -830,14 +830,14 @@ int readARMA(FILE *fptr, stringC *fields, oneProblem *orig, stocType *stoc, int 
 	arma->AR = arma->MA = NULL; arma->meanEps = arma->varEps = NULL;
 	arma->p = arma->q = 0; arma->T = arma->N = 0;
 
-	while (TRUE) {
+	while (CTRUE) {
 		getLine(&fptr, fields, &strType, &numFields);
 		if (strType != 'f')
 			break;
 		if ( !(strcmp(fields[0], "BL")) ) {
 			/* new block encountered */
 			strcpy(currBlock, fields[1]);
-			newBlk = TRUE;
+			newBlk = CTRUE;
 		}
 		else {
 			if ( !(strcmp(currBlock, "VAR")) ) {
@@ -889,7 +889,7 @@ int readARMA(FILE *fptr, stringC *fields, oneProblem *orig, stocType *stoc, int 
 					if ( !(arma->AR[j]->val = (vectorC) arr_alloc(numRV*maxEps, double)) )
 						errMsg("allocation", "readARMA" ,"AR[n] coefficients", 0);
 					arma->AR[j]->cnt = 0;
-					newBlk = FALSE;
+					newBlk = CFALSE;
 				}
 				arma->AR[j]->col[arma->AR[j]->cnt] = str2int(fields[0]);
 				arma->AR[j]->row[arma->AR[j]->cnt] = str2int(fields[1]);
@@ -913,7 +913,7 @@ int readARMA(FILE *fptr, stringC *fields, oneProblem *orig, stocType *stoc, int 
 					if ( !(arma->MA[j]->val = (vectorC) arr_alloc(numRV*maxEps, double)) )
 						errMsg("allocation", "readARMA" ,"MA[n] coefficients", 0);
 					arma->MA[j]->cnt = 0;
-					newBlk = FALSE;
+					newBlk = CFALSE;
 				}
 				arma->MA[j]->col[arma->MA[j]->cnt] = str2int(fields[0]);
 				arma->MA[j]->row[arma->MA[j]->cnt] = str2int(fields[1]);
@@ -929,7 +929,7 @@ int readARMA(FILE *fptr, stringC *fields, oneProblem *orig, stocType *stoc, int 
 						errMsg("allocation", "readARMA", "variance of noise process", 0);
 					stoc->numGroups = 2;
 					stoc->groupBeg[0] = j = 0;
-					newBlk = FALSE;
+					newBlk = CFALSE;
 				}
 				arma->meanEps[j] = str2float(fields[1]);
 				arma->varEps[j] = str2float(fields[2]);
@@ -941,7 +941,7 @@ int readARMA(FILE *fptr, stringC *fields, oneProblem *orig, stocType *stoc, int 
 					if ( !(arma->obs = (vectorC *) arr_alloc(maxT, vectorC)) )
 						errMsg("allocation", "readARMA", "past observations", 0);
 					arma->N = numFields;
-					newBlk = FALSE;
+					newBlk = CFALSE;
 				}
 				if ( !(arma->obs[arma->T] = (vectorC) arr_alloc(numFields, double)) )
 					errMsg("allocation", "readARMA", "obs[j]", 0);
@@ -954,7 +954,7 @@ int readARMA(FILE *fptr, stringC *fields, oneProblem *orig, stocType *stoc, int 
 				if ( newBlk ) {
 					if ( !(arma->eps = (vectorC *) arr_alloc(maxT, vectorC)) )
 						errMsg("allocation", "readARMA", "past noise observations", 0);
-					armaR = 0; newBlk = FALSE;
+					armaR = 0; newBlk = CFALSE;
 				}
 				if ( !(arma->eps[armaR] = (vectorC) arr_alloc(numFields, double)) )
 					errMsg("allocation", "readARMA", "eps[j]", 0);
@@ -967,7 +967,7 @@ int readARMA(FILE *fptr, stringC *fields, oneProblem *orig, stocType *stoc, int 
 				if ( newBlk ) {
 					if ( !(arma->eta = (vectorC *) arr_alloc(maxT, vectorC)) )
 						errMsg("allocation", "readARMA", "time series trend", 0);
-					armaE = 0; newBlk = FALSE;
+					armaE = 0; newBlk = CFALSE;
 				}
 				if ( !(arma->eta[armaE] = (vectorC) arr_alloc(numFields, double)) )
 					errMsg("allocation", "readARMA", "eta[j]", 0);
@@ -980,7 +980,7 @@ int readARMA(FILE *fptr, stringC *fields, oneProblem *orig, stocType *stoc, int 
 				if ( newBlk ) {
 					if ( !(arma->sigma = (vectorC *) arr_alloc(maxT, vectorC)) )
 						errMsg("allocation", "readARMA", "time series seasonality", 0);
-					armaS = 0; newBlk = FALSE;
+					armaS = 0; newBlk = CFALSE;
 				}
 				if ( !(arma->sigma[armaS] = (vectorC) arr_alloc(numFields, double)) )
 					errMsg("allocation", "readARMA", "sigma[j]", 0);
@@ -1035,7 +1035,7 @@ int readScenarios(FILE *fptr, stringC *fields, oneProblem *orig, timeType *tim, 
 	if ( !(strcmp(fields[1], "DISCRETE")) ) {
 		/* store the type of stochastic process encountered */
 		sprintf(stoc->type, "SCENARIOS_DISCRETE");
-		while (TRUE) {
+		while (CTRUE) {
 			NEXT_LINE: getLine(&fptr, fields, &strType, &numFields);
 			if (strType != 'f')
 				break; 										//Encountered ENDATA

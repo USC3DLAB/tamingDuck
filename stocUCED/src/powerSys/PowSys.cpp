@@ -15,6 +15,7 @@ bool PowSys::readData(string inputDir, string sysName) {
     bool status;
     
     name = sysName;
+	path = inputDir + sysName + "/";
 
     // read generator data
     status = readGeneratorData(inputDir + sysName);

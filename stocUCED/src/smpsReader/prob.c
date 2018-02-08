@@ -587,7 +587,7 @@ vectorC calcLowerBound(oneProblem *orig, timeType *tim, stocType *stoc) {
 #endif
 
 	for ( t = 1; t < tim->numStages; t++ ) {
-		zeroLB = TRUE;
+		zeroLB = CTRUE;
 		col = tim->col[t]; row = tim->row[t];
 		bBar->cnt = 0; Cbar->cnt = 0;
 
@@ -595,7 +595,7 @@ vectorC calcLowerBound(oneProblem *orig, timeType *tim, stocType *stoc) {
 		n = col;
 		while ( n < orig->mac ) {
 			if ( orig->objx[n]*orig->bdl[n] < 0 || orig->objx[n]*orig->bdu[n] < 0) {
-				zeroLB = FALSE;
+				zeroLB = CFALSE;
 				break;
 			}
 			n++;

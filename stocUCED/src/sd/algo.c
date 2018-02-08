@@ -88,7 +88,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, stringC probName)
 		errMsg("allocation", "solveMASP", "observ", 0);
 
 	/******* 0. Initialization: The algorithm begins by solving the master problem as a QP *******/
-	while (cell->optFlag == FALSE && cell->k < config.MAX_ITER) {
+	while (cell->optFlag == CFALSE && cell->k < config.MAX_ITER) {
 		cell->k++;
 
 #if defined(STOCH_CHECK) || defined(ALGO_CHECK)
@@ -116,13 +116,13 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, stringC probName)
 		omegaIdx = calcOmega(observ - 1, 0, prob[1]->num->numRV, cell->omega, &newOmegaFlag);
 
 		/******* 3. Solve the subproblem with candidate solution, form and update the candidate cut *******/
-		if ( (candidCut = formSDCut(prob[1], cell, cell->candidX, omegaIdx, TRUE)) < 0 ) {
+		if ( (candidCut = formSDCut(prob[1], cell, cell->candidX, omegaIdx, CTRUE)) < 0 ) {
 			errMsg("algorithm", "solveCell", "failed to add candidate cut", 0);
 			return 1;
 		}
 		/******* 4. Solve subproblem with incumbent solution, and form an incumbent cut *******/
 		if (((cell->k - cell->iCutUpdt) % config.TAU == 0 ) ) {
-			if ( (cell->iCutIdx = formSDCut(prob[1], cell, cell->incumbX, omegaIdx, FALSE) ) < 0 ) {
+			if ( (cell->iCutIdx = formSDCut(prob[1], cell, cell->incumbX, omegaIdx, CFALSE) ) < 0 ) {
 				errMsg("algorithm", "solveCell", "failed to create the incumbent cut", 0);
 				return 1;
 			}

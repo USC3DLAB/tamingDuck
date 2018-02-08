@@ -5,56 +5,53 @@ extern runType runParam;
 
 instance::instance () {}
 
-bool instance::initialize(PowSys *powSys, StocProcess *stoc, vector<string> stocElems, vector<string> detElems) {
+void instance::simulateScenarios() {
+	int maxLookAhead = max(runParam.ED_numPeriods-1, runParam.ST_numPeriods-1);
+	int numSimLengthInDays = ceil( (double)(runParam.numPeriods+maxLookAhead)/(60.0/runParam.baseTime) );
+	
+	simulations = createScenarioList(R, true, powSys->path, stocElems, numSimLengthInDays, runParam.numLSScen);
+	simulations.name = "ForecastData_simulations";
+}
+
+bool instance::initialize(PowSys *powSys, StocProcess *stoc, string RScriptsPath) {
 
 	/* Initialize instance elements */
 	this->powSys    = powSys;
 	this->stoc	    = stoc;
-	this->detElems  = detElems;
-	this->stocElems = stocElems;
-
-	// TODO: Move this initialization to a better place.
-	// SMH: How about the constructor? or just hardcode it in the header file? Seems like the 3-layer framework quite hardcoded anyways. 
-	this->hierarchy = {"DA", "ST", "RT"};
-
+	detElems	= {"Load"};
+	stocElems	= {"Solar", "Wind"};
+	elems.resize( detElems.size() + stocElems.size() );
+	merge( detElems.begin(), detElems.end(), stocElems.begin(), stocElems.end(), elems.begin() );
+	
 	/* Allocate memory for solution matrices */
 	solution.allocateMem(powSys->numGen, runParam.numPeriods, powSys->numBus);
 
-	int lookahead = max(runParam.ED_numPeriods-1, runParam.ST_numPeriods-1);
-	/* Setup all the deterministic observations */
-	for ( int l = 0; l < (int) this->hierarchy.size(); l++ ) {
-		
-		vector<int> indices;
-		for (auto it=stoc->mapTypeToIndex[this->hierarchy[l]].begin(); it != stoc->mapTypeToIndex[this->hierarchy[l]].end(); ++it) {
-			if ( find(detElems.begin(), detElems.end(), stoc->sp[*it].name) != detElems.end() ) {	// if the name is found, push it into the list of indices
-				indices.push_back(*it);
+	/* Setup R environment */		
+	R.parseEval("setwd(\"" + RScriptsPath + "\")");	// set the working directory
+	R["dataFolder"] = powSys->path;					// set the data folder
+	
+	/* Chop off the Provided Time Series */
+	int maxLookAhead = max(runParam.ED_numPeriods-1, runParam.ST_numPeriods-1);
+	int numSimLengthInDays = ceil( (double)(runParam.numPeriods+maxLookAhead)/(60.0/runParam.baseTime) );
+
+	vector<string> fileNames = {"DA", "RT"};
+	for (int f=0; f<fileNames.size(); f++) {
+		vector<int> stocIndices;
+		for (auto it=stoc->mapTypeToIndex[fileNames[f]].begin(); it != stoc->mapTypeToIndex[fileNames[f]].end(); ++it) {
+			if (find(elems.begin(), elems.end(), stoc->sp[*it].name) != elems.end()) {	// find the stoc process, and push its index to the list
+				stocIndices.push_back(*it);
 			}
 		}
-		ScenarioType temp = createScenarioList(stoc, indices, runParam.numPeriods+lookahead, runParam.numPeriods, runParam.numRep);
-		temp.name = this->hierarchy[l] + "_DetObs";
-		this->detObserv.push_back(temp);
+		observations.insert(pair<string, ScenarioType> (fileNames[f],
+														createScenarioList(stoc, stocIndices, numSimLengthInDays, runParam.numPeriods/(60.0/runParam.baseTime), runParam.numRep)
+														)
+							);
+		observations[fileNames[f]].name = fileNames[f] + "_observations";
 	}
-
-	/* Setup all the stochastic observations */
-	for ( int l = 0; l < (int) this->hierarchy.size(); l++ ) {
-		
-		vector<int> indices;
-		for (auto it=stoc->mapTypeToIndex[this->hierarchy[l]].begin(); it != stoc->mapTypeToIndex[this->hierarchy[l]].end(); ++it) {
-			if ( find(stocElems.begin(), stocElems.end(), stoc->sp[*it].name) != stocElems.end() ) {	// if the name is found, push it into the list of indices
-				indices.push_back(*it);
-			}
-		}
-		/*******************************************************************************
-		 Important: The created scenario list will include more fields than the number
-		 of periods, so that the ED problem can be solved in a rolling horizon fashion. 
-		 Accordingly, for instance, for a 24-hour problem, a set of realizations must 
-		 include 24*ED_resolution + runParam.ED_numPeriods-1 elements
-		 *******************************************************************************/
-		ScenarioType temp = createScenarioList(stoc, indices, runParam.numPeriods+lookahead, runParam.numPeriods, runParam.numRep);
-		temp.name = this->hierarchy[l] + "_StochObs";
-		this->stocObserv.push_back(temp);
-	}
-
+	
+	/* Simulate Time Series */
+	simulateScenarios();
+	
 	summary();
 
 	return true;

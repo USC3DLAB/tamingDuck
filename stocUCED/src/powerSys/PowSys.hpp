@@ -24,6 +24,7 @@ public:
     bool readData (string inputDir, string sysName);
 
     string name;
+	string path;
 
     int numGen;
     int numBus;

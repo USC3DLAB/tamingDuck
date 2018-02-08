@@ -14,6 +14,9 @@
 
 /* This header file contains all classes and structures pertaining to the stochastic processes of interest */
 
+#include <Rinside.h>
+
+#include "../config.hpp"
 #include "../misc.hpp"
 
 using namespace std;
@@ -53,6 +56,7 @@ private:
 };
 
 void read(string fname, char delimiter, bool colNames, bool rowNames);
-ScenarioType createScenarioList(StocProcess *S, vector<int> S_indices, int lenT, int stepSize, int numVals);
+ScenarioType createScenarioList(StocProcess *S, vector<int> S_indices, int lenT, int stepSize, int &numVals);
+ScenarioType createScenarioList(RInside &R, bool fitModel, string &dataFolder, vector<string> &stocElems, int lenT, int &numScen);
 
 #endif /* STOC_HPP_ */

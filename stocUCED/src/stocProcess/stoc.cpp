@@ -12,6 +12,8 @@
 #include "../misc.hpp"
 #include "stoc.hpp"
 
+extern runType runParam;
+
 StocProcess::StocProcess() {}
 
 StocProcess::~StocProcess() {}
@@ -111,7 +113,7 @@ OneStocProc StocProcess::read(string fname, char delimiter, bool readColNames, b
 }//END scenarios::read
 
 /* This subroutine creates a list of _numVals_ observations for stochastic processes indexed by S_indices of time duration _T_ and returns a observType structure output. */
-ScenarioType createScenarioList(StocProcess *stoc, vector<int> S_indices, int lenT, int stepSize, int numVals) {
+ScenarioType createScenarioList(StocProcess *stoc, vector<int> S_indices, int lenT, int stepSize, int &numVals) {
 	ScenarioType observ;
 
 	/* Compute the number of observations that can be generated */
@@ -120,22 +122,27 @@ ScenarioType createScenarioList(StocProcess *stoc, vector<int> S_indices, int le
 		if (numVals > numValsInData)
 			numVals = numValsInData;
 	}
-
-	for ( int rep = 0; rep < numVals; rep++ ) {
-		vector<vector<double> > M;
+	
+	for (int rep=0; rep<numVals; rep++) {
+		vector<vector<double>> M;
 		int offset = rep*stepSize;
-		for ( int t = offset; t < offset+lenT; t++ ) {
-			vector <double> vec;
-			for ( unsigned int n = 0; n < S_indices.size(); n++ ) {
-				for ( unsigned int m = 0; m < stoc->sp[S_indices[n]].vals[t].size(); m++)
-					vec.push_back(stoc->sp[S_indices[n]].vals[t][m]);
+		
+		for (int h=offset; h<offset+lenT; h++) {
+			// Important: I'm assuming hourly data in here
+			for (int subhour = 0; subhour<60.0/runParam.baseTime; subhour++) {
+				vector<double> vec;
+				for (unsigned int n=0; n<S_indices.size(); n++) {
+					for (unsigned int m=0; m<stoc->sp[S_indices[n]].vals[h].size(); m++) {
+						vec.push_back(stoc->sp[S_indices[n]].vals[h][m]);
+					}
+				}
+				M.push_back(vec);
 			}
-			M.push_back(vec);
 		}
 		observ.vals.push_back(M);
 	}
 
-	observ.T = lenT;
+	observ.T = (int)observ.vals[0].size();
 	observ.cnt = (int)observ.vals.size();
 	observ.numVars = (int)observ.vals[0][0].size();
 	
@@ -145,8 +152,64 @@ ScenarioType createScenarioList(StocProcess *stoc, vector<int> S_indices, int le
 		for (auto it = stoc->sp[S_indices[n]].mapVarNamesToIndex.begin(); it != stoc->sp[S_indices[n]].mapVarNamesToIndex.end(); ++it) {
 			observ.mapVarNamesToIndex.insert( pair<string, int> (it->first, offset+it->second) );
 		}
-		offset += observ.mapVarNamesToIndex.size();
+		offset += stoc->sp[S_indices[n]].numVars;
 	}
 
 	return observ;
 }//END createObservList()
+
+/****************************************************************************
+ * createScenarioList
+ * - Simulates stochastic data-elements of the formulations using the 
+ provided R scripts, records them into a ScenarioType
+ ****************************************************************************/
+ScenarioType createScenarioList(RInside &R, bool fitModel, string &dataFolder, vector<string> &stocElems, int simLengthDays, int &numScen) {
+	ScenarioType observ;
+	
+	R.parseEval("dataTypes <- NULL");				// set the data types
+	for (int i=0; i<stocElems.size(); i++) {
+		char buffer[100];
+		sprintf(buffer, "dataTypes[%d] <- \"%s\"", i+1, stocElems[i].c_str());
+		R.parseEval(buffer);
+	}
+	
+	R["fileName"]		= "DA.csv";						// set the file name
+	R["fitModel"]		= fitModel ? "TRUE" : "FALSE";	// fit the model?
+	R["numScenarios"]	= numScen;
+	R["simLength"]		= simLengthDays;
+	
+	R.parseEval("source(\"runScript.R\")");				// execute the script
+
+	Rcpp::NumericVector scenList = R.parseEval("scenarios");
+	int numComponents	= R.parseEval("numComponents");
+	int nbPeriods		= R.parseEval("simLength * simFrequency");
+
+	// resize 3D-array
+	observ.vals.resize( numScen );
+	for (int s=0; s<numScen; s++) {
+		resize_matrix(observ.vals[s], nbPeriods, numComponents);
+	}
+	
+	// read into observ.vals
+	int i=0;
+	for (int s=0; s<numScen; s++) {
+		for (int g=0; g<numComponents; g++) {
+			for (int t=0; t<nbPeriods; t++) {
+				observ.vals[s][t][g] = scenList[i++];
+			}
+		}
+	}
+	
+	observ.T = nbPeriods;
+	observ.cnt = (int)observ.vals.size();
+	observ.numVars = (int)observ.vals[0][0].size();
+	
+	// register the indices
+	Rcpp::StringVector colNames = R.parseEval("colNames");
+	for (unsigned int n=0; n<colNames.size(); n++) {
+		observ.mapVarNamesToIndex.insert( pair<string, int> ((string)(colNames[n]), n) );
+	}
+	
+	return observ;
+}
+

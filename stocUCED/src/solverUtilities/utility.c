@@ -304,9 +304,9 @@ BOOL equalVector(vectorC a, vectorC b, int len, double tolerance) {
 
 	for (cnt = 1; cnt <= len; cnt++)
 		if ( DBL_ABS(a[cnt] - b[cnt]) > tolerance )
-			return FALSE;
+			return CFALSE;
     
-	return TRUE;
+	return CTRUE;
 }//END equalVector()
 
 BOOL equalIntvec(intvec a, intvec b, int len) {
@@ -314,9 +314,9 @@ BOOL equalIntvec(intvec a, intvec b, int len) {
 
 	for (cnt = 1; cnt <= len; cnt++)
 		if ( a[cnt] != b[cnt] )
-			return FALSE;
+			return CFALSE;
 
-	return TRUE;
+	return CTRUE;
 }//END equalIntvec()
 
 BOOL isZeroVector(vectorC a, int len, double tolerance) {
@@ -324,12 +324,12 @@ BOOL isZeroVector(vectorC a, int len, double tolerance) {
 
 	for (cnt = 0; cnt < len; cnt++) {
 		if ( DBL_ABS(a[cnt]) >= tolerance )
-			return FALSE;
+			return CFALSE;
 //		else
 //			a[cnt] = 0.0;
 	}
 
-	return TRUE;
+	return CTRUE;
 }//END equalVector()
 
 /*This function will check if a vectorC is integer with a predefined gap */
@@ -338,9 +338,9 @@ BOOL isInteger(vectorC x, int length, int startIdx, int endIdx, double tolerance
 
 	for (i = startIdx+1; i < endIdx; i++)
 		if (fabs(x[i] - round(x[i])) > tolerance)
-			return FALSE;
+			return CFALSE;
 
-	return TRUE;
+	return CTRUE;
 }//END isInteger()
 
 

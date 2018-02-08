@@ -404,7 +404,7 @@ stocType *buildStocType(IloModel &model, vector<string> stocRows, ScenarioType s
 	stoc->groupBeg = (intvec) calloc(maxOmegas, sizeof(int));
 	stoc->numPerGroup = (intvec) calloc(maxOmegas, sizeof(int));
 
-	stoc->numCipher = 0; stoc->sim = FALSE; stoc->arma = NULL;
+	stoc->numCipher = 0; stoc->sim = CFALSE; stoc->arma = NULL;
 
 	/* Default parameters */
 	strcpy(stoc->type, "BLOCKS_DISCRETE");

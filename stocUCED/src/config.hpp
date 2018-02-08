@@ -54,6 +54,8 @@ struct runType {
 	SettingType settingType;
 	
 	int		numRep;			// Number of replications
+	int		numSDScen;		// Number of time-serieses needed to sample for SD
+	int		numLSScen;		// Number of time-serieses needed to sample for L-Shaped
 	
 };
 
@@ -61,6 +63,7 @@ const double pi = 3.1451;
 const double loadShedPenaltyCoef = 1e5;
 const double overGenPenaltyCoef = 25.0;
 const double EPSzero = 1e-8;
+const double spinReservePerc = 0.2;
 
 const char delimiter = ',';
 

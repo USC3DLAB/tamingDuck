@@ -45,7 +45,7 @@ oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta
 	iType istar_old;
 	iType 	istar;
 	vectorC 	piCbarX, beta;
-	BOOL    pi_eval_flag = FALSE;
+	BOOL    pi_eval_flag = CFALSE;
 	double  argmax_all;
 	double  argmax_new;
 	double  argmax_old;
@@ -63,7 +63,7 @@ oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta
 
 	/* Calculate pi_eval_flag to determine the way of computing argmax */
 	if (numSamples > config.PI_EVAL_START && !(numSamples % config.PI_CYCLE))
-		pi_eval_flag = TRUE;
+		pi_eval_flag = CTRUE;
 
 	/* Calculate (Pi x Cbar) x X by mult. each VxT by X, one at a time */
 	for (cnt = 0; cnt < sigma->cnt; cnt++) {
@@ -75,7 +75,7 @@ oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta
 	/* Test for omega issues */
 	for (obs = 0; obs < omega->cnt; obs++) {
 		/* For each observation, find the Pi which maximizes height at X. */
-		if (pi_eval_flag == TRUE) {
+		if (pi_eval_flag == CTRUE) {
 			istar_old = computeIstar(num, coord, sigma, delta, Xvect, piCbarX, obs, numSamples, pi_eval_flag, &argmax_old);
 			istar_new = compute_new_istar(obs, cut, sigma, delta, Xvect, num, coord, piCbarX, &argmax_new, numSamples);
 
@@ -114,15 +114,15 @@ oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta
 			beta[coord->rvCols[c]] += delta->vals[istar.delta][obs].piC[c] * omega->weight[obs];
 	}
 
-	if (pi_eval_flag == TRUE) {
+	if (pi_eval_flag == CTRUE) {
 		pi_ratio[numSamples % config.SCAN_LEN] = argmax_dif_sum / argmax_all_sum;
 		if (numSamples - config.PI_EVAL_START > config.SCAN_LEN)
 			vari = calc_var(pi_ratio, NULL, NULL, 0);
 
 		if (DBL_ABS(vari) >= .000002 || (pi_ratio[numSamples % config.SCAN_LEN]) < 0.95)
-			*dualStableFlag = FALSE;
+			*dualStableFlag = CFALSE;
 		else
-			*dualStableFlag = TRUE;
+			*dualStableFlag = CTRUE;
 	}
 
 	cut->alpha = alpha / numSamples;
@@ -155,7 +155,7 @@ iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *
 	int 	sigPi, delPi;
 	int     new_pisz;
 
-	if (pi_eval == TRUE)
+	if (pi_eval == CTRUE)
 		new_pisz = ictr / 10 + 1;
 	else
 		new_pisz = 0;
@@ -232,7 +232,7 @@ oneCut *newCut(int numX, int numIstar, int numSamples) {
 	cut->cutObs   = numSamples;
 	cut->omegaCnt = numIstar;
 	cut->slackCnt = 0;
-	cut->isIncumb = FALSE; 								/* new cut is by default not an incumbent */
+	cut->isIncumb = CFALSE; 								/* new cut is by default not an incumbent */
 	cut->alphaIncumb = 0.0;
 	cut->rowNum = -1;
 

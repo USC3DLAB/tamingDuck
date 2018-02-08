@@ -21,7 +21,7 @@ extern configType config;
 int stochasticUpdates(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, lambdaType *lambda, sigmaType *sigma,
                        deltaType *delta, omegaType *omega, BOOL newOmegaFlag, int omegaIdx, int maxIter, int iter, vectorC pi, double mubBar) {
     int 	lambdaIdx, sigmaIdx;
-    BOOL 	newLambdaFlag= FALSE, newSigmaFlag= FALSE;
+    BOOL 	newLambdaFlag= CFALSE, newSigmaFlag= CFALSE;
 
     /* Only need to calculate column if new observation of omega found */
     if (newOmegaFlag)
@@ -96,13 +96,13 @@ int calcLambda(numType *num, coordType *coord, vectorC Pi, lambdaType *lambda, B
     for (pi_idx = 0; pi_idx < lambda->cnt; pi_idx++)
         if (equalVector(lambda_pi, lambda->vals[pi_idx], num->rvRowCnt, config.TOLERANCE)) {
             mem_free(lambda_pi);
-            *newLambdaFlag = FALSE;
+            *newLambdaFlag = CFALSE;
             return pi_idx;
         }
 
     /* Add the vector to lambda structure */
     lambda->vals[lambda->cnt] = lambda_pi;
-    *newLambdaFlag = TRUE;
+    *newLambdaFlag = CTRUE;
 
     return lambda->cnt++;
 }//END calcLambda
@@ -126,14 +126,14 @@ int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *
                 if (equalVector(piCBar, sigma->vals[cnt].piC, num->cntCcols, config.TOLERANCE))
                     if(sigma->lambdaIdx[cnt]== idxLambda){
                         mem_free(piCBar);
-                        (*newSigmaFlag) = FALSE;
+                        (*newSigmaFlag) = CFALSE;
                         return cnt;
                     }
             }
         }
     }
 
-    (*newSigmaFlag) = TRUE;
+    (*newSigmaFlag) = CTRUE;
     sigma->vals[sigma->cnt].pib  = pibBar;
     sigma->vals[sigma->cnt].piC  = piCBar;
     sigma->lambdaIdx[sigma->cnt] = idxLambda;
@@ -193,7 +193,7 @@ int calcOmega(vectorC observ, int begin, int end, omegaType *omega, BOOL *newOme
     /* Compare vector with all the previous observations */
     for (cnt = 0; cnt < omega->cnt; cnt++)
         if (equalVector(observ, omega->vals[cnt], end-begin, config.TOLERANCE)) {
-            (*newOmegaFlag) = FALSE;
+            (*newOmegaFlag) = CFALSE;
             omega->weight[cnt]++;
             return cnt;
         }
@@ -201,7 +201,7 @@ int calcOmega(vectorC observ, int begin, int end, omegaType *omega, BOOL *newOme
     /* Add the realization vector to the list */
     omega->vals[omega->cnt] = duplicVector(observ, end-begin);
     omega->weight[omega->cnt] = 1;
-    (*newOmegaFlag) = TRUE;
+    (*newOmegaFlag) = CTRUE;
 
 #ifdef STOCH_CHECK
     printf("Observation (%d): ", *newOmegaFlag);

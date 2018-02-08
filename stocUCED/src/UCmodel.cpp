@@ -28,7 +28,7 @@ UCmodel::~UCmodel() {
  *	 minGenerationReq
  *   minUpTimePeriods
  *   minDownTimePeriods
- *   expCapacity
+ *   capacity
  *   busLoads
  *   aggLoads
  * - If it is a DA-UC problem, sets the capacity and minGenerationReq to 0
@@ -55,9 +55,9 @@ void UCmodel::preprocessing ()
 	minGenerationReq.resize(numGen);					// minimum production requirements
 	minUpTimePeriods.resize(numGen);					// minimum uptime in periods
 	minDownTimePeriods.resize(numGen);					// minimum downtime in periods
-	resize_matrix(expCapacity, numGen, numPeriods);		// mean generator capacities
-	if (modelType == System) { sysLoad.resize(numPeriods); }					// aggregated system load
-	else					 { resize_matrix(busLoad, numBus, numPeriods); }	// individual bus loads
+	resize_matrix(capacity, numGen, numPeriods);		// generator capacities
+	sysLoad.resize(numPeriods);							// aggregated system load
+	resize_matrix(busLoad, numBus, numPeriods);			// individual bus loads
 	
 	/* Min Generation Amounts */
 	for (int g=0; g<numGen; g++) {
@@ -82,20 +82,32 @@ void UCmodel::preprocessing ()
 	}
 	
 	/* Mean Generator Capacity */
-	auto dataPtr = (probType == DayAhead) ? &(inst->stocObserv[0]) : &(inst->stocObserv[1]);
-	
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 
-		auto it = dataPtr->mapVarNamesToIndex.find(genPtr->name);
-		if ( it != dataPtr->mapVarNamesToIndex.end() ) {
-			/* random supply */
+		auto it = inst->observations["RT"].mapVarNamesToIndex.find(genPtr->name);
+		
+		bool stocSupply = (it != inst->observations["RT"].mapVarNamesToIndex.end()) ? true : false;
+		
+		if (stocSupply) {
+			/* stochastic supply */
+			int period;
 			for (int t=0; t<numPeriods; t++) {
-				expCapacity[g][t] = min(dataPtr->vals[rep][(beginMin/periodLength)+(t*numBaseTimePerPeriod)][it->second], genPtr->maxCapacity);
+				period = (beginMin/periodLength)+(t*numBaseTimePerPeriod);
+				
+				if ( t==0 && probType==ShortTerm ) {
+					it = inst->observations["RT"].mapVarNamesToIndex.find(genPtr->name);
+					capacity[g][t] = min( inst->observations["RT"].vals[rep][period][it->second], genPtr->maxCapacity );
+				}
+				else {
+					it = inst->observations["DA"].mapVarNamesToIndex.find(genPtr->name);
+					capacity[g][t] = min( inst->observations["DA"].vals[rep][period][it->second], genPtr->maxCapacity );
+				}
 			}
-		} else {
+		}
+		else {
 			/* deterministic supply */
-			fill(expCapacity[g].begin(), expCapacity[g].end(), genPtr->maxCapacity);	// in MWs
+			fill(capacity[g].begin(), capacity[g].end(), genPtr->maxCapacity);
 		}
 	}
 
@@ -106,29 +118,36 @@ void UCmodel::preprocessing ()
 			
 			if (!genPtr->isDAUCGen) {
 				minGenerationReq[g] = 0.0;
-				fill(expCapacity[g].begin(), expCapacity[g].end(), 0.0);
+				fill(capacity[g].begin(), capacity[g].end(), 0.0);
 			}
 		}
 	}
 	
 	/* Load */
-	dataPtr = (probType == DayAhead) ? &(inst->detObserv[0]) : &(inst->detObserv[1]);
-	if (modelType == System) {
-		fill( sysLoad.begin(), sysLoad.end(), 0.0 );		// initialize to 0
+	for (int b=0; b<numBus; b++) {
+		Bus *busPtr = &(inst->powSys->buses[b]);
+		
+		auto it = inst->observations["RT"].mapVarNamesToIndex.find( num2str(busPtr->regionId) );
+		
+		int period;
 		for (int t=0; t<numPeriods; t++) {
-			for (int r=0; r<dataPtr->numVars; r++) {
-				sysLoad[t] += dataPtr->vals[rep][(beginMin/periodLength)+(t*numBaseTimePerPeriod)][r];
+			period = (beginMin/periodLength)+(t*numBaseTimePerPeriod);
+			
+			if ( t==0 && probType==ShortTerm ) {
+				it = inst->observations["RT"].mapVarNamesToIndex.find( num2str(busPtr->regionId) );
+				busLoad[b][t] = inst->observations["RT"].vals[rep][period][it->second] * busPtr->loadPercentage;
+			}
+			else {
+				it = inst->observations["DA"].mapVarNamesToIndex.find( num2str(busPtr->regionId) );
+				busLoad[b][t] = inst->observations["DA"].vals[rep][period][it->second] * busPtr->loadPercentage;
 			}
 		}
 	}
-	else {
+	
+	fill( sysLoad.begin(), sysLoad.end(), 0.0 );		// reset system load to 0
+	for (int t=0; t<numPeriods; t++) {
 		for (int b=0; b<numBus; b++) {
-			Bus *busPtr = &(inst->powSys->buses[b]);
-			int r = dataPtr->mapVarNamesToIndex[ num2str(busPtr->regionId) ];
-			
-			for (int t=0; t<numPeriods; t++) {
-				busLoad[b][t] = dataPtr->vals[rep][(beginMin/periodLength)+(t*numBaseTimePerPeriod)][r] * busPtr->loadPercentage;
-			}
+			sysLoad[t] += busLoad[b][t];
 		}
 	}
 }
@@ -290,9 +309,9 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 		
 		for (int t=0; t<numPeriods; t++) {
 			if (genPtr->isMustUse) {
-				model.add( p_var[g][t] == (expCapacity[g][t] - minGenerationReq[g]) );
+				model.add( p_var[g][t] == (capacity[g][t] - minGenerationReq[g]) );
 			} else {
-				model.add( p_var[g][t] <= (expCapacity[g][t] - minGenerationReq[g]) * x[g][t] );
+				model.add( p_var[g][t] <= (capacity[g][t] - minGenerationReq[g]) * x[g][t] );
 			}
 		}
 	}

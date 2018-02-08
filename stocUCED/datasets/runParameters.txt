@@ -8,4 +8,6 @@ ED_time_resolution 15 minutes
 DA_time_frequency 24 hours
 ST_time_frequency 1 hours
 ED_time_frequency 15 minutes
-numRep 300 scenarios
+numRep 1 scenarios
+numLSScen 2 scenarios
+numSDScen 2 scenarios

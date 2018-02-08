@@ -16,64 +16,23 @@
 #include "./stocProcess/stoc.hpp"
 #include <sstream>
 
-#include <Rinside.h>
 
 runType runParam;
 
 void readRunfile (string inputDir);
-void parseCmdLine(int argc, const char *argv[], string &inputDir, string &configPath, string &sysName, string &setting);
+void parseCmdLine(int argc, const char *argv[], string &inputDir, string &configPath, string &RScriptsPath, string &sysName, string &setting);
 
-int setup_DUCDED(PowSys &powSys, StocProcess &stocProc);
-int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath);
-int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath);
+int setup_DUCDED(PowSys &powSys, StocProcess &stocProc, string &RScriptsPath);
+int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, string &RScriptsPath);
+int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, string &RScriptsPath);
 
-void Rsubroutine (RInside &R) {
-	Rcpp::NumericVector myRcppVector = R.parseEval("x");
-	cout << myRcppVector.size() << endl;
-	for (int i=0; i<myRcppVector.size(); i++) {
-		cout << myRcppVector[i] << endl;
-	}
-}
 
 int main(int argc, const char * argv[]) {
-	string inputDir, configPath, sysName, setting;
+	string inputDir, configPath, RScriptsPath, sysName, setting;
 	
 	/* Request for input if the default is missing */
-	parseCmdLine(argc, argv, inputDir, configPath, sysName, setting);
+	parseCmdLine(argc, argv, inputDir, configPath, RScriptsPath, sysName, setting);
 	
-	/* BOF Semih's R-related Tests */
-	cout << "Semih's R-related tests begin..." << endl;
-	
-	string RScriptsPath = "/Users/semihatakan/Documents/Coding\ Projects/Power\ Systems/tamingDuck/tamingDuck/stocUCED/Rscripts/";
-	
-	RInside R(argc, argv);
-	
-	R.parseEval("setwd(\"" + RScriptsPath + "\")");			// set the working directory
-	R["dataFolder"] = inputDir + "/" + sysName + "/";		// set the data folder
-	R["dataType"]   = "Solar";								// set the data type
-	R["fileName"]   = "DA.csv";								// set the file name
-	R["fitModel"]	= "TRUE";
-	R.parseEval("source(\"runScript.R\")");
-	R["fitModel"]	= "FALSE";
-	R.parseEval("source(\"runScript.R\")");
-	Rcpp::NumericVector scenList = R.parseEval("scenarios");
-	cout << scenList.size() << endl;
-	int i=0;
-	vector< vector< vector<double> > > temp;
-	for (int s=0; s<2; s++) {
-		temp.push_back( vector< vector<double> > () );
-		for (int g=0; g<75; g++) {
-			temp[s].push_back( vector<double> () );
-			for (int t=0; t<96; t++) {
-				temp[s][g].push_back( scenList[i++] );
-			}
-		}
-	}
-
-	cout << "Semih's R-related tests ended" << endl;
-	exit (99);
-	/* EOF Semih's R-related Tests */
-
 	/* Read the configuration file */
 	readRunfile (inputDir);
 
@@ -86,29 +45,42 @@ int main(int argc, const char * argv[]) {
 	
 	// Switch based on the chosen setting
 	if ( setting == "DUC-DED" ) {
-		if( setup_DUCDED(powSys, stocProc) ) {
+		if( setup_DUCDED(powSys, stocProc, RScriptsPath) ) {
 			perror("Failed to complete the DUC-DED run.\n");
 		}
 	}
 	else if ( setting == "DUC-SED" ) {
-		if( setup_DUCSED(powSys, stocProc, configPath) ) {
+		if( setup_DUCSED(powSys, stocProc, configPath, RScriptsPath) ) {
 			perror("Failed to complete the DUC-SED run.\n");
 		}
 	}
 	else if ( setting == "SUC-SED" ) {
-		if( setup_SUCSED(powSys, stocProc, configPath) ) {
+		if( setup_SUCSED(powSys, stocProc, configPath, RScriptsPath) ) {
 			perror("Failed to complete the SUC-SED run.\n");
 		}
 	}
-	else
+	else {
 		perror ("Unknown setting for the instance.\n");
-
+	}
 
 	return 0;
 }
 
-void parseCmdLine(int argc, const char *argv[], string &inputDir, string &configPath, string &sysName, string &setting) {
-
+void parseCmdLine(int argc, const char *argv[], string &inputDir, string &configPath, string &RScriptsPath, string &sysName, string &setting)
+{
+	if (argc == 6) {
+		inputDir	= argv[1];
+		configPath	= argv[2];
+		RScriptsPath= argv[3];
+		sysName		= argv[4];
+		setting		= argv[5];
+	}
+	else {
+		cout << "Missing inputs. Please provide the following in the given order:\n  (1) input directory path,\n  (2) SD config.sd path,\n  (3) R scripts path,\n  (4) system name,\n  (5) framework setting." << endl;
+		exit(1);
+	}
+	
+	/*
 	switch (argc) {
 	case 2:
 		inputDir = argv[1];
@@ -151,6 +123,7 @@ void parseCmdLine(int argc, const char *argv[], string &inputDir, string &config
 		cin  >> setting;
 		break;
 	}
+	 */
 
 }//END parseCmdLine()
 
@@ -199,6 +172,10 @@ void readRunfile (string inputDir) {
 					 runParam.ED_frequency = temp;
 				 else if ( field1 == "numRep" )
 					 runParam.numRep = temp;
+				 else if ( field1 == "numSDScen" )
+					 runParam.numSDScen = temp;
+				 else if ( field1 == "numLSScen" )
+					 runParam.numLSScen = temp;
 				 else {
 					 perror("Warning:: Unidentified run parameter in the file.\n");
 				 }

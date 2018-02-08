@@ -27,7 +27,7 @@ extern "C" {
 #define		LE					'L'
 #define		EQ					'E'
 
-typedef 	enum {FALSE, TRUE} 	BOOL;
+typedef 	enum {CFALSE, CTRUE} 	BOOL;
 
 #define 	mem_malloc(n) 		log_alloc("malloc : " #n,malloc((n)), (n))
 #define 	mem_calloc(n,size) 	log_alloc("calloc : " #n " : " #size, calloc((n),(size)), ((n) * size))

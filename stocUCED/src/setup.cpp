@@ -28,7 +28,7 @@ ofstream optLog;
  * Economic dispatch - deterministic
  *
  */
-int setup_DUCDED(PowSys &powSys, StocProcess &stocProc) {
+int setup_DUCDED(PowSys &powSys, StocProcess &stocProc, string &RScriptsPath) {
 	int h, t, n;
 
 	/* logging */
@@ -43,18 +43,9 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc) {
 
 	string timeStamp = getCurrentDateTime();
 
-	/* initializations */
-	// TODO: Move this initialization to a better place.
-	vector<string> detElems (1);
-	detElems[0] = "Load";
-
-	vector<string> stocElems (2);
-	stocElems[0] = "Solar";
-	stocElems[1] = "Wind";
-
 	/* Create an instance */
 	instance inst;
-	inst.initialize(&powSys, &stocProc, stocElems, detElems);
+	inst.initialize(&powSys, &stocProc, RScriptsPath);
 
 	cout << "------------------------------------------------------------------" << endl;
 	cout << "------------ Deterministic Optimization / Simulation -------------" << endl;
@@ -119,7 +110,7 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc) {
 	return 0;
 }
 
-int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath) {
+int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, string &RScriptsPath) {
 	int h, t, n;
 
 	/* logging */
@@ -134,22 +125,13 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath) {
 
 	string timeStamp = getCurrentDateTime();
 
-	/* initializations */
-	// TODO: Move this initialization to a better place.
-	vector<string> detElems (1);
-	detElems[0] = "Load";
-
-	vector<string> stocElems (2);
-	stocElems[0] = "Solar";
-	stocElems[1] = "Wind";
-
 	/* Create an instance */
 	instance inst;
-	inst.initialize(&powSys, &stocProc, stocElems, detElems);
+	inst.initialize(&powSys, &stocProc, RScriptsPath);
 
 	cout << "------------------------------------------------------------------" << endl;
 	cout << "---------- Det UC & Stoch ED Optimization / Simulation -----------" << endl;
-	for (int rep = 0; rep < 1; rep++) {
+	for (int rep = 0; rep < runParam.numRep; rep++) {
 		cout << "Observation-" << rep << endl;
 
 		/* allocate memory to hold solutions */
@@ -208,7 +190,7 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath) {
 	return 0;
 }
 
-int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath) {
+int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, string &RScriptsPath) {
 	int h, t, n;
 	
 	/* logging */
@@ -223,18 +205,9 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath) {
 	
 	string timeStamp = getCurrentDateTime();
 	
-	/* initializations */
-	// TODO: Move this initialization to a better place.
-	vector<string> detElems (1);
-	detElems[0] = "Load";
-	
-	vector<string> stocElems (2);
-	stocElems[0] = "Solar";
-	stocElems[1] = "Wind";
-	
 	/* Create an instance */
 	instance inst;
-	inst.initialize(&powSys, &stocProc, stocElems, detElems);
+	inst.initialize(&powSys, &stocProc, RScriptsPath);
 	
 	cout << "------------------------------------------------------------------" << endl;
 	cout << "------------- Stochastic Optimization / Simulation ---------------" << endl;

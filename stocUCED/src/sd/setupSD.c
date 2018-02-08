@@ -106,7 +106,7 @@ cellType *newCell(stocType *stoc, probType **prob, vectorC xk) {
 		cell->quadScalar= config.MIN_QUAD_SCALAR;     						/* The quadratic scalar, 'sigma'*/
 		cell->iCutIdx   = 0;
 		cell->iCutUpdt  = 0;
-		cell->incumbChg = TRUE;
+		cell->incumbChg = CTRUE;
 	}
 	else {
 		cell->incumbX   = NULL;
@@ -114,7 +114,7 @@ cellType *newCell(stocType *stoc, probType **prob, vectorC xk) {
 		cell->quadScalar= 0.0;
 		cell->iCutIdx   = -1;
 		cell->iCutUpdt  = -1;
-		cell->incumbChg = FALSE;
+		cell->incumbChg = CFALSE;
 	}
 	cell->gamma 			= 0.0;
 	cell->normDk_1 			= 0.0;
@@ -141,16 +141,16 @@ cellType *newCell(stocType *stoc, probType **prob, vectorC xk) {
 	cell->delta  = newDelta(length);
 	cell->omega  = newOmega(config.MAX_ITER);
 
-	cell->optFlag 			= FALSE;
-	cell->dualStableFlag 	= FALSE;
+	cell->optFlag 			= CFALSE;
+	cell->dualStableFlag 	= CFALSE;
 	if ( !(cell->pi_ratio = (vectorC) arr_alloc(config.SCAN_LEN, double)) )
 		errMsg("allocation", "newCell", "cell->pi_ratio", 0);
 
 	cell->feasCnt 			= 0;
-	cell->infeasIncumb 		= FALSE;
+	cell->infeasIncumb 		= CFALSE;
 
 	/* construct the QP using the current incumbent */
-	if ( config.MASTERTYPE == PROB_QP && cell->incumbChg == TRUE) {
+	if ( config.MASTERTYPE == PROB_QP && cell->incumbChg == CTRUE) {
 		/* update the right-hand side and the bounds with incumbent solution */
 		if ( changeQPrhs(prob[0], cell) ) {
 			errMsg("setup", "newCell", "failed to change the right-hand side after incumbent change", 0);
@@ -160,7 +160,7 @@ cellType *newCell(stocType *stoc, probType **prob, vectorC xk) {
 			errMsg("setup", "newCell", "failed to change the bounds after incumbent update", 0);
 			return NULL;
 		}
-		cell->incumbChg = FALSE;
+		cell->incumbChg = CFALSE;
 
 		/* change the proximal term */
 		if ( changeQPproximal(cell->master->lp, prob[0]->num->cols, config.MIN_QUAD_SCALAR) ) {

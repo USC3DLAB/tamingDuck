@@ -29,9 +29,9 @@ BOOL optimal(probType **prob, cellType *cell) {
 		if ( preTest(cell) ) {
 			if (fullTest(prob, cell)) {
 				/* full test satisfied */
-				cell->optFlag = TRUE;
+				cell->optFlag = CTRUE;
 				fprintf (file, ">"); fflush(file);
-				return TRUE;
+				return CTRUE;
 			}
 			else {
 				fprintf(file, ">"); fflush(file);
@@ -40,7 +40,7 @@ BOOL optimal(probType **prob, cellType *cell) {
 		}
 	}
 
-	return FALSE;
+	return CFALSE;
 }//optimal()
 
 
@@ -119,13 +119,13 @@ BOOL fullTest(probType **prob, cellType *cell) {
 		if ( rep + 1 - numPass >= (1 - config.PERCENT_PASS) * config.BOOTSTRAP_REP) {
 			/* The bootstrap test has failed */
 			mem_free(cdf); mem_free(observ); freeCutsType(gCuts);
-			return FALSE;
+			return CFALSE;
 		}
 	}//END replication loop
 
 	mem_free(cdf); mem_free(observ);
 	freeCutsType(gCuts);
-	return TRUE;
+	return CTRUE;
 
 }//END full_test()
 

@@ -66,7 +66,7 @@ private:
 	vector<int>		minUpTimePeriods;	// minimum uptime in periods (obeying assumptions)
 	vector<int>		minDownTimePeriods;	// minimum downtime in periods (obeying assumptions)
 
-	vector<vector<double>> expCapacity;	// expected generator capacity
+	vector<vector<double>> capacity;	// generator capacity
 	vector<vector<double>> busLoad;		// load at each bus and period
 	vector<double>		   sysLoad;		// aggregated load at each period
 	
