@@ -39,16 +39,106 @@ void SUCmaster::LazySepCallbackI::main()
     // check if we need to add a cut (feasible and not within optimality tolerances, or infeasible)
     bool addCut = true;
     if (isFeasible) {
-        double abs_diff = fabs(me.sub.getRecourseObjValue() - getValue(me.eta));
+		double abs_diff = fabs(me.sub.getRecourseObjValue() - 1.0/((double)me.eta.getSize())*getValue(IloSum(me.eta)));
         if ( abs_diff/(fabs(me.sub.getRecourseObjValue())+1e-14) < me.cplex.getParam(IloCplex::EpGap)
             || abs_diff < me.cplex.getParam(IloCplex::EpAGap) ) {
             addCut = false;
         }
     }
 
-    if (addCut) {
+	if (!addCut)	return;
+	
+	if (isFeasible) {
+		/* optimality cut */
+		
+		if ( me.multicut ) {
+			int optcut_cnt = 0;
+			for (int s=0; s<me.eta.getSize(); s++) {
+				
+				double abs_diff = fabs(me.sub.objValues[s] - getValue(me.eta[s]));
+				
+				if ( abs_diff/(fabs(me.sub.getRecourseObjValue())+1e-14) < me.cplex.getParam(IloCplex::EpGap)
+					|| abs_diff < me.cplex.getParam(IloCplex::EpAGap) ) {
+					continue;
+				}
+				
+				optcut_cnt++;
+				
+				// get the Benders's cut coefs
+				SUCsubprob::BendersCutCoefs *cutCoefs = &(me.sub.multicutCoefs[s]);
+				
+				// create the cut
+				IloExpr pi_Tx (me.env);
+				for (int g=0; g<me.numGen; g++) {
+					for (int t=0; t<me.numPeriods; t++) {
+						if ( fabs(cutCoefs->pi_T[g][t]) > 1e-10 ) {
+							pi_Tx += cutCoefs->pi_T[g][t] * me.x[g][t];
+						}
+					}
+				}
+				
+				IloRange BendersCut;
+				BendersCut = IloRange(me.env, cutCoefs->pi_b, me.eta[s]-pi_Tx);	// optimality cut
+				
+				// add the cut
+				try {
+					add(BendersCut).end();
+				}
+				catch (IloException &e) {
+					cout << "Exception: " << e << endl;
+					BendersCut.end();
+				}
+				pi_Tx.end();
+			}
+			
+			optLog << "(optcut " << optcut_cnt << "/" << me.eta.getSize() << ")" << endl;
+		}
+		else
+		{
+			double sceProb = 1.0/(double)me.eta.getSize();
+			
+			IloExpr pi_Tx (me.env);
+			double  pi_b = 0;
+			
+			for (int s=0; s<me.eta.getSize(); s++) {
+				// get the Benders's cut coefs
+				SUCsubprob::BendersCutCoefs *cutCoefs = &(me.sub.multicutCoefs[s]);
+				
+				// create the cut
+				for (int g=0; g<me.numGen; g++) {
+					for (int t=0; t<me.numPeriods; t++) {
+						if ( fabs(cutCoefs->pi_T[g][t]) > 1e-10 ) {
+							pi_Tx += cutCoefs->pi_T[g][t] * me.x[g][t];
+						}
+					}
+				}
+				pi_b += cutCoefs->pi_b;
+			}
+			
+			pi_Tx *= sceProb;
+			pi_b  *= sceProb;
+			
+			
+			IloRange BendersCut;
+			BendersCut = IloRange(me.env, pi_b, me.eta[0]-pi_Tx);	// optimality cut
+			
+			// add the cut
+			try {
+				add(BendersCut).end();
+			}
+			catch (IloException &e) {
+				cout << "Exception: " << e << endl;
+				BendersCut.end();
+			}
+			pi_Tx.end();
+		}
+	}
+	else {
+		/* feasibility cut */
+		optLog << "(feascut)" << endl;
+
 		// get the Benders's cut coefs
-		SUCsubprob::BendersCutCoefs *cutCoefs = &(me.sub.cutCoefs);
+		SUCsubprob::BendersCutCoefs *cutCoefs = &(me.sub.multicutCoefs[0]);
 		
 		// create the cut
 		IloExpr pi_Tx (me.env);
@@ -61,13 +151,7 @@ void SUCmaster::LazySepCallbackI::main()
 		}
 		
 		IloRange BendersCut;
-		if (isFeasible) {
-			optLog << "-    Opt Cut" << endl;
-			BendersCut = IloRange(me.env, cutCoefs->pi_b, me.eta-pi_Tx);	// optimality cut
-		} else {
-			optLog << "-    Feas Cut" << endl;
-			BendersCut = IloRange(me.env, cutCoefs->pi_b, -pi_Tx);			// feasibility cut
-		}
+		BendersCut = IloRange(me.env, cutCoefs->pi_b, -pi_Tx);			// feasibility cut
 		
 		// add the cut
 		try {
@@ -121,7 +205,7 @@ void SUCmaster::preprocessing ()
 	/* initialize containers */
 	minUpTimePeriods.resize(numGen);					// minimum uptime in periods
 	minDownTimePeriods.resize(numGen);					// minimum downtime in periods
-	resize_matrix(maxCapacity, numGen, numPeriods);		// max generator capacities
+	resize_matrix(expCapacity, numGen, numPeriods);		// max generator capacities
 	sysLoad.resize(numPeriods);							// aggregated system load
 	
 	/* Min Up/Down */
@@ -139,8 +223,34 @@ void SUCmaster::preprocessing ()
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
-		// assuming deterministic supply
-		fill(maxCapacity[g].begin(), maxCapacity[g].end(), genPtr->maxCapacity);	// in MWs
+		auto it = inst->observations["RT"].mapVarNamesToIndex.find(genPtr->name);
+		
+		bool stocSupply = (it != inst->observations["RT"].mapVarNamesToIndex.end()) ? true : false;
+		
+		if (stocSupply) {
+			/* stochastic supply */
+			fill(expCapacity[g].begin(), expCapacity[g].end(), 0);
+			
+			int period;
+			for (int t=0; t<numPeriods; t++) {
+				period = (beginMin/periodLength)+(t*numBaseTimePerPeriod);
+				
+				if ( t==0 && probType==ShortTerm ) {
+					it = inst->observations["RT"].mapVarNamesToIndex.find(genPtr->name);
+					expCapacity[g][t] += min( inst->observations["RT"].vals[rep][period][it->second], genPtr->maxCapacity );
+				}
+				else {
+					it = inst->simulations.mapVarNamesToIndex.find(genPtr->name);
+					for (int s=0; s<inst->simulations.vals.size(); s++) {
+						expCapacity[g][t] += 1.0/(double)(inst->simulations.vals.size()) * min( inst->simulations.vals[s][period][it->second], genPtr->maxCapacity );
+					}
+				}
+			}
+		}
+		else {
+			/* deterministic supply */
+			fill(expCapacity[g].begin(), expCapacity[g].end(), genPtr->maxCapacity);
+		}
 	}
 	 
 	
@@ -150,7 +260,7 @@ void SUCmaster::preprocessing ()
 			Generator *genPtr = &(inst->powSys->generators[g]);
 			
 			if (!genPtr->isDAUCGen) {
-				fill(maxCapacity[g].begin(), maxCapacity[g].end(), 0.0);
+				fill(expCapacity[g].begin(), expCapacity[g].end(), 0.0);
 			}
 		}
 	}
@@ -186,14 +296,17 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 	this->probType	= probType;
 	this->modelType = modelType;
 	this->rep		= rep;
+	multicut		= true;
 	
 	/* Prepare Model-Dependent Input Data */
 	preprocessing();
 
 	/* Master Formulation */
 	// create the variables
-	eta = IloNumVar (env);	// second-stage expectation approximation
-    
+	IloNumVar L (env);
+	
+	eta = IloNumVarArray (env, multicut ? runParam.numLSScen : 1, 0, IloInfinity, ILOFLOAT);	// 2nd-stage approximation
+	
     s = IloArray< IloNumVarArray > (env, numGen);
 	x = IloArray< IloNumVarArray > (env, numGen);
 	z = IloArray< IloNumVarArray > (env, numGen);
@@ -283,11 +396,13 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
     for (int t=0; t<numPeriods; t++) {
         IloExpr expr (env);
         for (int g=0; g<numGen; g++) {
-            expr += maxCapacity[g][t] * x[g][t];
+            expr += expCapacity[g][t] * x[g][t];
         }
+		expr += L;
         model.add( expr >= sysLoad[t] * (1+spinReservePerc));
         expr.end();
     }
+
 	
 	// must-run units must be committed
 	for (int g=0; g<numGen; g++) {
@@ -336,8 +451,11 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
             obj += genPtr->noLoadCost*periodLength/60.0 * x[g][t];	// no-load cost
         }
     }
-    obj += eta;
-    
+	for (int s=0; s<eta.getSize(); s++) {
+		obj += 1.0/(double)eta.getSize() * eta[s];
+	}
+	obj += loadShedPenaltyCoef * L;
+	
     // set the objective function
 	model.add( IloMinimize(env, obj) );
 	
@@ -374,8 +492,8 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 	cplex.setWarning(optLog);
 	cplex.setParam(IloCplex::Threads, 1);
     cplex.setParam(IloCplex::FPHeur, 2);
-//    cplex.setParam(IloCplex::HeurFreq, 10);
-    cplex.setParam(IloCplex::LBHeur, 1);    // ??
+    cplex.setParam(IloCplex::HeurFreq, 100);
+//    cplex.setParam(IloCplex::LBHeur, 1);    // ??
     cplex.setParam(IloCplex::EpGap, 1e-2);
 //    cplex.setParam(IloCplex::Reduce, 0);    // due to callbacks
 //    cplex.setParam(IloCplex::PreLinear, 0); // due to callbacks
@@ -406,10 +524,7 @@ bool SUCmaster::solve () {
 		} else {
 			optLog << "Benders' decomposition has failed." << endl;
 		}
-		cout << sub.solve_t << endl;
-		cout << sub.setup_t << endl;
-		cout << sub.cut_t << endl;
-		
+
 		return status;
 	}
 	catch (IloException &e) {

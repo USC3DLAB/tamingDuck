@@ -18,6 +18,12 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, string RScriptsPath
 	/* Initialize instance elements */
 	this->powSys    = powSys;
 	this->stoc	    = stoc;
+	this->RScriptsPath = RScriptsPath;
+	
+	DAUC_t.resize( runParam.DA_numSolves );
+	STUC_t.resize( runParam.DA_numSolves * runParam.ST_numSolves );
+	ED_t.resize  ( runParam.DA_numSolves * runParam.ST_numSolves * runParam.ED_numSolves );
+	
 	detElems	= {"Load"};
 	stocElems	= {"Solar", "Wind"};
 	elems.resize( detElems.size() + stocElems.size() );
@@ -26,9 +32,9 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, string RScriptsPath
 	/* Allocate memory for solution matrices */
 	solution.allocateMem(powSys->numGen, runParam.numPeriods, powSys->numBus);
 
-	/* Setup R environment */		
-	R.parseEval("setwd(\"" + RScriptsPath + "\")");	// set the working directory
-	R["dataFolder"] = powSys->path;					// set the data folder
+	/* Setup R environment */
+	R["RScriptsPath"] = RScriptsPath;
+	R["dataFolder"]   = powSys->path;	// set the data folder
 	
 	/* Chop off the Provided Time Series */
 	int maxLookAhead = max(runParam.ED_numPeriods-1, runParam.ST_numPeriods-1);

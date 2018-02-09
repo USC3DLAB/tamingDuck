@@ -20,9 +20,12 @@ library("MTS");
 library("abind");
 
 # Source the functions
-source("preprocessNRELdata.R");
-source("varModelFit.R");
-source("varSimulate.R");
+source(paste(RScriptsPath, "preprocessNRELdata.R", sep=""));
+source(paste(RScriptsPath, "varModelFit.R", sep=""));
+source(paste(RScriptsPath, "varSimulate.R", sep=""));
+# source("preprocessNRELdata.R");
+# source("varModelFit.R");
+# source("varSimulate.R");
 
 # Data parameters
 # dataFolder = "/Users/semihatakan/Documents/Coding Projects/Power Systems/tamingDuck/tamingDuck/stocUCED/datasets/3d-nrel118/"

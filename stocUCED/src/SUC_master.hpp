@@ -47,7 +47,9 @@ private:
 	IloCplex	cplex;
 	
 	IloArray<IloNumVarArray> s, x, z;
-	IloNumVar	eta;	// exp value of the 2nd-stage subproblem
+	IloNumVarArray	eta;	// exp value of the 2nd-stage subproblem
+	
+	bool multicut;
 	
 	instance*	inst;
 	
@@ -66,7 +68,7 @@ private:
 	vector<int>		minUpTimePeriods;	// minimum uptime in periods (obeying assumptions)
 	vector<int>		minDownTimePeriods;	// minimum downtime in periods (obeying assumptions)
 	
-	vector<vector<double>> maxCapacity;	// expected generator capacity
+	vector<vector<double>> expCapacity;	// expected generator capacity
 	vector<double>		   sysLoad;		// aggregated load at each period
 	
 	int	beginMin;				// t=0 in the model corresponds to this minute in the planning horizon

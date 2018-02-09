@@ -37,6 +37,23 @@ public:
 	double getRecourseObjValue();
 	
 private:
+	
+	// Benders' Cut
+	struct BendersCutCoefs {
+		double pi_b;
+		vector< vector<double> > pi_T;
+		
+		void initialize(int numRows, int numCols) {
+			resize_matrix(pi_T, numRows, numCols);
+		};
+		
+		void reset() {
+			pi_b = 0;
+			for (int g=0; g<pi_T.size(); g++) fill(pi_T[g].begin(), pi_T[g].end(), 0.0);
+		};
+	};
+	vector<BendersCutCoefs> multicutCoefs;
+
 	IloEnv		env;
 	IloModel	model;
 	IloCplex	cplex;
@@ -53,13 +70,13 @@ private:
 	void formulate_nodebased_system ();
 	void formulate_production ();
 	
-	void setup_subproblem (int &s);
-	double getRandomCoef (int &s, int &t, int &loc);
+	void	setup_subproblem (int &s);
+	double	getRandomCoef (int &s, int &t, int &loc);
 	
-	double recourse_obj_val;
+	vector<double> objValues;
 	
-	void update_optimality_cut_coefs (int &s);
-	void get_feasibility_cut_coefs (int &s);
+	void update_optimality_cut_coefs	(int &s, BendersCutCoefs &cutCoefs);
+	void get_feasibility_cut_coefs		(int &s, BendersCutCoefs &cutCoefs);
 	
 	// First-Stage solution
 	vector< vector<bool> >* gen_stat;
@@ -79,30 +96,11 @@ private:
 	vector<vector<double>> busLoad;		// load at each bus and period
 	vector<double>		   sysLoad;		// aggregated load at each period
 	
-	vector<double> sceProb;				// scenario probabilities
-
 	// Miscellaneous
 	char buffer[30];
 	map< IloInt, double > farkasMap;
 	
 	double solve_t, setup_t, cut_t;
-	
-	
-	// Benders' Cut
-	struct BendersCutCoefs {
-		double pi_b;
-		vector< vector<double> > pi_T;
-		
-		void initialize(int numRows, int numCols) {
-			resize_matrix(pi_T, numRows, numCols);
-		};
-		
-		void reset() {
-			pi_b = 0;
-			for (int g=0; g<pi_T.size(); g++) fill(pi_T[g].begin(), pi_T[g].end(), 0.0);
-		};
-	};
-	BendersCutCoefs cutCoefs;
 };
 
 #endif /* SUCsubprob_hpp */

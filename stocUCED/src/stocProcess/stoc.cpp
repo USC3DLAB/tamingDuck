@@ -178,7 +178,7 @@ ScenarioType createScenarioList(RInside &R, bool fitModel, string &dataFolder, v
 	R["numScenarios"]	= numScen;
 	R["simLength"]		= simLengthDays;
 	
-	R.parseEval("source(\"runScript.R\")");				// execute the script
+	R.parseEval("source(paste(RScriptsPath, \"runScript.R\", sep=\"\"))");				// execute the script
 
 	Rcpp::NumericVector scenList = R.parseEval("scenarios");
 	int numComponents	= R.parseEval("numComponents");

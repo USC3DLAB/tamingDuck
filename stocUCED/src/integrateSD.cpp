@@ -15,7 +15,7 @@ long long	MEM_USED = 0;	/* Amount of memory allocated each iteration */
 stringC	outputDir;			/* output directory */
 configType	config;			/* algorithm tuning parameters */
 
-int integrateSD(instance &inst, EDmodel &rtED, string probName, string &configPath, ScenarioType stocObserv, int t0, double &objVal) {
+int integrateSD(instance &inst, EDmodel &rtED, string probName, string &configPath, int t0, double &objVal) {
 	oneProblem *orig = NULL;
 	timeType *tim = NULL;
 	stocType *stoc = NULL;
@@ -50,7 +50,7 @@ int integrateSD(instance &inst, EDmodel &rtED, string probName, string &configPa
 	}
 
 	/* Build the stocType structure */
-	if ( (stoc = buildStocType(rtED.model, rtED.stocRows, stocObserv, t0)) == NULL) {
+	if ( (stoc = buildStocType(rtED.model, rtED.stocRows, inst.simulations, t0)) == NULL) {
 		perror("Failed to build the stocType structure for 2SD.\n");
 		goto TERMINATE;
 	}

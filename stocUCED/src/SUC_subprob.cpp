@@ -60,7 +60,6 @@ void SUCsubprob::preprocessing ()
 	numBaseTimePerPeriod = (int)round(periodLength) / runParam.ED_resolution;
 	
 	/* initialize containers */
-	cutCoefs.initialize(numGen, numPeriods);
 	minGenerationReq.resize(numGen);					// minimum production requirements
 	maxCapacity.resize(numGen);							// maximum generator capacities
 	sysLoad.resize(numPeriods);							// aggregated system load
@@ -133,8 +132,11 @@ void SUCsubprob::preprocessing ()
 	/* Uncertainty related */
 	numScen = runParam.numLSScen;
 	
-	sceProb.resize(numScen);
-	fill(sceProb.begin(), sceProb.end(), 1.0/(double)numScen);		// equal probability scenarios
+	objValues.resize(numScen);
+	multicutCoefs.resize(numScen);
+	for (int s=0; s<numScen; s++) {
+		multicutCoefs[s].initialize(numGen, numPeriods);
+	}
 }
 
 double SUCsubprob::getRandomCoef (int &s, int &t, int &loc) {
@@ -462,14 +464,13 @@ bool SUCsubprob::solve() {
 
 	double time;
 	
-	cutCoefs.reset();
-	recourse_obj_val = 0;
-	
 	bool status = true;
 	
 	// process second-stage scenario subproblems
 	for (int s=0; s<numScen; s++)
 	{
+		multicutCoefs[s].reset();
+		
 		time = get_wall_time();
 		setup_subproblem (s);			// prepare the subproblem
 		setup_t += get_wall_time() - time;
@@ -480,8 +481,8 @@ bool SUCsubprob::solve() {
 		
 		if (!status) {
 			if ( cplex.getCplexStatus() == IloCplex::Infeasible ) {
-				get_feasibility_cut_coefs(s);
-				recourse_obj_val = INFINITY;
+				get_feasibility_cut_coefs(s, multicutCoefs[0]);
+				objValues[s] = INFINITY;
 			}
 			else {
 				cout << "!! Error: Cplex returned the status " << cplex.getCplexStatus() << endl;
@@ -490,11 +491,11 @@ bool SUCsubprob::solve() {
 			return false;
 		}
 		
-		recourse_obj_val += sceProb[s] * cplex.getObjValue();	// get the obj value
+		objValues[s] = cplex.getObjValue();
 		
 		time = get_wall_time();
-		update_optimality_cut_coefs(s);	// update benders cut coefs
-		solve_t += get_wall_time() - time;
+		update_optimality_cut_coefs(s, multicutCoefs[s]);	// update benders cut coefs
+		cut_t += get_wall_time() - time;
 	}
 	
 	return true;
@@ -531,7 +532,7 @@ void SUCsubprob::setup_subproblem(int &s)
 	}
 }
 
-void SUCsubprob::update_optimality_cut_coefs(int &s)
+void SUCsubprob::update_optimality_cut_coefs(int &s, BendersCutCoefs &cutCoefs)
 {
 	double supply;
 	
@@ -553,12 +554,12 @@ void SUCsubprob::update_optimality_cut_coefs(int &s)
 				period = (beginMin/periodLength)+(t*numBaseTimePerPeriod);
 				supply = min(getRandomCoef(s, period, it->second), genPtr->maxCapacity);
 
-				cutCoefs.pi_T[g][t] += sceProb[s] * duals[c] * ( supply );
+				cutCoefs.pi_T[g][t] += duals[c] * ( supply );
 			}
 		}
 		else {
 			for (int t=0; t<numPeriods; t++, c++) {				// Note: c is iterated in the secondary-loops
-				cutCoefs.pi_T[g][t] += sceProb[s] * duals[c] * ( genPtr->maxCapacity );
+				cutCoefs.pi_T[g][t] += duals[c] * ( genPtr->maxCapacity );
 			}
 		}
 	}
@@ -566,7 +567,7 @@ void SUCsubprob::update_optimality_cut_coefs(int &s)
 	// production amounts
 	for (int g=0; g<numGen; g++) {
 		for (int t=0; t<numPeriods; t++, c++) {
-			cutCoefs.pi_T[g][t] += sceProb[s] * duals[c] * minGenerationReq[g];
+			cutCoefs.pi_T[g][t] += duals[c] * minGenerationReq[g];
 		}
 	}
 	
@@ -576,11 +577,11 @@ void SUCsubprob::update_optimality_cut_coefs(int &s)
 
 		int t=0;
 		if (beginMin != 0) {
-			cutCoefs.pi_b += sceProb[s] * duals[c] * (genPtr->rampUpLim*periodLength + getEDGenProd(g, t-1));
+			cutCoefs.pi_b += duals[c] * (genPtr->rampUpLim*periodLength + getEDGenProd(g, t-1));
 			c++;
 		}
 		for (t=1; t<numPeriods; t++, c++) {
-			cutCoefs.pi_b += sceProb[s] * duals[c] * genPtr->rampUpLim * periodLength;
+			cutCoefs.pi_b += duals[c] * genPtr->rampUpLim * periodLength;
 		}
 	}
 	
@@ -617,13 +618,13 @@ void SUCsubprob::update_optimality_cut_coefs(int &s)
 		if (beginMin != 0) {
 			double rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
 			
-			cutCoefs.pi_b += sceProb[s] * duals[c] * (rampDownRate - getEDGenProd(g,t-1));
+			cutCoefs.pi_b += duals[c] * (rampDownRate - getEDGenProd(g,t-1));
 			c++;
 		}
 		for (t=1; t<numPeriods; t++, c++) {
 			double rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
 
-			cutCoefs.pi_b += sceProb[s] * duals[c] * rampDownRate;
+			cutCoefs.pi_b += duals[c] * rampDownRate;
 		}
 
 	}
@@ -632,21 +633,21 @@ void SUCsubprob::update_optimality_cut_coefs(int &s)
 	if (modelType == System) {
 		// aggregated demand constraints
 		for (int t=0; t<numPeriods; t++, c++) {
-			cutCoefs.pi_b += sceProb[s] * duals[c] * sysLoad[t];
+			cutCoefs.pi_b += duals[c] * sysLoad[t];
 		}
 	}
 	else {
 		// Flow upper bounds
 		for (int l=0; l<numLine; l++) {
 			for (int t=0; t<numPeriods; t++, c++) {
-				cutCoefs.pi_b += sceProb[s] * duals[c] * inst->powSys->lines[l].maxFlowLim;
+				cutCoefs.pi_b += duals[c] * inst->powSys->lines[l].maxFlowLim;
 			}
 		}
 
 		// Flow lower bounds
 		for (int l=0; l<numLine; l++) {
 			for (int t=0; t<numPeriods; t++, c++) {
-				cutCoefs.pi_b += sceProb[s] * duals[c] * inst->powSys->lines[l].minFlowLim;
+				cutCoefs.pi_b += duals[c] * inst->powSys->lines[l].minFlowLim;
 			}
 		}
 		
@@ -655,7 +656,7 @@ void SUCsubprob::update_optimality_cut_coefs(int &s)
 			Bus *busPtr = &(inst->powSys->buses[b]);
 			
 			for (int t=0; t<numPeriods; t++, c++) {
-				cutCoefs.pi_b += sceProb[s] * duals[c] * ( busPtr->maxPhaseAngle - busPtr->minPhaseAngle );
+				cutCoefs.pi_b += duals[c] * ( busPtr->maxPhaseAngle - busPtr->minPhaseAngle );
 			}
 		}
 
@@ -666,17 +667,21 @@ void SUCsubprob::update_optimality_cut_coefs(int &s)
 		// Flow balance
 		for (int b=0; b<numBus; b++) {
 			for (int t=0; t<numPeriods; t++, c++) {
-				cutCoefs.pi_b += sceProb[s] * duals[c] * busLoad[b][t];
+				cutCoefs.pi_b += duals[c] * busLoad[b][t];
 			}
 		}
 	}
 }
 
 double SUCsubprob::getRecourseObjValue() {
-	return recourse_obj_val;
+	double objVal = 0;
+	for (int s=0; s<numScen; s++) {
+		objVal += (1.0/double(numScen)) * objValues[s];
+	}
+	return objVal;
 }
 
-void SUCsubprob::get_feasibility_cut_coefs(int &s)
+void SUCsubprob::get_feasibility_cut_coefs(int &s, BendersCutCoefs &cutCoefs)
 {
 	double supply;
 	

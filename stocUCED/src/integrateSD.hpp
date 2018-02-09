@@ -18,7 +18,7 @@
 
 #define TRANSLATE
 
-int integrateSD(instance &inst, EDmodel &ED, string probName, string &configPath, ScenarioType stocObserv, int t0, double &objVal);
+int integrateSD(instance &inst, EDmodel &ED, string probName, string &configPath, int t0, double &objVal);
 int readConfig(string &configPath);
 oneProblem *buildOneProblem(IloModel &model, IloCplex &cplex, string probName);
 oneProblem *buildOneProblem_file(string probName);

@@ -19,7 +19,7 @@
 using namespace std;
 
 class instance {
-
+	
 public:
     instance ();
 	bool initialize			(PowSys *powSys, StocProcess *stoc, string RScriptsPath);
@@ -38,13 +38,15 @@ public:
 	
 	map< string, ScenarioType > observations;
 	
-	vector<ScenarioType> detObserv;  // Deterministic observations.
-	vector<ScenarioType> stocObserv; // Stochastic observations.
-
+	vector<double> DAUC_t;
+	vector<double> STUC_t;
+	vector<double> ED_t;
+	
 private:
 	void summary();
 	
 	RInside R;
+	string RScriptsPath;
 };
 
 #endif
