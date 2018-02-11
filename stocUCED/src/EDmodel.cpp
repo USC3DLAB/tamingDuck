@@ -86,11 +86,11 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 			if (stocSupply) {
 				if ( t==0 ) {
 					it = inst.observations["RT"].mapVarNamesToIndex.find(genPtr.name);
-					genAvail[g][t] = min( inst.observations["RT"].vals[rep][idxT][it->second], genMax[g][t] );
+					genAvail[g][t] = min( inst.observations["RT"].vals[rep][t0+t][it->second], genMax[g][t] );
 				}
 				else {
 					it = inst.observations["DA"].mapVarNamesToIndex.find(genPtr.name);
-					genAvail[g][t] = min( inst.observations["DA"].vals[rep][idxT][it->second], genMax[g][t] );
+					genAvail[g][t] = min( inst.observations["DA"].vals[rep][t0+t][it->second], genMax[g][t] );
 				}
 			}
 			
@@ -98,74 +98,8 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 			/* Ramping restrictions */
 			genRampUp[g][t]		= genPtr.rampUpLim * runParam.ED_resolution;
 			genRampDown[g][t]	= genPtr.rampDownLim * runParam.ED_resolution;
-			
-/*			if ( idxT == 0 ) {
-				// no ramping restrictions for time 0
-				genRampUp[g][t]		= genPtr.maxCapacity;
-				genRampDown[g][t]	= genPtr.maxCapacity;
-			}
-			else {
-				if ( fabs(max(inst.solution.x[g][idxT]-inst.solution.x[g][idxT-1], 0.0) - 1.0) <= 1e-8 ) {
-					genRampUp[g][t]		= genPtr.maxCapacity;
-				}
-				
-//				if ( fabs(max(inst.solution.x[g][idxT-1]-inst.solution.x[g][idxT], 0.0) - 1.0) <= 1e-8 ) {
-//					genRampDown[g][t]	= genPtr.maxCapacity;
-//				}
-				
-				if ( fabs(inst.solution.x[g][idxT]) <= 1e-8 ) {
-					genRampDown[g][t]	= genPtr.maxCapacity;
-				}
-			}
-*/
-			
-			//genRampDown[g][t] += 10000;
-			
-			/*
-			if ( idxT == 0 ) {
-				// no ramping restriction at time 0
-				genRampUp[g][t]		= genPtr.maxCapacity;
-				genRampDown[g][t]	= genPtr.maxCapacity;
-			}
-			else if ( fabs(max(inst.solution.x[g][idxT]-inst.solution.x[g][idxT-1], 0.0) - 1.0) <= 1e-8 ) {
-				// generator is turned on at t
-				genRampUp[g][t]		= max( genPtr.minGenerationReq, genPtr.rampUpLim*runParam.ED_resolution );
-				genRampDown[g][t]	= 0.0;
-			}
-			else if ( fabs(inst.solution.x[g][idxT]) <= 1e-8 ) {
-				// generator is off at t
-				genRampDown[g][t]	= 0.0;
-				genRampDown[g][t]	= 0.0;
-			}
-			else {
-				genRampUp[g][t]		= genPtr.rampUpLim * runParam.ED_resolution;
-				genRampDown[g][t]	= genPtr.rampDownLim * runParam.ED_resolution;
-			}
-			*/
-
-/*
-			if ( idxT != 0 ) {
-				/* It is not the first period (t0 == 0 and t == 0) of the entire run, so we have access to solutions *
-				genRampUp[g][t] = inst.solution.x[g][idxT-1] * genPtr.rampUpLim +
-					inst.solution.x[g][idxT]*(1-inst.solution.x[g][idxT-1])*genPtr.maxCapacity;
-				genRampDown[g][t] = inst.solution.x[g][idxT]*genPtr.rampDownLim +
-					inst.solution.x[g][idxT-1]*(1-inst.solution.x[g][idxT])*genPtr.maxCapacity;
-			}
-			else {	// TODO: Semih added these lines, please confirm:
-				genRampUp[g][t] = genPtr.rampUpLim;
-				genRampDown[g][t] = genPtr.rampDownLim;
-			}
- */
-//			genRampUp[g][t] = genPtr.maxCapacity;
-//			genRampDown[g][t] = genPtr.maxCapacity;
-			
-			// original ramp rates are given in minutes
-	//		genRampUp[g][t]		*= runParam.ED_resolution;
-	//		genRampDown[g][t]	*= runParam.ED_resolution;
 		}
 	}
-	
-	
 }
 
 EDmodel::~EDmodel() {

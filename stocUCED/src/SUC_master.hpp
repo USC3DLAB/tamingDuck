@@ -29,15 +29,21 @@ public:
 	bool solve ();
 	double getObjValue();
 	
-//    void warmStart (Solution &soln);
-//    void warmStart (vector<Solution> &soln);
-	
 	/* Lazy-constraint callback */
 	class LazySepCallbackI : public IloCplex::LazyConstraintCallbackI {
 		SUCmaster & me;
 	public:
 		IloCplex::CallbackI* duplicateCallback() const { return (new(getEnv()) LazySepCallbackI(*this)); }
 		LazySepCallbackI(IloEnv env, SUCmaster &xx) : IloCplex::LazyConstraintCallbackI(env), me(xx) {}
+		void main();
+	};
+	
+	/* Incumbent callback */
+	class IncCallbackI : public IloCplex::IncumbentCallbackI {
+		SUCmaster & me;
+	public:
+		IloCplex::CallbackI* duplicateCallback() const { return (new(getEnv()) IncCallbackI(*this)); }
+		IncCallbackI(IloEnv env, SUCmaster &xx) : IloCplex::IncumbentCallbackI(env), me(xx) {}
 		void main();
 	};
 
@@ -62,12 +68,17 @@ private:
 	
 	void preprocessing();
 
-	bool getGenState(int genId, int period);				// reads from Solution.x
-	void setGenState(int genId, int period, double value);	// writes to Solution.x
+	double	getEDGenProd (int genId, int period);
+	bool	getGenState  (int genId, int period);				// reads from Solution.x
+	void	setGenState  (int genId, int period, double value);	// writes to Solution.x
+	void	setGenProd   (int genId, int period, double value);	// writes to Solution.gUC
 
+
+	vector<double>	minGenerationReq;	// minimum production requirements (obeying assumptions)
 	vector<int>		minUpTimePeriods;	// minimum uptime in periods (obeying assumptions)
 	vector<int>		minDownTimePeriods;	// minimum downtime in periods (obeying assumptions)
 	
+	vector<vector<double>> busLoad;		// load at each bus and period
 	vector<vector<double>> expCapacity;	// expected generator capacity
 	vector<double>		   sysLoad;		// aggregated load at each period
 	

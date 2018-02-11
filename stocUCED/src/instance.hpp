@@ -47,6 +47,8 @@ private:
 	
 	RInside R;
 	string RScriptsPath;
+	
+	void correctSupplyExceedingCapacity(ScenarioType &scenarioType);
 };
 
 #endif

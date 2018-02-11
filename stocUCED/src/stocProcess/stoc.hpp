@@ -56,7 +56,7 @@ private:
 };
 
 void read(string fname, char delimiter, bool colNames, bool rowNames);
-ScenarioType createScenarioList(StocProcess *S, vector<int> S_indices, int lenT, int stepSize, int &numVals);
+ScenarioType createScenarioList(StocProcess *S, vector<int> S_indices, int lenT, int stepSize, int &numVals, int dataPeriodLengthInMins);
 ScenarioType createScenarioList(RInside &R, bool fitModel, string &dataFolder, vector<string> &stocElems, int lenT, int &numScen);
 
 #endif /* STOC_HPP_ */

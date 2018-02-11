@@ -113,9 +113,13 @@ OneStocProc StocProcess::read(string fname, char delimiter, bool readColNames, b
 }//END scenarios::read
 
 /* This subroutine creates a list of _numVals_ observations for stochastic processes indexed by S_indices of time duration _T_ and returns a observType structure output. */
-ScenarioType createScenarioList(StocProcess *stoc, vector<int> S_indices, int lenT, int stepSize, int &numVals) {
+ScenarioType createScenarioList(StocProcess *stoc, vector<int> S_indices, int lenT, int stepSize, int &numVals, int dataPeriodLengthInMins) {
 	ScenarioType observ;
 
+	int numSubHours = dataPeriodLengthInMins / runParam.baseTime;
+	lenT		*= 60.0/dataPeriodLengthInMins;
+	stepSize	*= 60.0/dataPeriodLengthInMins;
+	
 	/* Compute the number of observations that can be generated */
 	for ( unsigned int n = 0; n < S_indices.size(); n++ ) {
 		double numValsInData = floor(  (double) (stoc->sp[S_indices[n]].numT - (lenT-stepSize)) / (double) stepSize  );
@@ -129,7 +133,7 @@ ScenarioType createScenarioList(StocProcess *stoc, vector<int> S_indices, int le
 		
 		for (int h=offset; h<offset+lenT; h++) {
 			// Important: I'm assuming hourly data in here
-			for (int subhour = 0; subhour<60.0/runParam.baseTime; subhour++) {
+			for (int subhour = 0; subhour<numSubHours; subhour++) {
 				vector<double> vec;
 				for (unsigned int n=0; n<S_indices.size(); n++) {
 					for (unsigned int m=0; m<stoc->sp[S_indices[n]].vals[h].size(); m++) {
@@ -190,7 +194,7 @@ ScenarioType createScenarioList(RInside &R, bool fitModel, string &dataFolder, v
 		resize_matrix(observ.vals[s], nbPeriods, numComponents);
 	}
 	
-	// read into observ.vals
+	// read into observ.vals, make sure the values do not exceed capacity
 	int i=0;
 	for (int s=0; s<numScen; s++) {
 		for (int g=0; g<numComponents; g++) {

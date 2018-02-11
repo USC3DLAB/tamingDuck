@@ -5,14 +5,6 @@ extern runType runParam;
 
 instance::instance () {}
 
-void instance::simulateScenarios(int numScen, bool fitModel) {
-	int maxLookAhead = max(runParam.ED_numPeriods-1, runParam.ST_numPeriods-1);
-	int numSimLengthInDays = ceil( (double)(runParam.numPeriods+maxLookAhead)/(60.0/runParam.baseTime) );
-	
-	simulations = createScenarioList(R, fitModel, powSys->path, stocElems, numSimLengthInDays, numScen);
-	simulations.name = "ForecastData_simulations";
-}
-
 bool instance::initialize(PowSys *powSys, StocProcess *stoc, string RScriptsPath) {
 
 	/* Initialize instance elements */
@@ -48,11 +40,17 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, string RScriptsPath
 				stocIndices.push_back(*it);
 			}
 		}
+		
+		//TODO: Generalize
+		int dataPeriodLengthInMins = fileNames[f] == "DA" ? 60 : 15;
+		
 		observations.insert(pair<string, ScenarioType> (fileNames[f],
-														createScenarioList(stoc, stocIndices, numSimLengthInDays, runParam.numPeriods/(60.0/runParam.baseTime), runParam.numRep)
+														createScenarioList(stoc, stocIndices, numSimLengthInDays, runParam.numPeriods/(60.0/runParam.baseTime), runParam.numRep, dataPeriodLengthInMins)
 														)
 							);
 		observations[fileNames[f]].name = fileNames[f] + "_observations";
+		
+		correctSupplyExceedingCapacity(observations[fileNames[f]]);
 	}
 	
 	/* simulate scenarios */
@@ -91,6 +89,45 @@ void instance::summary() {
 
 }// summary()
 
+/****************************************************************************
+ * simulateScenarios
+ * Uses R scripts to simulate multiple time series
+ ****************************************************************************/
+void instance::simulateScenarios(int numScen, bool fitModel) {
+	int maxLookAhead = max(runParam.ED_numPeriods-1, runParam.ST_numPeriods-1);
+	int numSimLengthInDays = ceil( (double)(runParam.numPeriods+maxLookAhead)/(60.0/runParam.baseTime) );
+	
+	simulations = createScenarioList(R, fitModel, powSys->path, stocElems, numSimLengthInDays, numScen);
+	simulations.name = "ForecastData_simulations";
+	
+	correctSupplyExceedingCapacity(simulations);
+}
+
+/****************************************************************************
+ * correctSupplyExceedingCapacity
+ * Both the simulations and the provided data may lead to supply amounts,
+ * which exceed generator capacities. This function goes over the simulated
+ * or the original time series in order to set all supply = min(supply, cap).
+ ****************************************************************************/
+void instance::correctSupplyExceedingCapacity(ScenarioType &scenarioType) {
+	// iterate over generators
+	for (auto genItr = powSys->generators.begin(); genItr != powSys->generators.end(); ++genItr) {
+		auto it = scenarioType.mapVarNamesToIndex.find( (*genItr).name );
+		
+		// find a generator that is registered in the "scenarioType"
+		if ( it != scenarioType.mapVarNamesToIndex.end() ) {
+			for (int s=0; s<scenarioType.vals.size(); s++) {
+				for (int t=0; t<scenarioType.vals[s].size(); t++) {
+					
+					// for all scenarios and time periods, make sure the capacity is not exceeded
+					if ( scenarioType.vals[s][t][it->second] > (*genItr).maxCapacity ) {
+						scenarioType.vals[s][t][it->second] = (*genItr).maxCapacity;
+					}
+				}
+			}
+		}
+	}
+}
 
 bool instance::printSolution(string filepath) {
 	bool status;

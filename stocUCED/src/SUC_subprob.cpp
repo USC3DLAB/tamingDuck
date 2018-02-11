@@ -64,6 +64,7 @@ void SUCsubprob::preprocessing ()
 	maxCapacity.resize(numGen);							// maximum generator capacities
 	sysLoad.resize(numPeriods);							// aggregated system load
 	resize_matrix(busLoad, numBus, numPeriods);			// individual bus loads
+	expInitGen.resize(numGen);							// container for retrieving expected initial-generation amount (to be fed to the ED model)
 	
 	/* Min Generation Amounts */
 	for (int g=0; g<numGen; g++) {
@@ -210,6 +211,7 @@ void SUCsubprob::formulate_production()
 		int t=0;
 		if (beginMin != 0) {
 			IloRange con (env, -IloInfinity, p[g][t] - getEDGenProd(g, t-1), genPtr->rampUpLim * periodLength);
+			cons.add( con );
 		}
 		for (t=1; t<numPeriods; t++) {
 			IloRange con (env, -IloInfinity, p[g][t] - p[g][t-1], genPtr->rampUpLim * periodLength);
@@ -479,6 +481,7 @@ bool SUCsubprob::solve() {
 		status = cplex.solve();			// solve the subproblem
 		solve_t += get_wall_time() - time;
 		
+		// infeasibility
 		if (!status) {
 			if ( cplex.getCplexStatus() == IloCplex::Infeasible ) {
 				get_feasibility_cut_coefs(s, multicutCoefs[0]);
@@ -491,6 +494,10 @@ bool SUCsubprob::solve() {
 			return false;
 		}
 		
+		// retrieve expected t0 generation
+		if (beginMin == 0)	updateExpectedInitialGen(s);
+		
+		// retrieve the objective value
 		objValues[s] = cplex.getObjValue();
 		
 		time = get_wall_time();
@@ -499,6 +506,16 @@ bool SUCsubprob::solve() {
 	}
 	
 	return true;
+}
+
+void SUCsubprob::updateExpectedInitialGen(int &s) {
+	if (s == 0) {
+		fill(expInitGen.begin(), expInitGen.end(), 0.0);
+	}
+	
+	for (int g=0; g<numGen; g++) {
+		expInitGen[g] += 1.0/(double)numScen * cplex.getValue( p[g][0] );
+	}
 }
 
 void SUCsubprob::setup_subproblem(int &s)

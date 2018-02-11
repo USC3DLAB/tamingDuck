@@ -72,7 +72,9 @@ private:
 	
 	void	setup_subproblem (int &s);
 	double	getRandomCoef (int &s, int &t, int &loc);
+	void	updateExpectedInitialGen(int &s);
 	
+	vector<double> expInitGen;
 	vector<double> objValues;
 	
 	void update_optimality_cut_coefs	(int &s, BendersCutCoefs &cutCoefs);
