@@ -43,7 +43,7 @@ day = 1;
 
 # Fit model
 if (fitModel) {
-	set.seed(11)
+	#	set.seed(11)
 	
 	varModel = NULL;
 	colNames = NULL;

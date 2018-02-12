@@ -338,7 +338,6 @@ void SUCmaster::preprocessing ()
 			sysLoad[t] += busLoad[b][t];
 		}
 	}
-
 }
 
 
@@ -774,7 +773,8 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
     cplex.setParam(IloCplex::EpGap, 1e-2);
 //    cplex.setParam(IloCplex::Reduce, 0);    // due to callbacks
 //    cplex.setParam(IloCplex::PreLinear, 0); // due to callbacks
-	cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*400 + (probType == ShortTerm)*7200);
+	cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*7200 + (probType == ShortTerm)*600);
+//	cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*150 + (probType == ShortTerm)*60);
 }
 
 bool SUCmaster::solve () {

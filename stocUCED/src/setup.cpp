@@ -9,6 +9,8 @@
  *
  */
 
+#include <time.h>
+
 #include "instance.hpp"
 #include "UCmodel.hpp"
 #include "EDmodel.hpp"
@@ -148,6 +150,10 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 	for (int rep = 0; rep < runParam.numRep; rep++) {
 		cout << "Observation-" << rep << endl;
 
+		/* random sampling */
+		// srand(rep);			// Commented out because: consumed only by L-shaped algorithms, which is not used in this framework.
+		inst.setRSeed(rep);
+
 		/* allocate memory to hold solutions */
 		int beginMin = 0; 	timeInfo->tm_min = 0;	timeInfo->tm_hour = 0; mktime(timeInfo);
 
@@ -158,6 +164,11 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 		/* Long-term unit commitment */
 		for ( h = 0; h < runParam.DA_numSolves; h++ ) {
 			printf("Long-term Unit-Commitment (%02d:%02d): ", timeInfo->tm_hour, timeInfo->tm_min);
+
+			/* simulate scenarios */
+			inst.simulateScenarios(runParam.numTotScen, false, rep);
+			
+			timeLog << get_wall_time() - begin_t << endl;
 
 			UCmodel DAmodel;
 			DAmodel.formulate(inst, DayAhead, Transmission, beginMin, rep);
@@ -190,10 +201,10 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 
 					timeLog << get_wall_time() - begin_t << endl;
 					
-					/* simulate scenarios */
-					inst.simulateScenarios(runParam.numSDScen, false);
-					
-					timeLog << get_wall_time() - begin_t << endl;
+//					/* simulate scenarios */
+//					inst.simulateScenarios(runParam.numSDScen, false);
+//
+//					timeLog << get_wall_time() - begin_t << endl;
 					
 					/* translate the data structures to suit those used in 2-SD */
 					double SD_objVal;
@@ -229,7 +240,7 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 	/* logging */
 	open_file(optLog, "optimization.log");
 	open_file(timeLog, "time.log");
-
+	
 	/* time visualization */
 	time_t rawTime;
 	struct tm * timeInfo;
@@ -248,6 +259,10 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 	for (int rep = 0; rep < runParam.numRep; rep++) {
 		cout << "Observation-" << rep << endl;
 		
+		/* random sampling */
+		srand(rep);
+		inst.setRSeed(rep);
+		
 		/* allocate memory to hold solutions */
 		int beginMin = 0; 	timeInfo->tm_min = 0;	timeInfo->tm_hour = 0; mktime(timeInfo);
 		
@@ -260,7 +275,7 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 			printf("Long-term Unit-Commitment (%02d:%02d): ", timeInfo->tm_hour, timeInfo->tm_min);
 			
 			/* simulate scenarios */
-			inst.simulateScenarios(runParam.numLSScen, false);
+			inst.simulateScenarios(runParam.numTotScen, false, rep);
 			
 			timeLog << get_wall_time() - begin_t << endl;
 
@@ -278,10 +293,10 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 			for ( t = 0; t < runParam.ST_numSolves; t++ ) {
 				printf("\tShort-term Unit-Commitment (%02d:%02d): ", timeInfo->tm_hour, timeInfo->tm_min);
 				
-				/* simulate scenarios */
-				inst.simulateScenarios(runParam.numLSScen, false);
-				
-				timeLog << get_wall_time() - begin_t << endl;
+//				/* simulate scenarios */
+//				inst.simulateScenarios(runParam.numLSScen, false);
+//
+//				timeLog << get_wall_time() - begin_t << endl;
 				
 				/* solve the problem */
 				SUCmaster STmodel;
@@ -305,10 +320,10 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 					
 					timeLog << get_wall_time() - begin_t << endl;
 					
-					/* simulate scenarios */
-					inst.simulateScenarios(runParam.numSDScen, false);
-					
-					timeLog << get_wall_time() - begin_t << endl;
+//					/* simulate scenarios */
+//					inst.simulateScenarios(runParam.numSDScen, false);
+//
+//					timeLog << get_wall_time() - begin_t << endl;
 					
 					/* translate the data structures to suit those used in 2-SD */
 					double SD_objVal;

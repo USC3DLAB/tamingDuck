@@ -9,8 +9,13 @@ varSimulate <- function(varModel, simLength, numScenarios, simFrequency, type) {
   }
   
   samplePaths <- NULL;
-  for (s in 1:numScenarios) {  
-    residualPath <- NULL;
+  for (s in 1:numScenarios) {
+	  
+	if (s %% 100 == 0) {
+		print(s);
+	}
+	
+	residualPath <- NULL;
     
     # prepare to simulate scenarios from selected model.
     coeff <- NULL;

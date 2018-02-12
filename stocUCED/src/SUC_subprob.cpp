@@ -133,6 +133,11 @@ void SUCsubprob::preprocessing ()
 	/* Uncertainty related */
 	numScen = runParam.numLSScen;
 	
+	rndPermutation.resize(numScen);
+	for (int s=0; s<numScen; s++) {
+		rndPermutation[s] = rand() % inst->simulations.vals.size();
+	}
+	
 	objValues.resize(numScen);
 	multicutCoefs.resize(numScen);
 	for (int s=0; s<numScen; s++) {
@@ -145,7 +150,7 @@ double SUCsubprob::getRandomCoef (int &s, int &t, int &loc) {
 		return inst->observations["RT"].vals[rep][t][loc];
 	}
 	else {
-		return inst->simulations.vals[s][t][loc];
+		return inst->simulations.vals[rndPermutation[s]][t][loc];
 	}
 }
 

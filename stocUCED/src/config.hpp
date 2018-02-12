@@ -54,7 +54,7 @@ struct runType {
 	SettingType settingType;
 	
 	int		numRep;			// Number of replications
-	int		numSDScen;		// Number of time-serieses needed to sample for SD
+	int		numTotScen;		// Number of time-serieses generated in total
 	int		numLSScen;		// Number of time-serieses needed to sample for L-Shaped
 	
 };
@@ -66,5 +66,7 @@ const double EPSzero = 1e-8;
 const double spinReservePerc = 0.2;
 
 const char delimiter = ',';
+
+// #define _SAMPLE_USING_R
 
 #endif /* config_h */

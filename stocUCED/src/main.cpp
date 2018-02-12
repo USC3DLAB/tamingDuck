@@ -172,8 +172,8 @@ void readRunfile (string inputDir) {
 					 runParam.ED_frequency = temp;
 				 else if ( field1 == "numRep" )
 					 runParam.numRep = temp;
-				 else if ( field1 == "numSDScen" )
-					 runParam.numSDScen = temp;
+				 else if ( field1 == "numTotScen" )
+					 runParam.numTotScen = temp;
 				 else if ( field1 == "numLSScen" )
 					 runParam.numLSScen = temp;
 				 else {

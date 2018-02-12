@@ -8,13 +8,12 @@
 #ifndef _INSTANCE_H_
 #define _INSTANCE_H_
 
-//#include <Rinside.h>
-
 #include "misc.hpp"
 #include "config.hpp"
 #include "./stocProcess/stoc.hpp"
 #include "./powerSys/PowSys.hpp"
 #include "solution.hpp"
+#include "misc.hpp"
 
 using namespace std;
 
@@ -24,7 +23,8 @@ public:
     instance ();
 	bool initialize			(PowSys *powSys, StocProcess *stoc, string RScriptsPath);
 	bool printSolution		(string filepath);
-	void simulateScenarios	(int numScen, bool fitModel);
+	void simulateScenarios	(int numScen, bool fitModel, int rep);
+	void setRSeed			(int rep);
 	
 	PowSys		*powSys;
 	StocProcess	*stoc;
@@ -45,7 +45,9 @@ public:
 private:
 	void summary();
 	
+#ifdef _SAMPLE_USING_R
 	RInside R;
+#endif _SAMPLE_USING_R
 	string RScriptsPath;
 	
 	void correctSupplyExceedingCapacity(ScenarioType &scenarioType);

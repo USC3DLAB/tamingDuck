@@ -9,5 +9,5 @@ DA_time_frequency 24 hours
 ST_time_frequency 1 hours
 ED_time_frequency 15 minutes
 numRep 1 scenarios
-numLSScen 2 scenarios
-numSDScen 2 scenarios
+numLSScen 250 scenarios
+numTotScen 100 scenarios

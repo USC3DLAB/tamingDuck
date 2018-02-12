@@ -64,5 +64,5 @@ PRE_EPSILON 0.01
 // The variance of the ratio indicates the stability of the dual vertex set
 // EPSILON:
 // SCAN LENGTH: Powers of 2
-EPSILON 0.01
-SCAN_LEN 128
+EPSILON 0.001
+SCAN_LEN 256

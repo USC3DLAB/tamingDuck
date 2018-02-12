@@ -76,6 +76,7 @@ private:
 	
 	vector<double> expInitGen;
 	vector<double> objValues;
+	vector<double> rndPermutation;
 	
 	void update_optimality_cut_coefs	(int &s, BendersCutCoefs &cutCoefs);
 	void get_feasibility_cut_coefs		(int &s, BendersCutCoefs &cutCoefs);

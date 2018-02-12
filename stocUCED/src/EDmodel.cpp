@@ -132,7 +132,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 				overGen[g] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
 			}
 
-			sprintf(elemName, "genUsed[%d][%d]", g, t);
+			sprintf(elemName, "genUsed(%d)(%d)", g, t);
 			genUsed[g][t].setName(elemName); model.add(genUsed[g][t]);
 
 			if ( t == 0 && g == 0 )
@@ -140,7 +140,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 			else if ( t == 1 && g == 0 )
 				timeCols.push_back(elemName);
 
-			sprintf(elemName, "overGen[%d][%d]", g, t);
+			sprintf(elemName, "overGen(%d)(%d)", g, t);
 			overGen[g][t].setName(elemName); model.add(overGen[g][t]);
 		}
 
@@ -156,13 +156,13 @@ void EDmodel::formulate(instance &inst, int t0) {
 				theta[b] = IloNumVarArray(env, numPeriods, bptr->minPhaseAngle, bptr->maxPhaseAngle, ILOFLOAT);
 			}
 
-			sprintf(elemName, "demMet[%d][%d]", b, t);
+			sprintf(elemName, "demMet(%d)(%d)", b, t);
 			demMet[b][t].setName(elemName); model.add(demMet[b][t]);
 
-			sprintf(elemName, "demShed[%d][%d]", b, t);
+			sprintf(elemName, "demShed(%d)(%d)", b, t);
 			demShed[b][t].setName(elemName); model.add(demShed[b][t]);
 
-			sprintf(elemName, "theta[%d][%d]", b, t);
+			sprintf(elemName, "theta(%d)(%d)", b, t);
 			theta[b][t].setName(elemName); model.add(theta[b][t]);
 		}
 
@@ -174,7 +174,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 				flow[l] = IloNumVarArray(env, numPeriods, lptr->minFlowLim, lptr->maxFlowLim, ILOFLOAT);
 			}
 
-			sprintf(elemName, "flow[%s][%d]", lptr->name.c_str(), t);
+			sprintf(elemName, "flow(%s)(%d)", lptr->name.c_str(), t);
 			flow[l][t].setName(elemName); model.add(flow[l][t]);
 		}
 	}
@@ -184,7 +184,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 		/* Flow balance equation */
 		for ( int b = 0; b < numBus; b++ ) {
 			IloExpr expr (env);
-			sprintf(elemName, "flowBalance[%d][%d]", b, t);
+			sprintf(elemName, "flowBalance(%d)(%d)", b, t);
 
 			for ( int g = 0; g < numGen; g++ )
 				if ( inst.powSys->generators[g].connectedBus->id == b ) expr += genUsed[g][t];
@@ -207,7 +207,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 		for ( int l = 0; l < numLine; l++ ) {
 			int orig = inst.powSys->lines[l].orig->id;
 			int dest = inst.powSys->lines[l].dest->id;
-			sprintf(elemName, "dcApprox[%s][%d]", inst.powSys->lines[l].name.c_str(), t);
+			sprintf(elemName, "dcApprox(%s)(%d)", inst.powSys->lines[l].name.c_str(), t);
 
 			IloExpr expr (env);
 			expr = flow[l][t] - inst.powSys->lines[l].susceptance*(theta[orig][t] - theta[dest][t]);
@@ -221,12 +221,12 @@ void EDmodel::formulate(instance &inst, int t0) {
 				// Note: Initial generation is assumed to be the 1st-period generation quantities of ST-UC model
 				for ( int g = 0; g < numGen; g++ ) {
 					/* ramp-up */
-					sprintf(elemName, "rampUp[%d][%d]", g, t);
+					sprintf(elemName, "rampUp(%d)(%d)", g, t);
 					IloConstraint c1( genUsed[g][t] + overGen[g][t] -  inst.solution.g_UC[g][t0] <= genRampUp[g][t]);
 					c1.setName(elemName); model.add(c1);
 					
 					/* ramp-down */
-					sprintf(elemName, "rampDown[%d][%d]", g, t);
+					sprintf(elemName, "rampDown(%d)(%d)", g, t);
 					IloConstraint c2( inst.solution.g_UC[g][t0] - genUsed[g][t] - overGen[g][t] <= genRampDown[g][t]);
 					c2.setName(elemName); model.add(c2);
 				}
@@ -235,12 +235,12 @@ void EDmodel::formulate(instance &inst, int t0) {
 				/* The first time period of the ED horizon */
 				for ( int g = 0; g < numGen; g++ ) {
 					/* ramp-up */
-					sprintf(elemName, "rampUp[%d][%d]", g, t);
+					sprintf(elemName, "rampUp(%d)(%d)", g, t);
 					IloConstraint c1( genUsed[g][t] + overGen[g][t] -  inst.solution.g_ED[g][t0-1] <= genRampUp[g][t]);
 					c1.setName(elemName); model.add(c1);
 
 					/* ramp-down */
-					sprintf(elemName, "rampDown[%d][%d]", g, t);
+					sprintf(elemName, "rampDown(%d)(%d)", g, t);
 					IloConstraint c2( inst.solution.g_ED[g][t0-1] - genUsed[g][t] - overGen[g][t] <= genRampDown[g][t]);
 					c2.setName(elemName); model.add(c2);
 				}
@@ -250,12 +250,12 @@ void EDmodel::formulate(instance &inst, int t0) {
 			/* The remaining periods of the ED horizon */
 			for ( int g = 0; g < numGen; g++ ) {
 				/* ramp-up */
-				sprintf(elemName, "rampUp[%d][%d]", g, t);
+				sprintf(elemName, "rampUp(%d)(%d)", g, t);
 				IloConstraint c1( genUsed[g][t] + overGen[g][t] - genUsed[g][t-1] - overGen[g][t-1] <= genRampUp[g][t]);
 				c1.setName(elemName); model.add(c1);
 
 				/* ramp-down */
-				sprintf(elemName, "rampDown[%d][%d]", g, t);
+				sprintf(elemName, "rampDown(%d)(%d)", g, t);
 				IloConstraint c2( genUsed[g][t-1] + overGen[g][t-1] - genUsed[g][t] - overGen[g][t] <= genRampDown[g][t]);
 				c2.setName(elemName); model.add(c2);
 			}
@@ -299,21 +299,21 @@ void EDmodel::formulate(instance &inst, int t0) {
 			if ( !stocSupply ) {
 				/* Deterministic-supply generator */
 			
-				sprintf(elemName, "maxGenA[%d][%d]", g, t);
+				sprintf(elemName, "maxGenA(%d)(%d)", g, t);
 				IloConstraint c1a( genUsed[g][t] <= genMax[g][t]);
 				c1a.setName(elemName); model.add(c1a);
 
-				sprintf(elemName, "maxGenB[%d][%d]", g, t);
+				sprintf(elemName, "maxGenB(%d)(%d)", g, t);
 				IloConstraint c1b( genUsed[g][t] + overGen[g][t] <= genPtr.maxCapacity);
 				c1b.setName(elemName); model.add(c1b);
 
-				sprintf(elemName, "minGen[%d][%d]", g, t);
+				sprintf(elemName, "minGen(%d)(%d)", g, t);
 				IloConstraint c2( genUsed[g][t] >= genMin[g][t]);
 				c2.setName(elemName); model.add(c2);
 			}
 			else {
 				/* Stochastic-supply generator */
-				sprintf(elemName, "stocAvail[%d][%d]", g, t);
+				sprintf(elemName, "stocAvail(%d)(%d)", g, t);
 				if (genPtr.isMustUse) {
 					IloConstraint c (genUsed[g][t] + overGen[g][t] == genAvail[g][t]); c.setName(elemName); model.add(c);
 				} else {
@@ -328,7 +328,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 		
 		/* Demand consistency */
 		for ( int d = 0; d < numBus; d++ ) {
-			sprintf(elemName, "demConsist[%d][%d]", d, t);
+			sprintf(elemName, "demConsist(%d)(%d)", d, t);
 			IloConstraint c(demMet[d][t] + demShed[d][t] == busLoad[d][t]); c.setName(elemName); model.add(c);
 		}
 	}
@@ -352,7 +352,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 	obj.setName(elemName);
 	model.add(obj);
 	realTimeCost.end();
-		
+	
 #if defined(WRITE_PROB)
 	cplex.exportModel("rtED.lp")
 #endif

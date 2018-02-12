@@ -162,12 +162,13 @@ ScenarioType createScenarioList(StocProcess *stoc, vector<int> S_indices, int le
 	return observ;
 }//END createObservList()
 
+#ifdef _SAMPLE_USING_R
 /****************************************************************************
  * createScenarioList
  * - Simulates stochastic data-elements of the formulations using the 
  provided R scripts, records them into a ScenarioType
  ****************************************************************************/
-ScenarioType createScenarioList(RInside &R, bool fitModel, string &dataFolder, vector<string> &stocElems, int simLengthDays, int &numScen) {
+ScenarioType createScenarioList(RInside &R, bool fitModel, string &dataFolder, vector<string> &stocElems, int simLengthDays, int &numScen, int rep) {
 	ScenarioType observ;
 	
 	R.parseEval("dataTypes <- NULL");				// set the data types
@@ -182,12 +183,51 @@ ScenarioType createScenarioList(RInside &R, bool fitModel, string &dataFolder, v
 	R["numScenarios"]	= numScen;
 	R["simLength"]		= simLengthDays;
 	
-	R.parseEval("source(paste(RScriptsPath, \"runScript.R\", sep=\"\"))");				// execute the script
+	if ( numScen <= 5000 ) {
+		
+		cout << endl << "**** Reading " << numScen << " scenarios from .csv files ****" << endl;
+		
+		// read from memory
+		observ.vals.resize( numScen );
+		for (int s=0; s<numScen; s++) {
+			resize_matrix(observ.vals[s], 108, 92);
+		}
+			
+		char fname[256];
+		ifstream input;
+		for (int s=0; s<numScen; s++) {
+			sprintf(fname, "./Simulations/sim_rep%d_scen%d.csv", rep+1, s+1);
+			open_file(input, fname);
+			
+			// skip the header
+			string temp_str;
+			safeGetline(input, temp_str);
+			
+			// read the data
+			for (int t=0; t<108; t++) {
+				
+				// skip the row header
+				move_cursor(input, delimiter);
+				
+				for (int g=0; g<92; g++) {
+					input >> observ.vals[s][t][g];
+					if (g != 91)	move_cursor(input, delimiter);
+					else			move_cursor(input, '\n');
+				}
+			}
+			input.close();
+		}
+	}
+	else {
 
+		cout << endl << "**** ERROR: NOT READING ANY SCENARIOS ****" << endl;
+		
+	R.parseEval("source(paste(RScriptsPath, \"runScript.R\", sep=\"\"))");				// execute the script
+	
 	Rcpp::NumericVector scenList = R.parseEval("scenarios");
 	int numComponents	= R.parseEval("numComponents");
 	int nbPeriods		= R.parseEval("simLength * simFrequency");
-
+	
 	// resize 3D-array
 	observ.vals.resize( numScen );
 	for (int s=0; s<numScen; s++) {
@@ -204,7 +244,9 @@ ScenarioType createScenarioList(RInside &R, bool fitModel, string &dataFolder, v
 		}
 	}
 	
-	observ.T = nbPeriods;
+	}
+	
+	observ.T = (int)observ.vals[0].size();
 	observ.cnt = (int)observ.vals.size();
 	observ.numVars = (int)observ.vals[0][0].size();
 	
@@ -216,4 +258,74 @@ ScenarioType createScenarioList(RInside &R, bool fitModel, string &dataFolder, v
 	
 	return observ;
 }
+#endif
+
+/****************************************************************************
+ * createScenarioList
+ * - Reads simulated stochastic data-elements of the formulations using the
+ provided R scripts, records them into a ScenarioType
+ * - Be careful of the order of stocElems vector!
+ ****************************************************************************/
+ScenarioType createScenarioList(string &simulationsFolder, vector<string> &stocElems, int lenT, int &numScen, int rep) {
+	ScenarioType observ;
+	
+	cout << endl << "**** Reading " << numScen << " scenarios from .csv files ****" << endl;
+	cout << "**** Warning: stocElems must be provided in correct order. Num of stocElems are hardcoded. stocElems' names are hardcoded." << endl;
+	
+	// read from memory
+	observ.vals.resize( numScen );
+	for (int s=0; s<numScen; s++) {
+		resize_matrix(observ.vals[s], 108, 92);
+	}
+	
+	char fname[256];
+	ifstream input;
+	for (int s=0; s<numScen; s++) {
+		sprintf(fname, "%ssim_rep%d_scen%d.csv", simulationsFolder.c_str(), rep+1, s+1);
+		open_file(input, fname);
+		
+		// skip the header
+		string temp_str;
+		safeGetline(input, temp_str);
+		
+		// read the data
+		for (int t=0; t<108; t++) {
+			
+			// skip the row header
+			move_cursor(input, delimiter);
+			
+			for (int g=0; g<92; g++) {
+				input >> observ.vals[s][t][g];
+				if (g != 91)	move_cursor(input, delimiter);
+				else			move_cursor(input, '\n');
+			}
+		}
+		input.close();
+	}
+
+	observ.T = (int)observ.vals[0].size();
+	observ.cnt = (int)observ.vals.size();
+	observ.numVars = (int)observ.vals[0][0].size();
+	
+	// register the indices
+	vector<string> colNames;
+	for (int i=0; i<75; i++) {
+		char genName[256];
+		sprintf(genName, "Solar%02d", i+1);
+		colNames.push_back(genName);
+	}
+	for (int i=0; i<17; i++) {
+		char genName[256];
+		sprintf(genName, "Wind%02d", i+1);
+		colNames.push_back(genName);
+	}
+
+	for (unsigned int n=0; n<colNames.size(); n++) {
+		observ.mapVarNamesToIndex.insert( pair<string, int> ((string)(colNames[n]), n) );
+	}
+	cout << "**** Reading is completed ****" << endl;
+	
+	return observ;
+}
+
 

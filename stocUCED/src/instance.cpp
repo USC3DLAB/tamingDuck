@@ -24,9 +24,11 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, string RScriptsPath
 	/* Allocate memory for solution matrices */
 	solution.allocateMem(powSys->numGen, runParam.numPeriods, powSys->numBus);
 
+#ifdef _SAMPLE_USING_R
 	/* Setup R environment */
 	R["RScriptsPath"] = RScriptsPath;
 	R["dataFolder"]   = powSys->path;	// set the data folder
+#endif
 	
 	/* Chop off the Provided Time Series */
 	int maxLookAhead = max(runParam.ED_numPeriods-1, runParam.ST_numPeriods-1);
@@ -54,7 +56,7 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, string RScriptsPath
 	}
 	
 	/* simulate scenarios */
-	simulateScenarios(1, true);			// no sampling, but only model fitting in here. 1 is set to avoid bugs.
+	simulateScenarios(1, true, 0);			// no sampling, but only model fitting in here. 1 is set to avoid bugs.
 	
 
 	summary();
@@ -93,11 +95,18 @@ void instance::summary() {
  * simulateScenarios
  * Uses R scripts to simulate multiple time series
  ****************************************************************************/
-void instance::simulateScenarios(int numScen, bool fitModel) {
+void instance::simulateScenarios(int numScen, bool fitModel, int rep) {
 	int maxLookAhead = max(runParam.ED_numPeriods-1, runParam.ST_numPeriods-1);
 	int numSimLengthInDays = ceil( (double)(runParam.numPeriods+maxLookAhead)/(60.0/runParam.baseTime) );
 	
-	simulations = createScenarioList(R, fitModel, powSys->path, stocElems, numSimLengthInDays, numScen);
+#ifdef _SAMPLE_USING_R
+	simulations = createScenarioList(R, fitModel, powSys->path, stocElems, numSimLengthInDays, numScen, rep);
+#else
+	string simulationsFolder = "../Release/Simulations/";
+	simulations = createScenarioList(simulationsFolder, stocElems, numSimLengthInDays, numScen, rep);
+#endif
+	
+	
 	simulations.name = "ForecastData_simulations";
 	
 	correctSupplyExceedingCapacity(simulations);
@@ -212,4 +221,11 @@ bool instance::printSolution(string filepath) {
 	
 	finalize:
 	return status;
+}
+
+void instance::setRSeed (int rep) {
+#ifdef _SAMPLE_USING_R
+	R["rep"] = rep;
+	R.parseEval("set.seed(rep)");
+#endif
 }

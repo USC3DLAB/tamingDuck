@@ -14,7 +14,9 @@
 
 /* This header file contains all classes and structures pertaining to the stochastic processes of interest */
 
+#ifdef _SAMPLE_USING_R
 #include <Rinside.h>
+#endif
 
 #include "../config.hpp"
 #include "../misc.hpp"
@@ -57,6 +59,10 @@ private:
 
 void read(string fname, char delimiter, bool colNames, bool rowNames);
 ScenarioType createScenarioList(StocProcess *S, vector<int> S_indices, int lenT, int stepSize, int &numVals, int dataPeriodLengthInMins);
-ScenarioType createScenarioList(RInside &R, bool fitModel, string &dataFolder, vector<string> &stocElems, int lenT, int &numScen);
+ScenarioType createScenarioList(string &simulationsFolder, vector<string> &stocElems, int lenT, int &numScen, int rep);
+
+#ifdef _SAMPLE_USING_R
+ScenarioType createScenarioList(RInside &R, bool fitModel, string &dataFolder, vector<string> &stocElems, int lenT, int &numScen, int rep);
+#endif
 
 #endif /* STOC_HPP_ */
