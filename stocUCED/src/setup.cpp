@@ -145,6 +145,22 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 	instance inst;
 	inst.initialize(&powSys, &stocProc, RScriptsPath);
 
+#ifdef DEBUG_ED
+	debugIntegrateSD(inst);
+
+	printf("Running ED in debug mode.\n");
+	int ED_beginPeriod = 0;
+	EDmodel DED(inst, ED_beginPeriod, 0);
+	DED.formulate(inst, ED_beginPeriod);
+
+	/* translate the data structures to suit those used in 2-SD */
+	double SD_objVal;
+	int stat = integrateSD(inst, DED, "rted", configPath, ED_beginPeriod, SD_objVal);
+	if (stat != 1)	printf("Success (Obj= %.2f).\n", SD_objVal);
+	else			printf("Failed.\n");
+	return 0;
+#endif
+
 	cout << "------------------------------------------------------------------" << endl;
 	cout << "---------- Det UC & Stoch ED Optimization / Simulation -----------" << endl;
 	for (int rep = 0; rep < runParam.numRep; rep++) {
@@ -190,6 +206,7 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 				timeLog << get_wall_time() - begin_t << endl;
 				
 				/* Economic dispatch */
+				runParam.ED_numSolves = 1;
 				for ( n = 0; n < runParam.ED_numSolves; n++ ) {
 					printf("\t\tEconomic Dispatch (%02d:%02d): ", timeInfo->tm_hour, timeInfo->tm_min);
 

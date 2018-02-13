@@ -11,7 +11,7 @@
 
 #include "misc.hpp"
 #include "EDmodel.hpp"
-#include "Generator.hpp"
+#include "./powerSys/Generator.hpp"
 
 extern runType runParam;
 extern ofstream optLog;
@@ -354,7 +354,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 	realTimeCost.end();
 	
 #if defined(WRITE_PROB)
-	cplex.exportModel("rtED.lp")
+	cplex.exportModel("rtED.lp");
 #endif
 
 }//END formulate()

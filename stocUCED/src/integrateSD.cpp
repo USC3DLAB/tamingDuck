@@ -24,7 +24,7 @@ int integrateSD(instance &inst, EDmodel &rtED, string probName, string &configPa
 	int j=0;
 	
 	/* TODO: Create a common output directory: Setup outputDir */
-	outputDir = (stringC) malloc(BLOCKSIZE*sizeof(char));
+	outputDir = (stringC) malloc(2*BLOCKSIZE*sizeof(char));
 	strcpy(outputDir, "./");
 
 	/* read algorithm configuration files */
@@ -173,11 +173,14 @@ oneProblem *buildOneProblem(IloModel &model, IloCplex &cplex, string probName) {
 
 	orig->mac = orig->macsz = orig->mar = orig->marsz = orig->numBin = orig->numInt = orig->numnz = orig->cstorsz = orig->rstorsz = 0;
 
-	orig->objsen = 1;
+	orig->objsen = 1; orig->type = PROB_LP;
 
 	/* Problem name and size */
-	orig->name 	= (stringC) malloc(NAMESIZE*sizeof(char)); probName.copy(orig->name, probName.size(), 0);
-	orig->mac   = orig->macsz = cplex.getNcols();
+	orig->name 	= (stringC) malloc(NAMESIZE*sizeof(char));
+	probName = probName + '\0';
+	probName.copy(orig->name,probName.size(),0);
+	probName.copy(orig->name, NAMESIZE, 0);
+	orig->mac   = orig->macsz = cplex.getNcols()-1;
 	orig->mar   = orig->marsz = cplex.getNrows();
 	orig->numnz = orig->matsz = cplex.getNNZs();
 
@@ -408,7 +411,8 @@ stocType *buildStocType(IloModel &model, vector<string> stocRows, ScenarioType s
 
 	/* Default parameters */
 	strcpy(stoc->type, "BLOCKS_DISCRETE");
-	stoc->numGroups = 1; stoc->numPerGroup[0] = maxOmegas;
+	stoc->numGroups = 1;
+	stoc->numPerGroup[0] = maxOmegas;
 	stoc->numOmega = maxOmegas;
 
 	map<string, int> colID;
@@ -608,3 +612,17 @@ void testIntegrateSD(oneProblem *orig) {
 	closeSolver();
 
 }//END testIntegrateSD()
+
+void debugIntegrateSD(instance &inst) {
+
+	for ( int g = 0; g < (int) inst.powSys->numGen; g++ ) {
+		for ( int t = 0; t < (int) inst.solution.x[g].size(); t++ ) {
+			inst.solution.x[g][t] = 1;
+			if ( t == 0) {
+				inst.solution.g_UC[g][t] = 0.5*inst.powSys->generators[g].maxCapacity;
+			}
+		}
+	}
+
+	return;
+}

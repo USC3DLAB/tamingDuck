@@ -17,6 +17,7 @@
 #include "./sd/twoSD.h"
 
 #define TRANSLATE
+#define DEBUG_ED
 
 int integrateSD(instance &inst, EDmodel &ED, string probName, string &configPath, int t0, double &objVal);
 int readConfig(string &configPath);
@@ -24,6 +25,7 @@ oneProblem *buildOneProblem(IloModel &model, IloCplex &cplex, string probName);
 oneProblem *buildOneProblem_file(string probName);
 timeType *buildTimeType(IloModel &model, vector<string> rowNames, vector<string> colNames);
 stocType *buildStocType(IloModel &model, vector<string> stocRows, ScenarioType stocObserv, int t0);
+void debugIntegrateSD(instance &inst);
 
 #ifdef __cplusplus
 extern "C" {

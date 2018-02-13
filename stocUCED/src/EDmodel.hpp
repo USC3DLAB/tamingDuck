@@ -19,8 +19,10 @@
 
 using namespace std;
 
+#define WRITE_PROB
+
 #ifndef NAMESIZE
-#define NAMESIZE 32
+#define NAMESIZE 64
 #endif
 
 class EDmodel {

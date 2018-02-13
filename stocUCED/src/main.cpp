@@ -26,7 +26,6 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc, string &RScriptsPath);
 int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, string &RScriptsPath);
 int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, string &RScriptsPath);
 
-
 int main(int argc, const char * argv[]) {
 	string inputDir, configPath, RScriptsPath, sysName, setting;
 	

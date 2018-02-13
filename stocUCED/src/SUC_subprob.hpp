@@ -49,7 +49,7 @@ private:
 		
 		void reset() {
 			pi_b = 0;
-			for (int g=0; g<pi_T.size(); g++) fill(pi_T[g].begin(), pi_T[g].end(), 0.0);
+			for (int g=0; g < (int) pi_T.size(); g++) fill(pi_T[g].begin(), pi_T[g].end(), 0.0);
 		};
 	};
 	vector<BendersCutCoefs> multicutCoefs;

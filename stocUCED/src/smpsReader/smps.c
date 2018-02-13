@@ -1206,6 +1206,7 @@ void freeTimeType(timeType *tim) {
 				if (tim->stgNames[n]) mem_free(tim->stgNames[n]);
 			mem_free(tim->stgNames);
 		}
+		if (tim->probName) mem_free(tim->probName);
 		mem_free(tim);
 	}
 }//END freeTime()

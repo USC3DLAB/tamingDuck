@@ -345,7 +345,7 @@ void SUCsubprob::formulate_nodebased_system()
 			IloExpr expr (env);
 			
 			// production (iterate over connected generators)
-			for (int g=0; g<busPtr->connectedGenerators.size(); g++) {
+			for (int g=0; g < (int) busPtr->connectedGenerators.size(); g++) {
 				expr += p[ busPtr->connectedGenerators[g]->id ][t];
 			}
 
@@ -1133,7 +1133,7 @@ double SUCsubprob::getEDGenProd(int genId, int period) {
 		cout << "Error: Initial production levels are not available" << endl;
 		exit(1);
 	}
-	else if (reqSolnComp < inst->solution.x[genId].size()) {	// return the corresponding solution
+	else if (reqSolnComp < (int) inst->solution.x[genId].size()) {	// return the corresponding solution
 		return inst->solution.g_ED[genId][reqSolnComp];
 	}
 	else {														// asking what's beyond the planning horizon, we return the last solution
@@ -1155,7 +1155,7 @@ bool SUCsubprob::getGenState(int genId, int period) {
 	if (reqSolnComp < 0) {										// all generators are assumed to be online, for a long time, at t=0.
 		return true;
 	}
-	else if (reqSolnComp < inst->solution.x[genId].size()) {	// return the corresponding solution
+	else if (reqSolnComp < (int) inst->solution.x[genId].size()) {	// return the corresponding solution
 		return round(inst->solution.x[genId][reqSolnComp]);
 	}
 	else {														// asking what's beyond the planning horizon, we return the last solution

@@ -20,7 +20,7 @@ extern "C" {
 #include <float.h>
 #include <sys/stat.h>
 
-#define 	NAMESIZE			32
+#define 	NAMESIZE			64
 #define		BLOCKSIZE			256
 #define		MAXBITS				sizeof(int) * 8
 #define		GE					'G'

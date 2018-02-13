@@ -47,7 +47,7 @@ private:
 	
 #ifdef _SAMPLE_USING_R
 	RInside R;
-#endif _SAMPLE_USING_R
+#endif
 	string RScriptsPath;
 	
 	void correctSupplyExceedingCapacity(ScenarioType &scenarioType);

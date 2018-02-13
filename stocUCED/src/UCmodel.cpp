@@ -501,7 +501,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 				IloExpr expr (env);
 				
 				// production (iterate over connected generators)
-				for (int g=0; g<busPtr->connectedGenerators.size(); g++) {
+				for (int g=0; g < (int) busPtr->connectedGenerators.size(); g++) {
 					expr += p[ busPtr->connectedGenerators[g]->id ][t];
 				}
 				
@@ -544,7 +544,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	
 	cplex.extract(model);
 //	cplex.setParam(IloCplex::Threads, 1);
-	cplex.setParam(IloCplex::EpGap, 1e-2);
+	cplex.setParam(IloCplex::EpGap, 1e-1);
 //	cplex.setOut(env.getNullStream());
 	cplex.setOut(optLog);
 	cplex.setWarning(optLog);
@@ -615,7 +615,7 @@ bool UCmodel::getGenState(int genId, int period) {
 	if (reqSolnComp < 0) {										// all generators are assumed to be online, for a long time, at t=0.
 		return true;
 	}
-	else if (reqSolnComp < inst->solution.x[genId].size()) {	// return the corresponding solution
+	else if (reqSolnComp < (int) inst->solution.x[genId].size()) {	// return the corresponding solution
 		return round(inst->solution.x[genId][reqSolnComp]);
 	}
 	else {														// asking what's beyond the planning horizon, we return the last solution
@@ -638,7 +638,7 @@ double UCmodel::getEDGenProd(int genId, int period) {
 		cout << "Error: Initial production levels are not available" << endl;
 		exit(1);
 	}
-	else if (reqSolnComp < inst->solution.x[genId].size()) {	// return the corresponding solution
+	else if (reqSolnComp < (int) inst->solution.x[genId].size()) {	// return the corresponding solution
 		return inst->solution.g_ED[genId][reqSolnComp];
 	}
 	else {														// asking what's beyond the planning horizon, we return the last solution
@@ -657,7 +657,7 @@ void UCmodel::setGenState(int genId, int period, double value) {
 	int solnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
 	
 	// set the solution
-	if (solnComp >= 0 && solnComp < inst->solution.x[genId].size()) {
+	if (solnComp >= 0 && solnComp < (int) inst->solution.x[genId].size()) {
 		for (int t=solnComp; t<solnComp+numBaseTimePerPeriod; t++) {
 			inst->solution.x[genId][t] = value;
 		}
@@ -676,7 +676,7 @@ void UCmodel::setGenProd(int genId, int period, double value) {
 	int solnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
 	
 	// set the solution
-	if (solnComp >= 0 && solnComp < inst->solution.g_UC[genId].size()) {
+	if (solnComp >= 0 && solnComp < (int) inst->solution.g_UC[genId].size()) {
 		for (int t=solnComp; t<solnComp+numBaseTimePerPeriod; t++) {
 			inst->solution.g_UC[genId][t] = value;
 		}

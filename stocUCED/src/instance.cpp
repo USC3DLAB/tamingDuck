@@ -35,7 +35,7 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, string RScriptsPath
 	int numSimLengthInDays = ceil( (double)(runParam.numPeriods+maxLookAhead)/(60.0/runParam.baseTime) );
 
 	vector<string> fileNames = {"DA", "RT"};
-	for (int f=0; f<fileNames.size(); f++) {
+	for (int f = 0; f < (int) fileNames.size(); f++) {
 		vector<int> stocIndices;
 		for (auto it=stoc->mapTypeToIndex[fileNames[f]].begin(); it != stoc->mapTypeToIndex[fileNames[f]].end(); ++it) {
 			if (find(elems.begin(), elems.end(), stoc->sp[*it].name) != elems.end()) {	// find the stoc process, and push its index to the list
@@ -102,7 +102,7 @@ void instance::simulateScenarios(int numScen, bool fitModel, int rep) {
 #ifdef _SAMPLE_USING_R
 	simulations = createScenarioList(R, fitModel, powSys->path, stocElems, numSimLengthInDays, numScen, rep);
 #else
-	string simulationsFolder = "../Release/Simulations/";
+	string simulationsFolder = "/home/gjharsha/Documents/workspace/tamingDuck/Simulations/";
 	simulations = createScenarioList(simulationsFolder, stocElems, numSimLengthInDays, numScen, rep);
 #endif
 	
@@ -125,8 +125,8 @@ void instance::correctSupplyExceedingCapacity(ScenarioType &scenarioType) {
 		
 		// find a generator that is registered in the "scenarioType"
 		if ( it != scenarioType.mapVarNamesToIndex.end() ) {
-			for (int s=0; s<scenarioType.vals.size(); s++) {
-				for (int t=0; t<scenarioType.vals[s].size(); t++) {
+			for (int s=0; s< (int) scenarioType.vals.size(); s++) {
+				for (int t=0; t< (int) scenarioType.vals[s].size(); t++) {
 					
 					// for all scenarios and time periods, make sure the capacity is not exceeded
 					if ( scenarioType.vals[s][t][it->second] > (*genItr).maxCapacity ) {
@@ -204,11 +204,11 @@ bool instance::printSolution(string filepath) {
 		}
 		
 		// shed demand
-		for (int b=0; b<powSys->numBus; b++) {
+		for (int b = 0; b < powSys->numBus; b++) {
 			stats[7] += solution.loadShed_ED[b][t];
 		}
 		
-		for (int i=0; i<stats.size()-1; i++) {
+		for (int i = 0; i < (int) stats.size()-1; i++) {
 			output << stats[i] << "\t";
 		}
 		output << stats[ stats.size()-1 ] << endl;
