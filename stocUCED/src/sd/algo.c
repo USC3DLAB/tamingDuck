@@ -23,7 +23,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC probName, vect
 	double	 totalTime;
 	FILE 	*soln;
 	clock_t	tic;
-
+	
 	/* open solver */
 	openSolver();
 	
@@ -41,7 +41,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC probName, vect
 		goto TERMINATE;
 	}
 	totalTime = ((double) clock() - tic)/CLOCKS_PER_SEC;
-
+	
 	/* Write solution statistics for optimization process */
 	fprintf(file, "\n\nLower bound estimate                   : %f\n", cell->incumbEst);
 	fprintf(file, "Total time = %f\n", totalTime);
@@ -89,6 +89,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, stringC probName)
 
 	/******* 0. Initialization: The algorithm begins by solving the master problem as a QP *******/
 	while (cell->optFlag == CFALSE && cell->k < config.MAX_ITER) {
+		cell->k++;
 		printf("%d\n", cell->k);
 
 #if defined(STOCH_CHECK) || defined(ALGO_CHECK)
@@ -109,8 +110,9 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, stringC probName)
 		generateOmega(stoc, observ, &config.RUN_SEED);
 
 		/* (b) Since the problem already has the mean values on the right-hand side, remove it from the original observation */
-		for ( m = 0; m < stoc->numOmega; m++ )
+		for ( m = 0; m < stoc->numOmega; m++ ) {
 			observ[m] -= stoc->mean[m];
+		}
 
 		/* (d) update omegaType with the latest observation. If solving with incumbent then this update has already been processed. */
 		omegaIdx = calcOmega(observ - 1, 0, prob[1]->num->numRV, cell->omega, &newOmegaFlag);

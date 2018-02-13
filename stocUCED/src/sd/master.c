@@ -128,9 +128,9 @@ int constructQP(probType *prob, LPptr lp, vectorC incumbX) {
 	intvec indices;
 	int cnt;
 
-	if ( !(rhs = (vectorC) arr_alloc(prob->num->cols, double)))
+	if ( !(rhs = (vectorC) arr_alloc(prob->num->rows+1, double)))
 		errMsg("allocation", "constructQp", "rhs", 0);
-	if ( (!(indices = (intvec) arr_alloc(prob->num->cols, int))) )
+	if ( (!(indices = (intvec) arr_alloc(prob->num->rows, int))) )
 		errMsg("allocation", "constructQP", "indices", 0);
 
 	for (cnt = 0; cnt < prob->num->rows; cnt++) {

@@ -677,7 +677,7 @@ int readBlk(FILE *fptr, stringC *fields, oneProblem *orig, int maxOmegas, int ma
 	stringC 	*rvRows, *rvCols;
 	char 	strType, currBlock[NAMESIZE] = "\0";
 	int		numFields, numRV=0, n;
-	BOOL	newBlk;
+	BOOL	newBlk = CFALSE;
 
 	/* allocate memory to hold the names of random variable */
 	if ( !(rvRows = (stringC *) arr_alloc(maxOmegas, stringC)) )

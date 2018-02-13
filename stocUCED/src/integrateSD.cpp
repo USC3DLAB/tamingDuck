@@ -180,7 +180,8 @@ oneProblem *buildOneProblem(IloModel &model, IloCplex &cplex, string probName) {
 	probName = probName + '\0';
 	probName.copy(orig->name,probName.size(),0);
 	probName.copy(orig->name, NAMESIZE, 0);
-	orig->mac   = orig->macsz = cplex.getNcols()-1;
+	//TODO: Generalize this part
+	orig->mac   = orig->macsz = cplex.getNcols();
 	orig->mar   = orig->marsz = cplex.getNrows();
 	orig->numnz = orig->matsz = cplex.getNNZs();
 

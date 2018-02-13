@@ -148,6 +148,9 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 #ifdef DEBUG_ED
 	debugIntegrateSD(inst);
 
+	/* simulate scenarios */
+	inst.simulateScenarios(runParam.numTotScen, false, 0);
+
 	printf("Running ED in debug mode.\n");
 	int ED_beginPeriod = 0;
 	EDmodel DED(inst, ED_beginPeriod, 0);
