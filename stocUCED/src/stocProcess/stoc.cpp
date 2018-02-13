@@ -307,6 +307,7 @@ ScenarioType createScenarioList(string &simulationsFolder, vector<string> &stocE
 	observ.cnt = (int)observ.vals.size();
 	observ.numVars = (int)observ.vals[0][0].size();
 	
+	
 	// register the indices
 	vector<string> colNames;
 	for (int i=0; i<75; i++) {

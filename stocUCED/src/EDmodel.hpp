@@ -19,7 +19,7 @@
 
 using namespace std;
 
-#define WRITE_PROB
+//#define WRITE_PROB
 
 #ifndef NAMESIZE
 #define NAMESIZE 64

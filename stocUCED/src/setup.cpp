@@ -209,7 +209,6 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 				timeLog << get_wall_time() - begin_t << endl;
 				
 				/* Economic dispatch */
-				runParam.ED_numSolves = 1;
 				for ( n = 0; n < runParam.ED_numSolves; n++ ) {
 					printf("\t\tEconomic Dispatch (%02d:%02d): ", timeInfo->tm_hour, timeInfo->tm_min);
 

@@ -544,7 +544,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	
 	cplex.extract(model);
 //	cplex.setParam(IloCplex::Threads, 1);
-	cplex.setParam(IloCplex::EpGap, 1e-1);
+	cplex.setParam(IloCplex::EpGap, 1e-2);
 //	cplex.setOut(env.getNullStream());
 	cplex.setOut(optLog);
 	cplex.setWarning(optLog);

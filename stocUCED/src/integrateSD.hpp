@@ -16,8 +16,7 @@
 #include "EDmodel.hpp"
 #include "./sd/twoSD.h"
 
-#define TRANSLATE
-#define DEBUG_ED
+//#define DEBUG_ED
 
 int integrateSD(instance &inst, EDmodel &ED, string probName, string &configPath, int t0, double &objVal);
 int readConfig(string &configPath);

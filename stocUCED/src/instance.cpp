@@ -102,7 +102,7 @@ void instance::simulateScenarios(int numScen, bool fitModel, int rep) {
 #ifdef _SAMPLE_USING_R
 	simulations = createScenarioList(R, fitModel, powSys->path, stocElems, numSimLengthInDays, numScen, rep);
 #else
-	string simulationsFolder = "/home/gjharsha/Documents/workspace/tamingDuck/Simulations/";
+	string simulationsFolder = "../Release/Simulations/";
 	simulations = createScenarioList(simulationsFolder, stocElems, numSimLengthInDays, numScen, rep);
 #endif
 	
@@ -174,7 +174,7 @@ bool instance::printSolution(string filepath) {
 	for (int t=0; t<runParam.numPeriods; t++) {
 		output << setfill('0') << setw(2) << timeInfo->tm_hour << ":" << setfill('0') << setw(2) << timeInfo->tm_min << "\t";
 		
-		double coef = 60.0/runParam.ED_resolution;
+		double coef = runParam.ED_resolution/60.0;
 		
 		vector<double> stats (11, 0.0);
 		for (int g=0; g<powSys->numGen; g++) {

@@ -90,7 +90,6 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, stringC probName)
 	/******* 0. Initialization: The algorithm begins by solving the master problem as a QP *******/
 	while (cell->optFlag == CFALSE && cell->k < config.MAX_ITER) {
 		cell->k++;
-		printf("%d\n", cell->k);
 
 #if defined(STOCH_CHECK) || defined(ALGO_CHECK)
 		printf("\n\t\tIteration-%d :: \n", cell->k);
