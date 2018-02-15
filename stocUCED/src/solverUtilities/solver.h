@@ -91,7 +91,7 @@ void openSolver();
 void closeSolver();
 int setIntParam(int paramname, int paramvalue);
 void solverErrmsg(int status);
-int changeSolverType();
+int changeSolverType(int method);
 
 int getProbName(LPptr lp, stringC probName, int len);
 int getObjSen(LPptr lp);
