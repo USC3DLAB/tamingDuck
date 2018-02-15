@@ -52,11 +52,23 @@ BOOL preTest(cellType *cell) {
 	/* rare situation for cell->candid_est < 0 and cell->incumb_est > 0 */
 	/* Note: cell->candidEst and cell->incumbEst could be 0 */
 	if (cell->candidEst >= 0){
-		cell->optFlag = (cell->candidEst >= (1 - config.PRE_EPSILON) * cell->incumbEst);
+		// SMH (Feb 14, 2018): The boolean could not be converted to CBOOL object.
+		if (cell->candidEst >= (1 - config.PRE_EPSILON) * cell->incumbEst){
+			cell->optFlag = CTRUE;
+		} else {
+			cell->optFlag = CFALSE;
+		}
+		// cell->optFlag = (cell->candidEst >= (1 - config.PRE_EPSILON) * cell->incumbEst);
 	}
-	else
-		cell->optFlag = (cell->candidEst > (1 + config.PRE_EPSILON) * cell->incumbEst);
-
+	else {
+		// SMH (Feb 14, 2018): The boolean could not be converted to CBOOL object.
+		if (cell->candidEst > (1 + config.PRE_EPSILON) * cell->incumbEst) {
+			cell->optFlag = CTRUE;
+		} else {
+			cell->optFlag = CFALSE;
+		}
+		// cell->optFlag = (cell->candidEst > (1 + config.PRE_EPSILON) * cell->incumbEst);
+	}
 	return cell->optFlag;
 
 }//END preTest()

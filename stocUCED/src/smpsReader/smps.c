@@ -7,10 +7,10 @@
 
 #include <math.h>
 #include "smps.h"
-#include "solver.h"
+#include "../solverUtilities/solver.h"
 #include <stdio.h>
 #include <string.h>
-#include "utils.h"
+#include "../solverUtilities/utils.h"
 
 int readFiles(stringC inputDir, stringC probName, oneProblem **orig, timeType **tim, stocType **stoc) {
 

@@ -267,8 +267,8 @@ void vPlusv(vectorC a, vectorC b, double mult, int len){
 
 }//END vPlusv()
 
-double smooth(double new, double old, double factor) {
-	return factor*new + (1-factor)*old;
+double smooth(double new_val, double old, double factor) {
+	return factor*new_val + (1-factor)*old;
 }//END smooth();
 
 vectorC reduceVector(vectorC f_vect, int *row, int num_elem){

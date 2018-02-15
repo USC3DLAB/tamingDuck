@@ -5,8 +5,8 @@
  *      Author: Harsha Gangammanavar
  */
 
-#include "utils.h"
-#include "solver.h"
+#include "../solverUtilities/utils.h"
+#include "../solverUtilities/solver.h"
 #include "smps.h"
 #include "prob.h"
 
