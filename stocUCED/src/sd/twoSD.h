@@ -16,10 +16,10 @@
 extern "C" {
 #endif
 
-#include "utils.h"
-#include "solver.h"
-#include "smps.h"
-#include "prob.h"
+#include "../solverUtilities/utils.h"
+#include "../solverUtilities/solver.h"
+#include "../smpsReader/smps.h"
+#include "../smpsReader/prob.h"
 
 #define TRIVIAL 0
 #define NONTRIVIAL 1

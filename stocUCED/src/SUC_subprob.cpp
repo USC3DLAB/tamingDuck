@@ -104,13 +104,11 @@ void SUCsubprob::preprocessing ()
 		for (int t=0; t<numPeriods; t++) {
 			period = (beginMin/periodLength)+(t*numBaseTimePerPeriod);
 			
-			if ( t==0 && probType==ShortTerm ) {
-				it = inst->observations["RT"].mapVarNamesToIndex.find( num2str(busPtr->regionId) );
-				busLoad[b][t] = inst->observations["RT"].vals[rep][period][it->second] * busPtr->loadPercentage;
+			if ( probType == DayAhead ) {
+				busLoad[b][t] = inst->observations["DA"].vals[rep][period][it->second] * busPtr->loadPercentage;
 			}
 			else {
-				it = inst->observations["DA"].mapVarNamesToIndex.find( num2str(busPtr->regionId) );
-				busLoad[b][t] = inst->observations["DA"].vals[rep][period][it->second] * busPtr->loadPercentage;
+				busLoad[b][t] = inst->observations["RT"].vals[rep][period][it->second] * busPtr->loadPercentage;
 			}
 		}
 	}

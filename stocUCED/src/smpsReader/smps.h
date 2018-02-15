@@ -12,7 +12,7 @@
 extern "C" {
 #endif
 
-#include "utils.h"
+#include "../solverUtilities/utils.h"
 
 #undef INPUT_CHECK
 

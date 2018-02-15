@@ -313,13 +313,11 @@ void SUCmaster::preprocessing ()
 		for (int t=0; t<numPeriods; t++) {
 			period = (beginMin/periodLength)+(t*numBaseTimePerPeriod);
 			
-			if ( t==0 && probType==ShortTerm ) {
-				it = inst->observations["RT"].mapVarNamesToIndex.find( num2str(busPtr->regionId) );
-				busLoad[b][t] = inst->observations["RT"].vals[rep][period][it->second] * busPtr->loadPercentage;
+			if ( probType == DayAhead ) {
+				busLoad[b][t] = inst->observations["DA"].vals[rep][period][it->second] * busPtr->loadPercentage;
 			}
 			else {
-				it = inst->observations["DA"].mapVarNamesToIndex.find( num2str(busPtr->regionId) );
-				busLoad[b][t] = inst->observations["DA"].vals[rep][period][it->second] * busPtr->loadPercentage;
+				busLoad[b][t] = inst->observations["RT"].vals[rep][period][it->second] * busPtr->loadPercentage;
 			}
 		}
 	}
@@ -349,7 +347,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 	this->probType	= probType;
 	this->modelType = modelType;
 	this->rep		= rep;
-	multicut		= true;
+	multicut		= false;
 	
 	/* Prepare Model-Dependent Input Data */
 	preprocessing();
@@ -760,7 +758,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
      ************************************************************************/
     
 	cplex.use(LazySepCallback(env, *this));
-	if (probType==DayAhead && beginMin == 0) {
+	if (probType==ShortTerm && beginMin == 0) {
 		cplex.use(IncCallback(env, *this));
 	}
 	cplex.setOut(optLog);
@@ -792,6 +790,7 @@ bool SUCmaster::solve () {
 		}
 		/*        */
 		
+		if (probType == ShortTerm) {
 		// Benders' decomposition
 		optLog << "Executing Benders' decomposition..." << endl;
 		status = cplex.solve();
@@ -816,8 +815,31 @@ bool SUCmaster::solve () {
 				}
 			}
 		}
-
-
+		}
+		else {
+			cout << "*** Reading solutions from data ***" << endl;
+			
+			ifstream input;
+			sprintf(buffer, "rep%d_commitments.sol", rep);
+			open_file(input, buffer);
+			
+			double state;
+			
+			for (int g=0; g<numGen; g++) {
+				Generator *genPtr = &(inst->powSys->generators[g]);
+				
+				for (int t=0; t<96; t++) {
+					input >> state;
+					move_cursor(input, delimiter);
+					if (genPtr->isDAUCGen) {
+						inst->solution.x[g][t] = state;
+					}
+				}
+			}
+			input.close();
+			status = true;
+		}
+		
 		return status;
 	}
 	catch (IloException &e) {

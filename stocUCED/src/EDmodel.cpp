@@ -47,15 +47,7 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 		auto it = inst.observations["RT"].mapVarNamesToIndex.find( num2str(busPtr->regionId) );
 		
 		for (int t=0; t<numPeriods; t++) {
-			
-			if ( t==0 ) {
-				it = inst.observations["RT"].mapVarNamesToIndex.find( num2str(busPtr->regionId) );
-				busLoad[b][t] = inst.observations["RT"].vals[rep][t0+t][it->second] * busPtr->loadPercentage;
-			}
-			else {
-				it = inst.observations["DA"].mapVarNamesToIndex.find( num2str(busPtr->regionId) );
-				busLoad[b][t] = inst.observations["DA"].vals[rep][t0+t][it->second] * busPtr->loadPercentage;
-			}
+			busLoad[b][t] = inst.observations["RT"].vals[rep][t0+t][it->second] * busPtr->loadPercentage;
 		}
 	}
 	
