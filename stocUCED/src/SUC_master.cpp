@@ -13,9 +13,6 @@ extern ofstream optLog;
 
 ILOHEURISTICCALLBACK1(rounding, IloArray< IloNumVarArray >, x) {
 
-	if ( getNnodes() > 10000 ) {
-		return;
-	}
 	if ( getNnodes() > 10 && getNnodes() % 100 != 0) {
 		return;
 	}
@@ -497,7 +494,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
         for (int g=0; g<numGen; g++) {
             expr += expCapacity[g][t] * x[g][t];
         }
-        model.add( expr >= sysLoad[t] );
+        model.add( expr >= sysLoad[t] * (1-spinReservePerc));
         expr.end();
     }
 	/********************/
@@ -800,11 +797,11 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
      ************************************************************************/
     
 	cplex.use(LazySepCallback(env, *this));
-	cplex.use(rounding(env, x));
+//	cplex.use(rounding(env, x));
 	if (probType==ShortTerm && beginMin == 0) {
 		cplex.use(IncCallback(env, *this));
 	}
-	cplex.setOut(optLog);
+//	cplex.setOut(optLog);
 	cplex.setWarning(optLog);
 	cplex.setParam(IloCplex::Threads, 1);
 //    cplex.setParam(IloCplex::FPHeur, 2);
@@ -833,7 +830,11 @@ bool SUCmaster::solve () {
 		//if (probType == ShortTerm) {
 		
 		// Benders' decomposition
-		optLog << "Executing Benders' decomposition..." << endl;
+		optLog << "Executing Benders' decomposition for ";
+		if (probType == DayAhead)	optLog << "DAUC ";
+		else						optLog << "STUC ";
+		optLog << " , at " << beginMin << " mins." << endl;
+		
 		status = cplex.solve();
 		if (status) {
 			optLog << "Optimization is completed with status " << cplex.getCplexStatus() << endl;
@@ -841,7 +842,9 @@ bool SUCmaster::solve () {
 			optLog << "LB = \t" << cplex.getBestObjValue() << endl;
 		} else {
 			cplex.exportModel("infeasible.lp");
+			inst->printSolution("infeasible");
 			optLog << "Benders' decomposition has failed." << endl;
+			exit(1);
 		}
 		
 		// Record the optimal solution
