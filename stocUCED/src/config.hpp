@@ -68,5 +68,6 @@ const double spinReservePerc = 0.2;
 const char delimiter = ',';
 
 // #define _SAMPLE_USING_R
+#define _BOOST_PARALLEL_LIBS		// Parallel programming libraries of boost is being used
 
 #endif /* config_h */

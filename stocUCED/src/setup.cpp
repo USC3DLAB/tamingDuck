@@ -307,7 +307,7 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 			else		printf("Failed.\n");
 
 			timeLog << get_wall_time() - begin_t << endl;
-			
+			exit(-1);
 			/* Short-term unit commitment */
 			for ( t = 0; t < runParam.ST_numSolves; t++ ) {
 				printf("\tShort-term Unit-Commitment (%02d:%02d): ", timeInfo->tm_hour, timeInfo->tm_min);

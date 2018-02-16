@@ -83,7 +83,7 @@ private:
 	vector< vector<bool> >* gen_stat;
 		
 	// Variables
-    IloArray< IloNumVarArray > p, L;		// production, load-shedding
+    IloArray< IloNumVarArray > p, L, x;		// production, load-shedding, state-variables (latter to be fixed by the master problem)
 	
 	// data
 	void preprocessing();

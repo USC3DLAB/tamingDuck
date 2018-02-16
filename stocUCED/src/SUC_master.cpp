@@ -737,6 +737,8 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 	
 	// formulate the warm-up problem
 	warmUpProb.formulate(inst, probType, modelType, beginMin, rep);
+	warmUpProb.cplex.setParam(IloCplex::SolnPoolGap, 5e-2);
+	warmUpProb.cplex.setParam(IloCplex::SolnPoolCapacity, 10);
 
     /*************************************************************************
      * DISABLED: Didn't improve the progress of the algorithm. Donno why..
@@ -764,25 +766,22 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 	if (probType==ShortTerm && beginMin == 0) {
 		cplex.use(IncCallback(env, *this));
 	}
-	cplex.setOut(optLog);
+//	cplex.setOut(optLog);
 	cplex.setWarning(optLog);
 	cplex.setParam(IloCplex::Threads, 1);
-//	cplex.setParam(IloCplex::MIPEmphasis, IloCplex::MIPEmphasisFeasibility);
 //    cplex.setParam(IloCplex::FPHeur, 2);
 //    cplex.setParam(IloCplex::HeurFreq, 10);
 //    cplex.setParam(IloCplex::LBHeur, 1);    // ??
     cplex.setParam(IloCplex::EpGap, 1e-2);
-//    cplex.setParam(IloCplex::Reduce, 0);    // due to callbacks
-//    cplex.setParam(IloCplex::PreLinear, 0); // due to callbacks
 	cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*7200 + (probType == ShortTerm)*600);
-//	cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*150 + (probType == ShortTerm)*60);
+//	cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*300 + (probType == ShortTerm)*60);
 }
 
 bool SUCmaster::solve () {
 	try{
 		bool status;
 		
-		/* warm up */
+		/* warm up *
 		optLog << "Executing warm up MIP..." << endl;
 		status = warmUpProb.solve();
 		if (status) {

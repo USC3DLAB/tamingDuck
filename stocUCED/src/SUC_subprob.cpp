@@ -175,11 +175,16 @@ void SUCsubprob::formulate_production()
 {
 	/** Decision Variables **/
 	p = IloArray< IloNumVarArray > (env, numGen);	// production amounts
+	x = IloArray< IloNumVarArray > (env, numGen);	// generator states
 	for (int g=0; g<numGen; g++) {
-		p[g]	 = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+		p[g] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+		x[g] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
 		
 		sprintf(buffer, "p_%d", g);
 		p[g].setNames(buffer);
+		
+		sprintf(buffer, "x_%d", g);
+		x[g].setNames(buffer);
 	}
 
 	/** Constraints **/
@@ -323,6 +328,22 @@ void SUCsubprob::formulate_nodebased_system()
 		}
 	}
 	
+	// No load-shedding in buses with 0 load
+	for (int b=0; b<numBus; b++) {
+		for (int t=0; t<numPeriods; t++) {
+			if (busLoad[b][t] < EPSzero) L[b][t].setUB(0);
+		}
+	}
+	
+	// No over-generation in buses with no generators
+	for (int b=0; b<numBus; b++) {
+		if (inst->powSys->buses[b].connectedGenerators.size() == 0) {
+			for (int t=0; t<numPeriods; t++) {
+				O[b][t].setUB(0);
+			}
+		}
+	}
+
 	// DC-approximation to AC flow
 	for (int l=0; l<numLine; l++) {
 		Line *linePtr = &(inst->powSys->lines[l]);
@@ -679,6 +700,12 @@ void SUCsubprob::update_optimality_cut_coefs(int &s, BendersCutCoefs &cutCoefs)
 				cutCoefs.pi_b += duals[c] * ( busPtr->maxPhaseAngle - busPtr->minPhaseAngle );
 			}
 		}
+		
+		// No load-shedding in buses with 0 load
+		// - skipped, as all necessary coefs are 0
+
+		// No over-generation in buses with no generators
+		// - skipped, as all necessary coefs are 0
 
 		// DC-approximation to AC flow
 		// - skipped, as all necessary coefs are 0
