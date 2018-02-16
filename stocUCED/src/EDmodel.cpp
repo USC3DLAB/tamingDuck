@@ -252,7 +252,16 @@ void EDmodel::formulate(instance &inst, int t0) {
 				c2.setName(elemName); model.add(c2);
 			}
 		}
-
+		
+		/*
+		for (int t=1; t<numPeriods; t++) {
+			IloExpr expr (env);
+			for (int g=0; g<numGen; g++) {
+				expr += overGen[g][t];
+			}
+			mod.add( expr >= 0.20 * sysLoad[t] );
+		}*/
+		
 		/* TODO: Fix generation capacity for stochastic generators. Generation capacity and availability limit *
 		for ( int g = 0; g < numGen; g++ ) {
 			Generator genPtr = inst.powSys->generators[g];

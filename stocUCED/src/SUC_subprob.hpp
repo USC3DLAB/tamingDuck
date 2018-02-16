@@ -31,9 +31,7 @@ public:
 	void setMasterSoln		(vector< vector<bool> > & gen_stat);
 	double getEDGenProd		(int genId, int period);				// reads from inst->Solution.gED
 	bool getGenState		(int genId, int period);				// reads from inst->Solution.x
-    
-//    double computeLowerBound();          // a lower bound on the subproblem
-    
+        
 	double getRecourseObjValue();
 	
 private:

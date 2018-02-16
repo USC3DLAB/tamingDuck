@@ -120,6 +120,8 @@ void SUCmaster::LazySepCallbackI::main()
 		}
 		else
 		{
+			optLog << "(optcut)" << endl;
+			
 			double sceProb = 1.0/(double)me.eta.getSize();
 			
 			IloExpr pi_Tx (me.env);
@@ -500,6 +502,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 		}
 	}
 	
+	/*************/
 	// capacity constraints
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst.powSys->generators[g]);
@@ -586,7 +589,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 			sprintf(buffer, "RD_%d_%d", g, t); c.setName(buffer); model.add(c);
 		}
 	}
-
+	 /********************/
 	
 	// create the objective function
 	IloExpr obj (env);
@@ -602,8 +605,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 	for (int s=0; s<eta.getSize(); s++) {
 		obj += 1.0/(double)eta.getSize() * eta[s];
 	}
-	//obj += loadShedPenaltyCoef * L;
-	
+
 	/** Model-dependent obj function components, constraints **/
 	if (modelType == System)
 	{
@@ -725,6 +727,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 			}
 		}
 	}
+	 /**************************/
 	
     // set the objective function
 	model.add( IloMinimize(env, obj) );
@@ -779,7 +782,7 @@ bool SUCmaster::solve () {
 	try{
 		bool status;
 		
-		/* warm up *
+		/* warm up */
 		optLog << "Executing warm up MIP..." << endl;
 		status = warmUpProb.solve();
 		if (status) {
@@ -790,7 +793,8 @@ bool SUCmaster::solve () {
 		}
 		/*        */
 		
-		if (probType == ShortTerm) {
+		//if (probType == ShortTerm) {
+		
 		// Benders' decomposition
 		optLog << "Executing Benders' decomposition..." << endl;
 		status = cplex.solve();
@@ -815,7 +819,7 @@ bool SUCmaster::solve () {
 				}
 			}
 		}
-		}
+		/*}
 		else {
 			cout << "*** Reading solutions from data ***" << endl;
 			
@@ -839,6 +843,7 @@ bool SUCmaster::solve () {
 			input.close();
 			status = true;
 		}
+		 */
 		
 		return status;
 	}
@@ -866,7 +871,7 @@ void SUCmaster::setWarmUp ()
 				vals.add( warmUpProb.cplex.getValue(warmUpProb.z[g][t], sol) );
 			}
 		}
-		cplex.addMIPStart(vars, vals);
+		cplex.addMIPStart(vars, vals, IloCplex::MIPStartSolveFixed);
 		
 		vars.end();
 		vals.end();
