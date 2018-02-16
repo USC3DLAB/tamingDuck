@@ -11,6 +11,41 @@
 extern runType runParam;
 extern ofstream optLog;
 
+ILOHEURISTICCALLBACK1(rounding, IloArray< IloNumVarArray >, x) {
+	
+	if (getNnodes() % 1000 != 0 || getNnodes() < 10) {
+		cout << getNnodes() << endl;
+		return;
+	}
+	
+	IloNumVarArray	vars (getEnv());
+	IloNumArray		vals (getEnv());
+	
+	for (int g=0; g<x.getSize(); g++) {
+		vars.add( x[g] );
+	
+		IloNumArray temp (getEnv());
+		getValues(temp, x[g]);
+		for (int t=0; t<temp.getSize(); t++) {
+			//temp[t] = round(temp[t]);
+			temp[t] = (rand() < temp[t])*1.0;
+		}
+		vals.add(temp);
+		temp.end();
+	}
+	
+	try {
+		setSolution(vars, vals);
+		solve();
+	}
+	catch (IloException &e) {
+		cout << e << endl;
+	}
+	
+	vals.end();
+	vars.end();
+}
+
 /****************************************************************************
  * Incumbent Callback
  * Used for retrieving expected initial-generation amounts for the optimal
@@ -763,10 +798,11 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
      ************************************************************************/
     
 	cplex.use(LazySepCallback(env, *this));
+	cplex.use(rounding(env, x));
 	if (probType==ShortTerm && beginMin == 0) {
 		cplex.use(IncCallback(env, *this));
 	}
-//	cplex.setOut(optLog);
+	cplex.setOut(optLog);
 	cplex.setWarning(optLog);
 	cplex.setParam(IloCplex::Threads, 1);
 //    cplex.setParam(IloCplex::FPHeur, 2);
