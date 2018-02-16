@@ -12,9 +12,11 @@ extern runType runParam;
 extern ofstream optLog;
 
 ILOHEURISTICCALLBACK1(rounding, IloArray< IloNumVarArray >, x) {
-	
-	if (getNnodes() % 1000 != 0 || getNnodes() < 10) {
-		cout << getNnodes() << endl;
+
+	if ( getNnodes() > 10000 ) {
+		return;
+	}
+	if ( getNnodes() > 10 && getNnodes() % 100 != 0) {
 		return;
 	}
 	
