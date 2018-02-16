@@ -453,18 +453,17 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
         }
     }
     
-    /* demand-based valid inequality
+    /* demand-based valid inequality */
     // the capacities of operational generators must exceed the system demand at any point
     for (int t=0; t<numPeriods; t++) {
         IloExpr expr (env);
         for (int g=0; g<numGen; g++) {
             expr += expCapacity[g][t] * x[g][t];
         }
-		expr += L;
         model.add( expr >= sysLoad[t] );
         expr.end();
     }
-	*/
+	/********************/
 	
 	// must-run units must be committed
 	for (int g=0; g<numGen; g++) {
@@ -596,16 +595,17 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 	
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst.powSys->generators[g]);
-		
+
 		for (int t=0; t<numPeriods; t++) {
 			obj += genPtr->startupCost * s[g][t];					// start up cost
 			obj += genPtr->noLoadCost*periodLength/60.0 * x[g][t];	// no-load cost
+			obj += minGenerationReq[g]*genPtr->variableCost*periodLength/60.0 * x[g][t];	// minimum generation cost
 		}
 	}
 	for (int s=0; s<eta.getSize(); s++) {
 		obj += 1.0/(double)eta.getSize() * eta[s];
 	}
-
+	
 	/** Model-dependent obj function components, constraints **
 	if (modelType == System)
 	{

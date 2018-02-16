@@ -404,6 +404,7 @@ void SUCsubprob::formulate_nodebased_system()
 		
 		for (int t=0; t<numPeriods; t++) {
 			obj += genPtr->variableCost * periodLength/60.0 * p[g][t];
+			obj -= genPtr->variableCost * periodLength/60.0 * minGenerationReq[g] * x[g][t];
 		}
 	}
 	
