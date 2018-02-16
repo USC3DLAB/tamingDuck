@@ -56,7 +56,7 @@ private:
 	IloModel	model;
 	IloCplex	cplex;
 	
-	IloRangeArray	cons;
+	IloRangeArray	cons;	// constraints which will be useful for L-shaped
 	IloNumArray		duals;
 	
 	instance*	inst;

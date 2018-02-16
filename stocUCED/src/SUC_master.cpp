@@ -502,7 +502,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 		}
 	}
 	
-	/*************/
+	/*************
 	// capacity constraints
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst.powSys->generators[g]);
@@ -606,7 +606,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 		obj += 1.0/(double)eta.getSize() * eta[s];
 	}
 
-	/** Model-dependent obj function components, constraints **/
+	/** Model-dependent obj function components, constraints **
 	if (modelType == System)
 	{
 		IloNumVarArray L (env, numPeriods, 0, IloInfinity, ILOFLOAT);	// load shedding
@@ -773,7 +773,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 //    cplex.setParam(IloCplex::HeurFreq, 10);
 //    cplex.setParam(IloCplex::LBHeur, 1);    // ??
     cplex.setParam(IloCplex::EpGap, 1e-2);
-	cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*7200 + (probType == ShortTerm)*600);
+	cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*7200 + (probType == ShortTerm)*1800);
 //	cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*300 + (probType == ShortTerm)*60);
 }
 
@@ -876,63 +876,6 @@ void SUCmaster::setWarmUp ()
 		vals.end();
 	}
 }
-
-/*
-void master::warmStart(Solution &soln)
-{
-    this->soln = soln;
- 
-    IloNumVarArray vars (env);
-    IloNumArray vals (env);
- 
-    for (int g=0; g<inst->G; g++) {
-        for (int t=0; t<inst->T; t++) {
-            vars.add( s[g][t] );
-            vals.add( soln.s[g][t] );
-            
-            vars.add( x[g][t] );
-            vals.add( soln.x[g][t] );
-
-            vars.add( z[g][t] );
-            vals.add( soln.z[g][t] );
-        }
-    }
-    
-    cplex.addMIPStart(vars, vals);
-    
-    vars.end();
-    vals.end();
-}
-
-void master::warmStart(vector<Solution> &solnPool)
-{
-    this->soln = solnPool[0];
-    
-    IloNumVarArray vars (env);
-    IloNumArray vals (env);
-    
-    for (int sol=0; sol<solnPool.size(); sol++)
-    {
-        for (int g=0; g<inst->G; g++) {
-            for (int t=0; t<inst->T; t++) {
-                vars.add( s[g][t] );
-                vals.add( solnPool[sol].s[g][t] );
-                
-                vars.add( x[g][t] );
-                vals.add( solnPool[sol].x[g][t] );
-                
-                vars.add( z[g][t] );
-                vals.add( solnPool[sol].z[g][t] );
-            }
-        }
-        cplex.addMIPStart(vars, vals);
-    }
-    
-    vars.end();
-    vals.end();
-}
-
-*/
 
 /****************************************************************************
  * getGenState

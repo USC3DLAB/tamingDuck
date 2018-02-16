@@ -14,7 +14,7 @@ SUCsubprob::SUCsubprob () {
 	model = IloModel (env);
 	cplex = IloCplex (env);
 
-	cons  = IloRangeArray (env);
+	cons  = IloRangeArray (env);	
 	duals = IloNumArray (env);
 
 	cplex.setOut(env.getNullStream());
@@ -189,26 +189,30 @@ void SUCsubprob::formulate_production()
 
 	/** Constraints **/
  
+	// state constraints
+	for (int g=0; g<numGen; g++) {
+		for (int t=0; t<numPeriods; t++) {
+			cons.add( IloRange (env, 1, x[g][t], 1) );
+		}
+	}
+	
 	// capacity constraints
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
 		for (int t=0; t<numPeriods; t++) {
-			IloRange con;
 			if (genPtr->isMustUse) {
-                con = IloRange (env, genPtr->maxCapacity, p[g][t], genPtr->maxCapacity);
+				cons.add( IloRange(env, 0, p[g][t] - x[g][t] * genPtr->maxCapacity, 0) );
 			} else {
-                con = IloRange (env, -IloInfinity, p[g][t], genPtr->maxCapacity);
+				cons.add( IloRange(env, -IloInfinity, p[g][t] - x[g][t] * genPtr->maxCapacity, 0) );
 			}
-			cons.add( con );
 		}
 	}
 	
 	// minimum production constraints
 	for (int g=0; g<numGen; g++) {
 		for (int t=0; t<numPeriods; t++) {
-			IloRange con (env, minGenerationReq[g], p[g][t]);
-			cons.add( con );
+			model.add( p[g][t] >= x[g][t] * minGenerationReq[g] );
 		}
 	}
 	
@@ -368,7 +372,6 @@ void SUCsubprob::formulate_nodebased_system()
 				expr += p[ busPtr->connectedGenerators[g]->id ][t];
 			}
 
-
 			// in/out flows (iterate over all arcs)
 			for (auto linePtr = inst->powSys->lines.begin(); linePtr != inst->powSys->lines.end(); ++linePtr) {
 				if (linePtr->orig->id == busPtr->id) {	// if line-origin and bus have same ids, then this is outgoing flow
@@ -463,27 +466,15 @@ void SUCsubprob::setMasterSoln ( vector< vector<bool> > & gen_stat ) {
 	
 	int c=0;
 	
-	// capacity constraints
+	// state constraints
 	for (int g=0; g<numGen; g++) {
-		Generator *genPtr = &(inst->powSys->generators[g]);
-
-		for (int t=0; t<numPeriods; t++, c++) {
-            if (genPtr->isMustUse) {
-                cons[c].setBounds( gen_stat[g][t] * genPtr->maxCapacity, gen_stat[g][t] * genPtr->maxCapacity);
-            } else {
-                cons[c].setUB( gen_stat[g][t] * genPtr->maxCapacity );
-            }
+		for (int t=0; t<numPeriods; t++) {
+			cons[c].setBounds( gen_stat[g][t], gen_stat[g][t] );
+			c++;
 		}
 	}
 
-	// production amounts
-	for (int g=0; g<numGen; g++) {
-		for (int t=0; t<numPeriods; t++, c++) {
-			cons[c].setLB( gen_stat[g][t] * minGenerationReq[g] );
-		}
-	}
-    
-    // rest of the constraints are not a function of x
+	// rest of the constraints are not a function of x
 }
 
 bool SUCsubprob::solve() {
@@ -542,12 +533,11 @@ void SUCsubprob::updateExpectedInitialGen(int &s) {
 	}
 }
 
-void SUCsubprob::setup_subproblem(int &s)
-{
+void SUCsubprob::setup_subproblem(int &s) {
 	double supply;
 	
 	// iterate over capacity constraints
-	int c=0, period;
+	int c=numGen*numPeriods, period;
 	
 	// capacity constraints
 	for (int g=0; g<numGen; g++) {
@@ -556,15 +546,12 @@ void SUCsubprob::setup_subproblem(int &s)
 		auto it = inst->simulations.mapVarNamesToIndex.find(genPtr->name);
 		
 		if ( it != inst->simulations.mapVarNamesToIndex.end() ) {		// if random supply generator
-			for (int t=0; t<numPeriods; t++, c++) 						// Note: c is iterated in the secondary-loops
-			{
+			for (int t=0; t<numPeriods; t++, c++) {						// Note: c is iterated in the secondary-loops
 				if ((*gen_stat)[g][t]) {
 					period = (beginMin/periodLength)+(t*numBaseTimePerPeriod);
-					
 					supply = min(getRandomCoef(s, period, it->second), genPtr->maxCapacity);
 
-					if ( genPtr->isMustUse )	{ cons[c].setBounds(supply, supply); }
-					else						{ cons[c].setUB(supply); }
+					cons[c].setLinearCoef(x[g][t], -supply);
 				}
 			}
 		} else {
@@ -575,42 +562,25 @@ void SUCsubprob::setup_subproblem(int &s)
 
 void SUCsubprob::update_optimality_cut_coefs(int &s, BendersCutCoefs &cutCoefs)
 {
-	double supply;
-	
 	// get dual multipliers
 	cplex.getDuals(duals, cons);
 	
 	// iterate over the constraints to write the Benders' cut
-	int c=0, period;
+	int c=0;
+	
+	// state constraints
+	for (int g=0; g<numGen; g++) {
+		for (int t=0; t<numPeriods; t++) {
+			cutCoefs.pi_T[g][t] += duals[c];
+			c++;
+		}
+	}
 	
 	// capacity constraints
-	for (int g=0; g<numGen; g++) {
-		Generator *genPtr = &(inst->powSys->generators[g]);
-		
-		auto it = inst->simulations.mapVarNamesToIndex.find(genPtr->name);
-		
-		if ( it != inst->simulations.mapVarNamesToIndex.end() ) {		// if random supply generator
-			for (int t=0; t<numPeriods; t++, c++) 						// Note: c is iterated in the secondary-loops
-			{
-				period = (beginMin/periodLength)+(t*numBaseTimePerPeriod);
-				supply = min(getRandomCoef(s, period, it->second), genPtr->maxCapacity);
-
-				cutCoefs.pi_T[g][t] += duals[c] * ( supply );
-			}
-		}
-		else {
-			for (int t=0; t<numPeriods; t++, c++) {				// Note: c is iterated in the secondary-loops
-				cutCoefs.pi_T[g][t] += duals[c] * ( genPtr->maxCapacity );
-			}
-		}
-	}
+	c += numGen*numPeriods;
 	
-	// production amounts
-	for (int g=0; g<numGen; g++) {
-		for (int t=0; t<numPeriods; t++, c++) {
-			cutCoefs.pi_T[g][t] += duals[c] * minGenerationReq[g];
-		}
-	}
+	// minimum generation requirements
+	// skipped, as all necessary coefs are 0
 	
 	// ramp up constraints
 	for (int g=0; g<numGen; g++) {
@@ -730,10 +700,6 @@ double SUCsubprob::getRecourseObjValue() {
 
 void SUCsubprob::get_feasibility_cut_coefs(int &s, BendersCutCoefs &cutCoefs)
 {
-	double supply;
-	
-	int period;
-	
 	// reset earlier (optimality-)cut coefficient entries
 	cutCoefs.reset();
 	
@@ -762,35 +728,17 @@ void SUCsubprob::get_feasibility_cut_coefs(int &s, BendersCutCoefs &cutCoefs)
 	// iterate over the constraints to write the Benders' feasibility cut
 	int c=0;
 	
+	// state constraints
+	for (int g=0; g<numGen; g++) {
+		for (int t=0; t<numPeriods; t++) {
+			cutCoefs.pi_T[g][t] += farkasMap[ cons[c].getId() ];
+			c++;
+		}
+	}
+	
 	// capacity constraints
-	for (int g=0; g<numGen; g++) {
-		Generator *genPtr = &(inst->powSys->generators[g]);
-		
-		auto it = inst->simulations.mapVarNamesToIndex.find(genPtr->name);
-		if ( it != inst->simulations.mapVarNamesToIndex.end() ) {		// if random supply generator
-			for (int t=0; t<numPeriods; t++, c++) 						// Note: c is iterated in the secondary-loops
-			{
-				period = (beginMin/periodLength)+(t*numBaseTimePerPeriod);
-				
-				supply = min(getRandomCoef(s, period, it->second), genPtr->maxCapacity);
-				
-				cutCoefs.pi_T[g][t] += farkasMap[ cons[c].getId() ] * ( supply );
-			}
-		}
-		else {
-			for (int t=0; t<numPeriods; t++, c++) {				// Note: c is iterated in the secondary-loops
-				cutCoefs.pi_T[g][t] += farkasMap[ cons[c].getId() ] * ( genPtr->maxCapacity );
-			}
-		}
-	}
-	
-	// production amounts
-	for (int g=0; g<numGen; g++) {
-		for (int t=0; t<numPeriods; t++, c++) {
-			cutCoefs.pi_T[g][t] += farkasMap[ cons[c].getId() ] * minGenerationReq[g];
-		}
-	}
-	
+	c += numGen*numPeriods;
+
 	// ramp up constraints
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
