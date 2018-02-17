@@ -620,7 +620,7 @@ void debugIntegrateSD(instance &inst) {
 		for ( int t = 0; t < (int) inst.solution.x[g].size(); t++ ) {
 			inst.solution.x[g][t] = 1;
 			if ( t == 0) {
-				inst.solution.g_UC[g][t] = 0.5*inst.powSys->generators[g].maxCapacity;
+				inst.solution.g_DAUC[g][t] = 0.5*inst.powSys->generators[g].maxCapacity;
 			}
 		}
 	}

@@ -156,10 +156,10 @@ bool instance::printSolution(string filepath) {
 	print_matrix(output, solution.x, delimiter, 0);
 	output.close();
 
-	status = open_file(output, filepath + "_genUC.sol");
+	status = open_file(output, filepath + "_genDAUC.sol");
 	if (!status) goto finalize;
 
-	print_matrix(output, solution.g_UC, delimiter, 2);
+	print_matrix(output, solution.g_DAUC, delimiter, 2);
 	output.close();
 
 	status = open_file(output, filepath + "_genED.sol");

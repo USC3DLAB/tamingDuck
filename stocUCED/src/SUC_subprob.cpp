@@ -19,7 +19,6 @@ SUCsubprob::SUCsubprob () {
 
 	cplex.setOut(env.getNullStream());
 	cplex.setWarning(env.getNullStream());
-	cplex.setParam(IloCplex::PreInd, 0);
 	cplex.setParam(IloCplex::RootAlg, IloCplex::Dual);	// Important
 	
 	solve_t = 0;
@@ -500,7 +499,8 @@ bool SUCsubprob::solve() {
 		// infeasibility
 		if (!status) {
 			if ( cplex.getCplexStatus() == IloCplex::Infeasible ) {
-				get_feasibility_cut_coefs(s, multicutCoefs[0]);
+				cplex.exportModel("infeas_subprob.lp");
+				compute_feasibility_cut_coefs(s, multicutCoefs[0]);
 				objValues[s] = INFINITY;
 			}
 			else {
@@ -511,13 +511,13 @@ bool SUCsubprob::solve() {
 		}
 		
 		// retrieve expected t0 generation
-		if (beginMin == 0)	updateExpectedInitialGen(s);
+		if (probType==DayAhead)	updateExpectedInitialGen(s);
 		
 		// retrieve the objective value
 		objValues[s] = cplex.getObjValue();
 		
 		time = get_wall_time();
-		update_optimality_cut_coefs(s, multicutCoefs[s]);	// update benders cut coefs
+		compute_optimality_cut_coefs(s, multicutCoefs[s]);	// update benders cut coefs
 		cut_t += get_wall_time() - time;
 	}
 	
@@ -548,12 +548,10 @@ void SUCsubprob::setup_subproblem(int &s) {
 		
 		if ( it != inst->simulations.mapVarNamesToIndex.end() ) {		// if random supply generator
 			for (int t=0; t<numPeriods; t++, c++) {						// Note: c is iterated in the secondary-loops
-				if ((*gen_stat)[g][t]) {
-					period = (beginMin/periodLength)+(t*numBaseTimePerPeriod);
-					supply = min(getRandomCoef(s, period, it->second), genPtr->maxCapacity);
-
-					cons[c].setLinearCoef(x[g][t], -supply);
-				}
+				period = (beginMin/periodLength)+(t*numBaseTimePerPeriod);
+				supply = min(getRandomCoef(s, period, it->second), genPtr->maxCapacity);
+				
+				cons[c].setLinearCoef(x[g][t], -supply);
 			}
 		} else {
 			c += numPeriods;
@@ -561,7 +559,7 @@ void SUCsubprob::setup_subproblem(int &s) {
 	}
 }
 
-void SUCsubprob::update_optimality_cut_coefs(int &s, BendersCutCoefs &cutCoefs)
+void SUCsubprob::compute_optimality_cut_coefs(int &s, BendersCutCoefs &cutCoefs)
 {
 	// get dual multipliers
 	cplex.getDuals(duals, cons);
@@ -699,10 +697,15 @@ double SUCsubprob::getRecourseObjValue() {
 	return objVal;
 }
 
-void SUCsubprob::get_feasibility_cut_coefs(int &s, BendersCutCoefs &cutCoefs)
+void SUCsubprob::compute_feasibility_cut_coefs(int &s, BendersCutCoefs &cutCoefs)
 {
 	// reset earlier (optimality-)cut coefficient entries
 	cutCoefs.reset();
+	
+	// resolve the problem with presolve turned off (oth. basis may not be available)
+	cplex.setParam(IloCplex::PreInd, 0);
+	cplex.solve();
+	cplex.setParam(IloCplex::PreInd, 1);
 	
 	// get the extreme ray (based on the algorithm used to solve the subproblem)
 	if ( cplex.getParam(IloCplex::RootAlg) == IloCplex::Dual ) {
@@ -840,257 +843,6 @@ void SUCsubprob::get_feasibility_cut_coefs(int &s, BendersCutCoefs &cutCoefs)
 		}
 	}
 }
-
-/*
-double SUCsubprob::computeLowerBound ()
-{
-    double bound = 0;
-
-    IloEnv          env;
-    IloModel        model   (env);
-    IloRangeArray   cons    (env);
-    IloCplex        cplex   (env);
-    IloExpr         obj_func(env);
-
-    /** Formulate the bounding problem **/
-
-    /** Decision Variables **
-    IloArray< IloNumVarArray > x (env, inst->G);    // generator states
-    IloArray< IloNumVarArray > s (env, inst->G);    // start up
-    IloArray< IloNumVarArray > z (env, inst->G);    // shut down
-    IloArray< IloNumVarArray > p (env, inst->G);	// production amounts
-    for (int g=0; g<inst->G; g++) {
-        x[g] = IloNumVarArray(env, inst->T, 0, 1, ILOFLOAT);
-        s[g] = IloNumVarArray(env, inst->T, 0, 1, ILOFLOAT);
-        z[g] = IloNumVarArray(env, inst->T, 0, 1, ILOFLOAT);
-        p[g] = IloNumVarArray(env, inst->T, 0, IloInfinity, ILOFLOAT);
-    }
-    
-    /** Constraints **
-    // state constraints
-    for (int g=0; g<inst->G; g++) {
-        
-        // t=0: generators are assumed to be turned on
-        model.add( x[g][0] - 1 == s[g][0] - z[g][0] );
-        
-        // t>0
-        for (int t=1; t<inst->T; t++) {
-            model.add( x[g][t] - x[g][t-1] == s[g][t] - z[g][t] );
-        }
-    }
-    
-    // minimum uptime/downtime constraints
-    for (int g=0; g<inst->G; g++)
-    {
-        // turn on inequalities
-        for (int t=1; t<=inst->T; t++)
-        {
-            IloExpr lhs (env);
-            for (int i = t-inst->min_u_time[g]+1; i<=t; i++)
-            {
-                if (i-1 >= 0)	lhs += s[g][i-1];
-                else			lhs += 0;	// otherwise, generator is assumed to be operational (but turned on way earlier in the past)
-            }
-            model.add( lhs <= x[g][t-1] );
-            lhs.end();
-        }
-    }
-    
-    for (int g=0; g<inst->G; g++)
-    {
-        // turn off inequalities
-        for (int t=1; t<=inst->T; t++)
-        {
-            IloExpr lhs (env);
-            for (int i = t-inst->min_d_time[g]+1; i<=t; i++)  {
-                if (i-1 >= 0)	lhs += s[g][i-1];
-                else			lhs += 0;	// otherwise, generator is assumed to be operational (but turned on way earlier in the past)
-            }
-            
-            if (t-inst->min_d_time[g]-1 >= 0)	model.add( lhs <= 1 - x[g][t-inst->min_d_time[g]-1] );
-            else								model.add( lhs <= 1 - 1 );	// assumed to be remaining on for a long, long, while
-            lhs.end();
-        }
-    }
-
-    // capacity constraints
-    for (int g=0; g<inst->G; g++) {
-        for (int t=0; t<inst->T; t++) {
-            IloRange con;
-            if (inst->must_run[g])  { con = IloRange (env, 0, p[g][t] - x[g][t] * inst->capacity[g], 0); }
-            else                    { con = IloRange (env, -IloInfinity, p[g][t] - x[g][t] * inst->capacity[g], 0); }
-            cons.add( con );
-        }
-    }
-
-    // minimum production constraints
-    for (int g=0; g<inst->G; g++) {
-        for (int t=0; t<inst->T; t++) {
-            model.add( p[g][t] >= inst->min_prod_lim[g] * x[g][t] );
-        }
-    }
-    
-    // ramping constraints
-    for (int g=0; g<inst->G; g++) {
-        for (int t=1; t<inst->T; t++) {
-            model.add( p[g][t] - p[g][t-1] <= inst->ramp_u_lim[g] );
-            model.add( p[g][t-1] - p[g][t] <= inst->ramp_d_lim[g] );
-        }
-    }
-    
-    // model-specific constraints, and the objective functions
-    if (model_id == 0)
-    {
-        IloNumVarArray L (env, inst->T, 0, IloInfinity, ILOFLOAT);	// load shedding
-        
-        // aggregated demand constraints
-        for (int t=0; t<inst->T; t++) {
-            IloExpr expr (env);
-            for (int g=0; g<inst->G; g++)	expr += p[g][t];
-            expr += L[t];
-            model.add( expr >= inst->aggDemand[t] );
-        }
-        
-        // objective function
-        for (int g=0; g<inst->G; g++) {
-            for (int t=0; t<inst->T; t++) {
-                obj_func += inst->var_cost[g] * p[g][t];
-            }
-        }
-        
-        for (int t=0; t<inst->T; t++) {
-            obj_func += inst->load_shedding_penalty * L[t];
-        }
-    }
-    else if (model_id == 1)
-    {
-        // node-based formulation's decision vars
-        IloArray< IloNumVarArray > L (env, inst->B);        // load-shedding
-        IloArray< IloNumVarArray > T (env, inst->B);		// phase angles
-        for (int b=0; b<inst->B; b++) {
-            L[b] = IloNumVarArray(env, inst->T, 0, IloInfinity, ILOFLOAT);
-            T[b] = IloNumVarArray(env, inst->T, 0, IloInfinity, ILOFLOAT);
-        }
-        
-        IloArray< IloNumVarArray > F (env, inst->L);		// flows
-        for (int l=0; l<inst->L; l++) {
-            F[l] = IloNumVarArray(env, inst->T, -IloInfinity, IloInfinity, ILOFLOAT);
-        }
-        
-        // Flow upper and lower bounds
-        for (int l=0; l<inst->L; l++) {
-            for (int t=0; t<inst->T; t++) {
-                model.add( inst->min_arc_flow[l] <= F[l][t] <= inst->max_arc_flow[l] );
-            }
-        }
-        
-        // Phase-angle upper bounds
-        for (int b=0; b<inst->B; b++) {
-            for (int t=0; t<inst->T; t++) {
-                model.add( T[b][t] <= 2*inst->pi );
-            }
-        }
-        
-        // DC-approximation to AC flow
-        for (int l=0; l<inst->L; l++) {
-            for (int t=0; t<inst->T; t++) {
-                int orig = inst->arcs[l].first;
-                int dest = inst->arcs[l].second;
-                
-                model.add( F[l][t] == inst->susceptance[l] * (T[orig][t] - T[dest][t]) );
-            }
-        }
-        
-        // Flow balance
-        for (int b=0; b<inst->B; b++) {
-            for (int t=0; t<inst->T; t++) {
-                
-                IloExpr expr (env);
-                
-                // production
-                for (int g=0; g<inst->G; g++) {
-                    if (inst->generator_loc[g] == b) expr += p[g][t];
-                }
-                
-                // incoming arcs
-                for (int l=0; l<inst->L; l++) {
-                    if (inst->arcs[l].second == b) expr += F[l][t];
-                }
-                
-                // outgoing arcs
-                for (int l=0; l<inst->L; l++) {
-                    if (inst->arcs[l].first == b) expr -= F[l][t];
-                }
-                
-                // load shedding
-                expr += L[b][t];
-                
-                // constraint
-                model.add( expr == inst->demand[b][t] );
-
-                // free up memory
-                expr.end();
-            }
-        }
-        
-        // objective function
-        for (int g=0; g<inst->G; g++) {
-            for (int t=0; t<inst->T; t++) {
-                obj_func += inst->var_cost[g] * p[g][t];
-            }
-        }
-        
-        for (int b=0; b<inst->B; b++) {
-            for (int t=0; t<inst->T; t++) {
-                obj_func += inst->load_shedding_penalty * L[b][t];
-            }
-        }
-    }
-    else {
-        cout << "!! Error: Unknown model id" << endl;
-    }
-
-    model.add( IloMinimize(env, obj_func) );
-    model.add( cons );
-    
-    cplex.extract(model);
-	/* TODO: Commented by HG after encountering "Invalid arguments candidates are: void setOut(? &)
-    cplex.setOut(env.getNullStream()); */
-    
-    /** Change model components according to scenario, and solve the subproblems **
-    for (int s=0; s<inst->S; s++) {
-        
-        // setup subproblem s
-        for (int g=0, c=0; g<inst->G; g++) {    // only the capacity constraints contain randomness
-            
-            map<int, vector<vector<double> > >::iterator it = inst->rndSupply.find(g);
-            
-            if ( it != inst->rndSupply.end() ) {
-                for (int t=0; t<inst->T; t++, c++) {	// Note: c is iterated in the secondary-loop
-                    cons[c].setLinearCoef(x[g][t], -inst->rndSupply[g][s][t]);
-                }
-            }
-            else {
-                c += inst->T;
-            }
-        }    
-
-        // solve the subproblem
-        bool status = cplex.solve();
-        if (!status) {
-            cout << "Subproblem " << s << " returned the status " << cplex.getCplexStatus() << endl;
-            exit(1);
-        }
-        
-        bound += inst->sceProb[s] * cplex.getObjValue();
-    }
-    env.end();
-    
-    cout << "Computed recourse lower bound = " << bound << endl;
-    
-    return bound;
-}
-	 */
 
 
 /****************************************************************************

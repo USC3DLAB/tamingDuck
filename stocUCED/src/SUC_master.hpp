@@ -69,9 +69,9 @@ private:
 	void preprocessing();
 
 	double	getEDGenProd (int genId, int period);
-	bool	getGenState  (int genId, int period);				// reads from Solution.x
-	void	setGenState  (int genId, int period, double value);	// writes to Solution.x
-	void	setGenProd   (int genId, int period, double value);	// writes to Solution.gUC
+	bool	getGenState  (int genId, int period);					// reads from Solution.x
+	void	setGenState  (int genId, int period, double value);		// writes to Solution.x
+	void	setDAGenProd   (int genId, int period, double value);	// writes to Solution.gDAUC
 
 
 	vector<double>	minGenerationReq;	// minimum production requirements (obeying assumptions)

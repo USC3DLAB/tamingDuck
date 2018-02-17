@@ -214,12 +214,12 @@ void EDmodel::formulate(instance &inst, int t0) {
 				for ( int g = 0; g < numGen; g++ ) {
 					/* ramp-up */
 					sprintf(elemName, "rampUp(%d)(%d)", g, t);
-					IloConstraint c1( genUsed[g][t] + overGen[g][t] -  inst.solution.g_UC[g][t0] <= genRampUp[g][t]);
+					IloConstraint c1( genUsed[g][t] + overGen[g][t] -  inst.solution.g_DAUC[g][t0] <= genRampUp[g][t]);
 					c1.setName(elemName); model.add(c1);
 					
 					/* ramp-down */
 					sprintf(elemName, "rampDown(%d)(%d)", g, t);
-					IloConstraint c2( inst.solution.g_UC[g][t0] - genUsed[g][t] - overGen[g][t] <= genRampDown[g][t]);
+					IloConstraint c2( inst.solution.g_DAUC[g][t0] - genUsed[g][t] - overGen[g][t] <= genRampDown[g][t]);
 					c2.setName(elemName); model.add(c2);
 				}
 			}

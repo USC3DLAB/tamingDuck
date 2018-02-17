@@ -61,7 +61,7 @@ void SUCmaster::IncCallbackI::main() {
 		
 		// set the generation amounts
 		for (int g=0; g<me.numGen; g++) {
-			me.setGenProd(g, 0, me.sub.expInitGen[g] );
+			me.setDAGenProd(g, 0, me.sub.expInitGen[g] );
 		}
 	}
 }
@@ -494,7 +494,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
         for (int g=0; g<numGen; g++) {
             expr += expCapacity[g][t] * x[g][t];
         }
-        model.add( expr >= sysLoad[t] * (1-spinReservePerc));
+        model.add( expr >= sysLoad[t] * (1-spinReservePerc) );
         expr.end();
     }
 	/********************/
@@ -798,10 +798,10 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
     
 	cplex.use(LazySepCallback(env, *this));
 //	cplex.use(rounding(env, x));
-	if (probType==ShortTerm && beginMin == 0) {
+	if (probType==DayAhead) {
 		cplex.use(IncCallback(env, *this));
 	}
-//	cplex.setOut(optLog);
+	cplex.setOut(optLog);
 	cplex.setWarning(optLog);
 	cplex.setParam(IloCplex::Threads, 1);
 //    cplex.setParam(IloCplex::FPHeur, 2);
@@ -831,9 +831,9 @@ bool SUCmaster::solve () {
 		
 		// Benders' decomposition
 		optLog << "Executing Benders' decomposition for ";
-		if (probType == DayAhead)	optLog << "DAUC ";
-		else						optLog << "STUC ";
-		optLog << " , at " << beginMin << " mins." << endl;
+		if (probType == DayAhead)	optLog << "DAUC,";
+		else						optLog << "STUC,";
+		optLog << " at time= " << beginMin << " (mins)." << endl;
 		
 		status = cplex.solve();
 		if (status) {
@@ -993,14 +993,14 @@ double SUCmaster::getEDGenProd(int genId, int period) {
  * setGenProd
  * - Fills the (genId, correspondingComponent) of the Solution.g object.
  ****************************************************************************/
-void SUCmaster::setGenProd(int genId, int period, double value) {
+void SUCmaster::setDAGenProd(int genId, int period, double value) {
 	// which Solution component is being set?
 	int solnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
 	
 	// set the solution
-	if (solnComp >= 0 && solnComp < (int) inst->solution.g_UC[genId].size()) {
+	if (solnComp >= 0 && solnComp < (int) inst->solution.g_DAUC[genId].size()) {
 		for (int t=solnComp; t<solnComp+numBaseTimePerPeriod; t++) {
-			inst->solution.g_UC[genId][t] = value;
+			inst->solution.g_DAUC[genId][t] = value;
 		}
 	}
 	else {

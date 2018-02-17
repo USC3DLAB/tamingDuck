@@ -567,7 +567,7 @@ bool UCmodel::solve() {
 					if ( (probType == DayAhead && genPtr->isDAUCGen) || (probType == ShortTerm && !genPtr->isDAUCGen) ) {
 						setGenState(g,t, cplex.getValue(x[g][t]));
 					}
-					setGenProd (g,t, cplex.getValue(p[g][t]));
+					if (probType == DayAhead)	setDAGenProd (g,t, cplex.getValue(p[g][t]));
 				}
 			}
 		}
@@ -669,14 +669,14 @@ void UCmodel::setGenState(int genId, int period, double value) {
  * setGenProd
  * - Fills the (genId, correspondingComponent) of the Solution.g object.
  ****************************************************************************/
-void UCmodel::setGenProd(int genId, int period, double value) {
+void UCmodel::setDAGenProd(int genId, int period, double value) {
 	// which Solution component is being set?
 	int solnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
 	
 	// set the solution
-	if (solnComp >= 0 && solnComp < (int) inst->solution.g_UC[genId].size()) {
+	if (solnComp >= 0 && solnComp < (int) inst->solution.g_DAUC[genId].size()) {
 		for (int t=solnComp; t<solnComp+numBaseTimePerPeriod; t++) {
-			inst->solution.g_UC[genId][t] = value;
+			inst->solution.g_DAUC[genId][t] = value;
 		}
 	}
 	else {
