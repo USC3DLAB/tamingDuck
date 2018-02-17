@@ -52,6 +52,7 @@ private:
 
 	int numGen, numBus, numLine, numLoad, numPeriods;
 	vector<vector<double>> busLoad, genMin, genMax, genRampUp, genRampDown, genAvail;
+	vector<double> sysLoad;
 };
 
 #endif /* EDMODEL_HPP_ */

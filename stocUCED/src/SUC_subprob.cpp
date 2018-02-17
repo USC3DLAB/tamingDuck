@@ -499,7 +499,7 @@ bool SUCsubprob::solve() {
 		// infeasibility
 		if (!status) {
 			if ( cplex.getCplexStatus() == IloCplex::Infeasible ) {
-				cplex.exportModel("infeas_subprob.lp");
+				//cplex.exportModel("infeas_subprob.lp");
 				compute_feasibility_cut_coefs(s, multicutCoefs[0]);
 				objValues[s] = INFINITY;
 			}

@@ -39,8 +39,10 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 	resize_matrix(genRampDown, numGen, numPeriods);
 	resize_matrix(genRampUp, numGen, numPeriods);
 	resize_matrix(genAvail, numGen, numPeriods);
+	sysLoad.resize(numPeriods);
 	
 	/* Load */
+	fill( sysLoad.begin(), sysLoad.end(), 0.0 );
 	for (int b=0; b<numBus; b++) {
 		Bus *busPtr = &(inst.powSys->buses[b]);
 		
@@ -48,6 +50,7 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 		
 		for (int t=0; t<numPeriods; t++) {
 			busLoad[b][t] = inst.observations["RT"].vals[rep][t0+t][it->second] * busPtr->loadPercentage;
+			sysLoad[t] += busLoad[b][t];
 		}
 	}
 	
@@ -253,14 +256,17 @@ void EDmodel::formulate(instance &inst, int t0) {
 			}
 		}
 		
-		/*
-		for (int t=1; t<numPeriods; t++) {
-			IloExpr expr (env);
+		/* spinning reserve constraints */
+		if (t != 0) {
+			IloExpr sysOverGen (env);
+			
 			for (int g=0; g<numGen; g++) {
-				expr += overGen[g][t];
+				sysOverGen += overGen[g][t];
 			}
-			mod.add( expr >= 0.20 * sysLoad[t] );
-		}*/
+			model.add( sysOverGen >= sysLoad[t] * spinReservePerc );
+			
+			sysOverGen.end();
+		}
 		
 		/* TODO: Fix generation capacity for stochastic generators. Generation capacity and availability limit *
 		for ( int g = 0; g < numGen; g++ ) {

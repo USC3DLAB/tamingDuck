@@ -52,6 +52,9 @@ private:
 	};
 	vector<BendersCutCoefs> multicutCoefs;
 
+	struct Solver {
+		
+	};
 	IloEnv		env;
 	IloModel	model;
 	IloCplex	cplex;

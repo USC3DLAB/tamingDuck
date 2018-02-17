@@ -494,7 +494,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
         for (int g=0; g<numGen; g++) {
             expr += expCapacity[g][t] * x[g][t];
         }
-        model.add( expr >= sysLoad[t] * (1-spinReservePerc) );
+        model.add( expr >= sysLoad[t] );
         expr.end();
     }
 	/********************/
@@ -797,7 +797,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
      ************************************************************************/
     
 	cplex.use(LazySepCallback(env, *this));
-//	cplex.use(rounding(env, x));
+	cplex.use(rounding(env, x));
 	if (probType==DayAhead) {
 		cplex.use(IncCallback(env, *this));
 	}
