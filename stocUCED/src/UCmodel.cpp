@@ -9,7 +9,6 @@
 #include "UCmodel.hpp"
 
 extern runType runParam;
-extern ofstream optLog;
 
 
 UCmodel::UCmodel () {
@@ -378,7 +377,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 		}
 		
 		if (shutDownPeriod >= 0) {
-			optLog << "Warning: Generator " << g << " (" << genPtr->name << ") cannot ramp down to 0 in the ST-UC problem" << endl;
+			inst.out() << "Warning: Generator " << g << " (" << genPtr->name << ") cannot ramp down to 0 in the ST-UC problem" << endl;
 		}
 		
 		int t=0;
@@ -544,8 +543,8 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 //	cplex.setParam(IloCplex::Threads, 1);
 	cplex.setParam(IloCplex::EpGap, 1e-2);
 //	cplex.setOut(env.getNullStream());
-	cplex.setOut(optLog);
-	cplex.setWarning(optLog);
+	cplex.setOut(inst.out());
+	cplex.setWarning(inst.out());
 }
 
 /****************************************************************************
@@ -572,25 +571,30 @@ bool UCmodel::solve() {
 			}
 		}
 		
+		if (!status) {
+			cplex.exportModel("infeasible_UC.lp");
+		}
 		
-		double totLoadShed = 0;
-		for (int b=0; b<numBus; b++) {
-			for (int t=0; t<numPeriods; t++) {
-				if ( cplex.getValue(L[b][t]) > 1e-6 ) {
-					/*
-					if (totLoadShed == 0)	// first time
-					{
-						cout << endl << "~Load Shed~" << endl;
+		if (status) {
+			double totLoadShed = 0;
+			for (int b=0; b<numBus; b++) {
+				for (int t=0; t<numPeriods; t++) {
+					if ( cplex.getValue(L[b][t]) > 1e-6 ) {
+						/*
+						 if (totLoadShed == 0)	// first time
+						 {
+						 cout << endl << "~Load Shed~" << endl;
+						 }
+						 */
+						totLoadShed += cplex.getValue(L[b][t]);
+						//cout << fixed << setprecision(2) << cplex.getValue(L[b][t]) << " (bus" << b << ",time" << t << "), ";
 					}
-					*/
-					totLoadShed += cplex.getValue(L[b][t]);
-					//cout << fixed << setprecision(2) << cplex.getValue(L[b][t]) << " (bus" << b << ",time" << t << "), ";
 				}
 			}
-		}
-		if (totLoadShed > 0) {
-			cout << " [LS!] ";
-			//cout << "Total Load Shed= " << totLoadShed << ", Penalty= " << totLoadShed*loadShedPenaltyCoef << endl << endl;
+			if (totLoadShed > 0) {
+				cout << " [LS!] ";
+				//cout << "Total Load Shed= " << totLoadShed << ", Penalty= " << totLoadShed*loadShedPenaltyCoef << endl << endl;
+			}
 		}
 	}
 	catch (IloException &e) {
@@ -610,7 +614,7 @@ bool UCmodel::getGenState(int genId, int period) {
 	int reqSolnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
 	
 	// return the requested generator state
-	if (reqSolnComp < 0) {										// all generators are assumed to be online, for a long time, at t=0.
+	if (reqSolnComp < 0) {											// all generators are assumed to be online, for a long time, at t=0.
 		return true;
 	}
 	else if (reqSolnComp < (int) inst->solution.x[genId].size()) {	// return the corresponding solution

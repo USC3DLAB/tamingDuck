@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <ilcplex/ilocplex.h>
 
-#include "SUC_subprob.hpp"
+#include "SUC_recourse.hpp"
 #include "UCmodel.hpp"
 #include "instance.hpp"
 #include "config.hpp"
@@ -62,7 +62,7 @@ private:
 	ProblemType probType;
 	ModelType	modelType;
 
-	SUCsubprob	sub;		// Benders' subproblem
+	SUCrecourse	recourse;	// Benders' subproblem
 	UCmodel		warmUpProb;	// MIP Model for warm-starting Benders' decomposition
 	void		setWarmUp();
 	
@@ -88,7 +88,5 @@ private:
 	
 	char buffer[30];
 };
-
-
 
 #endif /* SUCmaster_hpp */

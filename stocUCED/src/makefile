@@ -38,29 +38,31 @@ CPLEXLIBDIR   = $(CPLEXDIR)/lib/$(SYSTEM)/$(LIBFORMAT)
 
 CPLEXINCDIR   = $(CPLEXDIR)/include/
 
+BOOSTINCDIR   = /usr/include/boost/
+
 CONCERTINCDIR = $(CONCERTDIR)/include/
 
 CONCERTLIBDIR = $(CONCERTDIR)/lib/$(SYSTEM)/$(LIBFORMAT)
 
-CCLNFLAGS = -L$(CPLEXLIBDIR) -lilocplex -lcplex  -ldl -L$(CONCERTLIBDIR) -lconcert -lm -pthread
+CCLNFLAGS = -lboost_thread -L$(CPLEXLIBDIR) -lilocplex -lcplex  -ldl -L$(CONCERTLIBDIR) -lconcert -lm -pthread
 # ---------------------------------------------------------------------
 # To execute the CPLEX examples.
 # ---------------------------------------------------------------------
 
 CFLAGS  = $(COPT) -I$(CPLEXINCDIR) -L$(CPLEXLIBDIR)
-CCFLAGS = $(CCOPT) -I$(CPLEXINCDIR) -I$(CONCERTINCDIR) -w -std=c++14 -fpermissive
+CCFLAGS = $(CCOPT) -I$(CPLEXINCDIR) -I$(CONCERTINCDIR) -I$(BOOSTINCDIR) -w -std=c++14 -fpermissive
 # -fpermissive eliminates a conflict btw C and C++ compilers
 # -w ignores warnings
 #------------------------------------------------------------
 
 EXECUTABLE = run
 
-SOURCES = main.cpp setup.cpp UCmodel.cpp EDmodel.cpp instance.cpp integrateSD.cpp misc.cpp SUC_master.cpp SUC_subprob.cpp ./powerSys/Bus.cpp ./powerSys/Generator.cpp ./powerSys/Line.cpp ./powerSys/PowSys.cpp ./stocProcess/stoc.cpp ./sd/algo.c ./sd/cuts.c ./sd/master.c ./sd/setupSD.c ./sd/stocUpdate.c ./sd/evaluate.c ./sd/optimal.c ./sd/soln.c ./sd/subprob.c ./solverUtilities/solver.c ./solverUtilities/utility.c ./smpsReader/smps.c ./smpsReader/prob.c ./smpsReader/rvgen.c
+SOURCES = main.cpp setup.cpp UCmodel.cpp EDmodel.cpp instance.cpp integrateSD.cpp misc.cpp SUC_master.cpp SUC_subprob.cpp SUC_recourse.cpp ./powerSys/Bus.cpp ./powerSys/Generator.cpp ./powerSys/Line.cpp ./powerSys/PowSys.cpp ./stocProcess/stoc.cpp ./sd/algo.c ./sd/cuts.c ./sd/master.c ./sd/setupSD.c ./sd/stocUpdate.c ./sd/evaluate.c ./sd/optimal.c ./sd/soln.c ./sd/subprob.c ./solverUtilities/solver.c ./solverUtilities/utility.c ./smpsReader/smps.c ./smpsReader/prob.c ./smpsReader/rvgen.c
 
 
-HEADERS = UCmodel.hpp EDmodel.hpp instance.hpp integrateSD.hpp misc.hpp SUC_master.hpp SUC_subprob.hpp solution.hpp config.hpp ./powerSys/Bus.hpp ./powerSys/Generator.hpp ./powerSys/Line.hpp ./powerSys/PowSys.hpp ./stocProcess/stoc.hpp ./sd/twoSD.h ./solverUtilities/utils.h ./solverUtilities/solver.h  ./smpsReader/smps.h ./smpsReader/prob.h 
+HEADERS = UCmodel.hpp EDmodel.hpp instance.hpp integrateSD.hpp misc.hpp SUC_master.hpp SUC_subprob.hpp solution.hpp config.hpp SUC_recourse.hpp BendersCutCoefs.hpp ./powerSys/Bus.hpp ./powerSys/Generator.hpp ./powerSys/Line.hpp ./powerSys/PowSys.hpp ./stocProcess/stoc.hpp ./sd/twoSD.h ./solverUtilities/utils.h ./solverUtilities/solver.h  ./smpsReader/smps.h ./smpsReader/prob.h 
 
-OBJECTS = main.o setup.o UCmodel.o  EDmodel.o instance.o integrateSD.o misc.o SUC_master.o SUC_subprob.o Bus.o Generator.o Line.o PowSys.o stoc.o algo.o cuts.o master.o setupSD.o stocUpdate.o  evaluate.o optimal.o soln.o subprob.o solver.o utility.o smps.o prob.o rvgen.o
+OBJECTS = main.o setup.o UCmodel.o  EDmodel.o instance.o integrateSD.o misc.o SUC_master.o SUC_subprob.o SUC_recourse.o BendersCutCoefs.o Bus.o Generator.o Line.o PowSys.o stoc.o algo.o cuts.o master.o setupSD.o stocUpdate.o  evaluate.o optimal.o soln.o subprob.o solver.o utility.o smps.o prob.o rvgen.o
 
 # ------------------------------------------------------------
 

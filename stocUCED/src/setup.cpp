@@ -20,7 +20,6 @@
 
 extern runType runParam;
 
-ofstream optLog;
 ofstream timeLog;
 
 
@@ -37,7 +36,6 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc, string &RScriptsPath) {
 	double begin_t;
 	
 	/* logging */
-	open_file(optLog, "optimization.log");
 	open_file(timeLog, "time.log");
 	
 	/* time visualization */
@@ -65,6 +63,8 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc, string &RScriptsPath) {
 		bool status = true;
 
 		begin_t = get_wall_time();
+		
+		inst.openLogFile( ("./solver_rep" + num2str(rep) + ".log") );
 		
 		/* Long-term unit commitment */
 		for ( h = 0; h < runParam.DA_numSolves; h++ ) {
@@ -114,10 +114,11 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc, string &RScriptsPath) {
 		}
 		inst.printSolution( ("./" + timeStamp + "_rep" + num2str(rep)) );
 		timeLog << "------------------------------------------------------------------" << endl;
+		
+		inst.closeLogFile();
 	}
 	cout << "------------------------------------------------------------------" << endl;
 
-	optLog.close();
 	timeLog.close();
 	
 	return 0;
@@ -129,7 +130,6 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 	double begin_t;
 	
 	/* logging */
-	open_file(optLog, "optimization.log");
 	open_file(timeLog, "time.log");
 
 	/* time visualization */
@@ -179,6 +179,7 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 		bool status;
 		
 		begin_t = get_wall_time();
+		inst.openLogFile( ("./solver_rep" + num2str(rep) + ".log") );
 		
 		/* Long-term unit commitment */
 		for ( h = 0; h < runParam.DA_numSolves; h++ ) {
@@ -202,7 +203,7 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 				printf("\tShort-term Unit-Commitment (%02d:%02d): ", timeInfo->tm_hour, timeInfo->tm_min);
 				UCmodel STmodel;
 				STmodel.formulate(inst, ShortTerm, Transmission, beginMin, rep);
-				STmodel.solve();
+				status = STmodel.solve();
 				if (status)	printf("Success (Obj= %.2f).\n", STmodel.getObjValue());
 				else		printf("Failed.\n");
 				
@@ -242,10 +243,11 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 		}
 		inst.printSolution( ("./" + timeStamp + "_rep" + num2str(rep)) );
 		timeLog << "------------------------------------------------------------------" << endl;
+		
+		inst.closeLogFile();
 	}
 	cout << "------------------------------------------------------------------" << endl;
 
-	optLog.close();
 	timeLog.close();
 	
 	return 0;
@@ -257,7 +259,6 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 	double begin_t;
 	
 	/* logging */
-	open_file(optLog, "optimization.log");
 	open_file(timeLog, "time.log");
 	
 	/* time visualization */
@@ -288,6 +289,7 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 		bool status;
 		
 		begin_t = get_wall_time();
+		inst.openLogFile( ("./solver_rep" + num2str(rep) + ".log") );
 		
 		/* Long-term unit commitment */
 		for ( h = 0; h < runParam.DA_numSolves; h++ ) {
@@ -307,7 +309,7 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 			else		printf("Failed.\n");
 
 			timeLog << get_wall_time() - begin_t << endl;
-			
+			return 0;
 			/* Short-term unit commitment */
 			for ( t = 0; t < runParam.ST_numSolves; t++ ) {
 				printf("\tShort-term Unit-Commitment (%02d:%02d): ", timeInfo->tm_hour, timeInfo->tm_min);
@@ -361,10 +363,11 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 		}
 		inst.printSolution( ("./" + timeStamp + "_rep" + num2str(rep)) );
 		timeLog << "------------------------------------------------------------------" << endl;
+		
+		inst.closeLogFile();
 	}
 	cout << "------------------------------------------------------------------" << endl;
 	
-	optLog.close();
 	timeLog.close();
 	
 	return 0;

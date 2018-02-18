@@ -63,7 +63,6 @@ void SUCsubprob::preprocessing ()
 	maxCapacity.resize(numGen);							// maximum generator capacities
 	sysLoad.resize(numPeriods);							// aggregated system load
 	resize_matrix(busLoad, numBus, numPeriods);			// individual bus loads
-	expInitGen.resize(numGen);							// container for retrieving expected initial-generation amount (to be fed to the ED model)
 	
 	/* Min Generation Amounts */
 	for (int g=0; g<numGen; g++) {
@@ -125,21 +124,7 @@ void SUCsubprob::preprocessing ()
 		for (int b=0; b<numBus; b++) {
 			sysLoad[t] += busLoad[b][t];
 		}
-	}
-	
-	/* Uncertainty related */
-	numScen = runParam.numLSScen;
-	
-	rndPermutation.resize(numScen);
-	for (int s=0; s<numScen; s++) {
-		rndPermutation[s] = rand() % inst->simulations.vals.size();
-	}
-	
-	objValues.resize(numScen);
-	multicutCoefs.resize(numScen);
-	for (int s=0; s<numScen; s++) {
-		multicutCoefs[s].initialize(numGen, numPeriods);
-	}
+	}	
 }
 
 double SUCsubprob::getRandomCoef (int &s, int &t, int &loc) {
@@ -147,7 +132,7 @@ double SUCsubprob::getRandomCoef (int &s, int &t, int &loc) {
 		return inst->observations["RT"].vals[rep][t][loc];
 	}
 	else {
-		return inst->simulations.vals[rndPermutation[s]][t][loc];
+		return inst->simulations.vals[s][t][loc];
 	}
 }
 
@@ -461,9 +446,7 @@ void SUCsubprob::formulate_aggregate_system()
 	cplex.extract(model);
 }
 
-void SUCsubprob::setMasterSoln ( vector< vector<bool> > & gen_stat ) {
-	this->gen_stat = &gen_stat;
-	
+void SUCsubprob::setMasterSoln (vector<vector<bool>> &gen_stat) {
 	int c=0;
 	
 	// state constraints
@@ -477,60 +460,33 @@ void SUCsubprob::setMasterSoln ( vector< vector<bool> > & gen_stat ) {
 	// rest of the constraints are not a function of x
 }
 
-bool SUCsubprob::solve() {
-
-	double time;
+bool SUCsubprob::solve(int mappedScen, BendersCutCoefs &cutCoefs, double &objValue, vector<double> &initGen) {
 	
-	bool status = true;
+	cutCoefs.reset();
 	
-	// process second-stage scenario subproblems
-	for (int s=0; s<numScen; s++)
-	{
-		multicutCoefs[s].reset();
+	setup_subproblem (mappedScen);			// prepare the subproblem
+	bool status = cplex.solve();	// solve the subproblem
+	
+	// feasibility
+	if (status) {
+		compute_optimality_cut_coefs(cutCoefs);
+		objValue = cplex.getObjValue();
 		
-		time = get_wall_time();
-		setup_subproblem (s);			// prepare the subproblem
-		setup_t += get_wall_time() - time;
-		
-		time = get_wall_time();
-		status = cplex.solve();			// solve the subproblem
-		solve_t += get_wall_time() - time;
-		
-		// infeasibility
-		if (!status) {
-			if ( cplex.getCplexStatus() == IloCplex::Infeasible ) {
-				//cplex.exportModel("infeas_subprob.lp");
-				compute_feasibility_cut_coefs(s, multicutCoefs[0]);
-				objValues[s] = INFINITY;
-			}
-			else {
-				cout << "!! Error: Cplex returned the status " << cplex.getCplexStatus() << endl;
-			}
-			
-			return false;
-		}
-		
-		// retrieve expected t0 generation
-		if (probType==DayAhead)	updateExpectedInitialGen(s);
-		
-		// retrieve the objective value
-		objValues[s] = cplex.getObjValue();
-		
-		time = get_wall_time();
-		compute_optimality_cut_coefs(s, multicutCoefs[s]);	// update benders cut coefs
-		cut_t += get_wall_time() - time;
+		if (probType==DayAhead)	getInitGen(initGen);
 	}
 	
-	return true;
+	// infeasibility
+	if (cplex.getCplexStatus() == IloCplex::Infeasible ) {
+		compute_feasibility_cut_coefs(cutCoefs);
+		objValue = INFINITY;
+	}
+	
+	return status;
 }
 
-void SUCsubprob::updateExpectedInitialGen(int &s) {
-	if (s == 0) {
-		fill(expInitGen.begin(), expInitGen.end(), 0.0);
-	}
-	
+void SUCsubprob::getInitGen(vector<double> &initGen) {
 	for (int g=0; g<numGen; g++) {
-		expInitGen[g] += 1.0/(double)numScen * cplex.getValue( p[g][0] );
+		initGen[g] = cplex.getValue( p[g][0] );
 	}
 }
 
@@ -559,7 +515,7 @@ void SUCsubprob::setup_subproblem(int &s) {
 	}
 }
 
-void SUCsubprob::compute_optimality_cut_coefs(int &s, BendersCutCoefs &cutCoefs)
+void SUCsubprob::compute_optimality_cut_coefs(BendersCutCoefs &cutCoefs)
 {
 	// get dual multipliers
 	cplex.getDuals(duals, cons);
@@ -689,15 +645,7 @@ void SUCsubprob::compute_optimality_cut_coefs(int &s, BendersCutCoefs &cutCoefs)
 	}
 }
 
-double SUCsubprob::getRecourseObjValue() {
-	double objVal = 0;
-	for (int s=0; s<numScen; s++) {
-		objVal += (1.0/double(numScen)) * objValues[s];
-	}
-	return objVal;
-}
-
-void SUCsubprob::compute_feasibility_cut_coefs(int &s, BendersCutCoefs &cutCoefs)
+void SUCsubprob::compute_feasibility_cut_coefs(BendersCutCoefs &cutCoefs)
 {
 	// reset earlier (optimality-)cut coefficient entries
 	cutCoefs.reset();

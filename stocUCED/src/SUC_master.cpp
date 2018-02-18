@@ -9,7 +9,6 @@
 #include "SUC_master.hpp"
 
 extern runType runParam;
-extern ofstream optLog;
 
 ILOHEURISTICCALLBACK1(rounding, IloArray< IloNumVarArray >, x) {
 
@@ -55,13 +54,15 @@ IloCplex::Callback IncCallback(IloEnv env, SUCmaster &me) {
 }
 
 void SUCmaster::IncCallbackI::main() {
-	
-	// if the incumbent objective is improving,
+	// if the incumbent's objective is improving with the new osolution
 	if ( getObjValue() < getIncumbentObjValue() ) {
+		
+		// request expected initial generation amounts
+		vector<double> expInitGen = me.recourse.getExpInitGen();
 		
 		// set the generation amounts
 		for (int g=0; g<me.numGen; g++) {
-			me.setDAGenProd(g, 0, me.sub.expInitGen[g] );
+			me.setDAGenProd(g, 0, expInitGen[g]);
 		}
 	}
 }
@@ -90,16 +91,16 @@ void SUCmaster::LazySepCallbackI::main()
     x_vals.end();
 
 	// set the master solution in the subproblems
-	me.sub.setMasterSoln(state);
+	me.recourse.setMasterSoln(state);
 	
 	// solve the subproblems
-	bool isFeasible = me.sub.solve();
+	bool isFeasible = me.recourse.solve();
 	
     // check if we need to add a cut (feasible and not within optimality tolerances, or infeasible)
     bool addCut = true;
     if (isFeasible) {
-		double abs_diff = fabs(me.sub.getRecourseObjValue() - 1.0/((double)me.eta.getSize())*getValue(IloSum(me.eta)));
-        if ( abs_diff/(fabs(me.sub.getRecourseObjValue())+1e-14) < me.cplex.getParam(IloCplex::EpGap)
+		double abs_diff = fabs(me.recourse.getObjValue() - 1.0/((double)me.eta.getSize())*getValue(IloSum(me.eta)));
+        if ( abs_diff/(fabs(me.recourse.getObjValue())+1e-14) < me.cplex.getParam(IloCplex::EpGap)
             || abs_diff < me.cplex.getParam(IloCplex::EpAGap) ) {
             addCut = false;
         }
@@ -114,9 +115,9 @@ void SUCmaster::LazySepCallbackI::main()
 			int optcut_cnt = 0;
 			for (int s=0; s<me.eta.getSize(); s++) {
 				
-				double abs_diff = fabs(me.sub.objValues[s] - getValue(me.eta[s]));
+				double abs_diff = fabs(me.recourse.getScenObjValue(s) - getValue(me.eta[s]));
 				
-				if ( abs_diff/(fabs(me.sub.getRecourseObjValue())+1e-14) < me.cplex.getParam(IloCplex::EpGap)
+				if ( abs_diff/(fabs(me.recourse.getScenObjValue(s))+1e-14) < me.cplex.getParam(IloCplex::EpGap)
 					|| abs_diff < me.cplex.getParam(IloCplex::EpAGap) ) {
 					continue;
 				}
@@ -124,7 +125,7 @@ void SUCmaster::LazySepCallbackI::main()
 				optcut_cnt++;
 				
 				// get the Benders's cut coefs
-				SUCsubprob::BendersCutCoefs *cutCoefs = &(me.sub.multicutCoefs[s]);
+				BendersCutCoefs *cutCoefs = &(me.recourse.cutCoefs[s]);
 				
 				// create the cut
 				IloExpr pi_Tx (me.env);
@@ -150,11 +151,11 @@ void SUCmaster::LazySepCallbackI::main()
 				pi_Tx.end();
 			}
 			
-			optLog << "(optcut " << optcut_cnt << "/" << me.eta.getSize() << ")" << endl;
+			me.inst->out() << "(optcut " << optcut_cnt << "/" << me.eta.getSize() << ")" << endl;
 		}
 		else
 		{
-			optLog << "(optcut)" << endl;
+			me.inst->out() << "(optcut)" << endl;
 			
 			double sceProb = 1.0/(double)me.eta.getSize();
 			
@@ -163,7 +164,7 @@ void SUCmaster::LazySepCallbackI::main()
 			
 			for (int s=0; s<me.eta.getSize(); s++) {
 				// get the Benders's cut coefs
-				SUCsubprob::BendersCutCoefs *cutCoefs = &(me.sub.multicutCoefs[s]);
+				BendersCutCoefs *cutCoefs = &(me.recourse.cutCoefs[s]);
 				
 				// create the cut
 				for (int g=0; g<me.numGen; g++) {
@@ -196,10 +197,10 @@ void SUCmaster::LazySepCallbackI::main()
 	}
 	else {
 		/* feasibility cut */
-		optLog << "(feascut)" << endl;
+		me.inst->out() << "(feascut)" << endl;
 
 		// get the Benders's cut coefs
-		SUCsubprob::BendersCutCoefs *cutCoefs = &(me.sub.multicutCoefs[0]);
+		BendersCutCoefs *cutCoefs = &(me.recourse.cutCoefs[ me.recourse.getInfeasScenIndex() ]);
 		
 		// create the cut
 		IloExpr pi_Tx (me.env);
@@ -605,7 +606,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 		}
 		
 		if (shutDownPeriod >= 0) {
-			optLog << "Warning: Generator " << g << " (" << genPtr->name << ") cannot ramp down to 0 in the ST-UC problem" << endl;
+			inst.out() << "Warning: Generator " << g << " (" << genPtr->name << ") cannot ramp down to 0 in the ST-UC problem" << endl;
 		}
 		
 		int t=0;
@@ -767,7 +768,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 	model.add( IloMinimize(env, obj) );
 	
     // formulate the subproblem
-	sub.formulate(inst, probType, modelType, beginMin, rep);
+	recourse.formulate(inst, probType, modelType, beginMin, rep);
 	
 	// formulate the warm-up problem
 	warmUpProb.formulate(inst, probType, modelType, beginMin, rep);
@@ -797,12 +798,12 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
      ************************************************************************/
     
 	cplex.use(LazySepCallback(env, *this));
-	cplex.use(rounding(env, x));
+//	cplex.use(rounding(env, x));
 	if (probType==DayAhead) {
 		cplex.use(IncCallback(env, *this));
 	}
-	cplex.setOut(optLog);
-	cplex.setWarning(optLog);
+//	cplex.setOut( inst.out() );
+	cplex.setWarning( inst.out() );
 	cplex.setParam(IloCplex::Threads, 1);
 //    cplex.setParam(IloCplex::FPHeur, 2);
 //    cplex.setParam(IloCplex::HeurFreq, 10);
@@ -817,33 +818,33 @@ bool SUCmaster::solve () {
 		bool status;
 		
 		/* warm up *
-		optLog << "Executing warm up MIP..." << endl;
+		*(inst->getLogStream()) << "Executing warm up MIP..." << endl;
 		status = warmUpProb.solve();
 		if (status) {
 			setWarmUp();
-			optLog << "Warm up model provided " << warmUpProb.cplex.getSolnPoolNsolns() << " solutions (Best Obj= " << warmUpProb.getObjValue() << ")." << endl;
+			inst->out() << "Warm up model provided " << warmUpProb.cplex.getSolnPoolNsolns() << " solutions (Best Obj= " << warmUpProb.getObjValue() << ")." << endl;
 		} else {
-			optLog << "Warm up has failed." << endl;
+			inst->out() << "Warm up has failed." << endl;
 		}
 		/*        */
 		
 		//if (probType == ShortTerm) {
 		
 		// Benders' decomposition
-		optLog << "Executing Benders' decomposition for ";
-		if (probType == DayAhead)	optLog << "DAUC,";
-		else						optLog << "STUC,";
-		optLog << " at time= " << beginMin << " (mins)." << endl;
+		inst->out() << "Executing Benders' decomposition for ";
+		if (probType == DayAhead)	inst->out() << "DAUC,";
+		else						inst->out() << "STUC,";
+		inst->out() << " at time = " << beginMin << " (mins)." << endl;
 		
 		status = cplex.solve();
 		if (status) {
-			optLog << "Optimization is completed with status " << cplex.getCplexStatus() << endl;
-			optLog << "Obj = \t" << cplex.getObjValue() << endl;
-			optLog << "LB = \t" << cplex.getBestObjValue() << endl;
+			inst->out() << "Optimization is completed with status " << cplex.getCplexStatus() << endl;
+			inst->out() << "Obj = \t" << cplex.getObjValue() << endl;
+			inst->out() << "LB = \t" << cplex.getBestObjValue() << endl;
 		} else {
 			cplex.exportModel("infeasible.lp");
 			inst->printSolution("infeasible");
-			optLog << "Benders' decomposition has failed." << endl;
+			inst->out() << "Benders' decomposition has failed." << endl;
 			exit(1);
 		}
 		

@@ -12,10 +12,6 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, string RScriptsPath
 	this->stoc	    = stoc;
 	this->RScriptsPath = RScriptsPath;
 	
-	DAUC_t.resize( runParam.DA_numSolves );
-	STUC_t.resize( runParam.DA_numSolves * runParam.ST_numSolves );
-	ED_t.resize  ( runParam.DA_numSolves * runParam.ST_numSolves * runParam.ED_numSolves );
-	
 	detElems	= {"Load"};
 	stocElems	= {"Solar", "Wind"};
 	elems.resize( detElems.size() + stocElems.size() );
@@ -24,7 +20,7 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, string RScriptsPath
 	/* Allocate memory for solution matrices */
 	solution.allocateMem(powSys->numGen, runParam.numPeriods, powSys->numBus);
 
-#ifdef _SAMPLE_USING_R
+#ifdef SAMPLE_USING_R
 	/* Setup R environment */
 	R["RScriptsPath"] = RScriptsPath;
 	R["dataFolder"]   = powSys->path;	// set the data folder
@@ -99,7 +95,7 @@ void instance::simulateScenarios(int numScen, bool fitModel, int rep) {
 	int maxLookAhead = max(runParam.ED_numPeriods-1, runParam.ST_numPeriods-1);
 	int numSimLengthInDays = ceil( (double)(runParam.numPeriods+maxLookAhead)/(60.0/runParam.baseTime) );
 	
-#ifdef _SAMPLE_USING_R
+#ifdef SAMPLE_USING_R
 	simulations = createScenarioList(R, fitModel, powSys->path, stocElems, numSimLengthInDays, numScen, rep);
 #else
 	string simulationsFolder = "../Release/Simulations/";
@@ -224,8 +220,45 @@ bool instance::printSolution(string filepath) {
 }
 
 void instance::setRSeed (int rep) {
-#ifdef _SAMPLE_USING_R
+#ifdef SAMPLE_USING_R
 	R["rep"] = rep;
 	R.parseEval("set.seed(rep)");
 #endif
+}
+
+/****************************************************************************
+ * out
+ * returns a pointer to the log stream
+ ****************************************************************************/
+ofstream& instance::out() {
+	return log_stream;
+}
+
+/****************************************************************************
+ * getLogStreamName
+ * returns the name of the log stream
+ ****************************************************************************/
+string instance::getLogStreamName() {
+	return log_stream_name;
+}
+
+/****************************************************************************
+ * openLogFile
+ * opens a log file with the input name. 
+ * log files can be used to print out optimization logs from CPLEX or SD.
+ ****************************************************************************/
+bool instance::openLogFile(string filename) {
+	bool status = open_file(log_stream, filename);
+	if (status) {
+		log_stream_name = filename;
+	}
+	
+	return status;
+}
+
+/****************************************************************************
+ * closeLogFile
+ ****************************************************************************/
+void instance::closeLogFile() {
+	log_stream.close();
 }

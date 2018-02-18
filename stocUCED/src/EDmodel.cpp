@@ -14,7 +14,6 @@
 #include "./powerSys/Generator.hpp"
 
 extern runType runParam;
-extern ofstream optLog;
 
 EDmodel::EDmodel(instance &inst, int t0, int rep) {
 
@@ -22,8 +21,8 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 	cplex = IloCplex(model);
 
 	//cplex.setOut(env.getNullStream());
-	cplex.setOut(optLog);
-	cplex.setWarning(optLog);
+	cplex.setOut( inst.out() );
+	cplex.setWarning( inst.out() );
 	
 	
 	/* Pre-process to setup some parameters: generator status (ramping and capacity), load, and stochastic generation */
@@ -256,45 +255,21 @@ void EDmodel::formulate(instance &inst, int t0) {
 			}
 		}
 		
-		/* spinning reserve constraints */
+		cout << endl << "No spinning reserves" << endl;
+		/* spinning reserve constraints *
 		if (t != 0) {
 			IloExpr sysOverGen (env);
 			
 			for (int g=0; g<numGen; g++) {
 				sysOverGen += overGen[g][t];
 			}
-			model.add( sysOverGen >= sysLoad[t] * spinReservePerc );
+			sprintf(elemName, "reserve(%d)", t);
+			IloConstraint con ( sysOverGen >= sysLoad[t] * spinReservePerc );
+			con.setName(elemName); model.add(con);
 			
 			sysOverGen.end();
 		}
-		
-		/* TODO: Fix generation capacity for stochastic generators. Generation capacity and availability limit *
-		for ( int g = 0; g < numGen; g++ ) {
-			Generator genPtr = inst.powSys->generators[g];
-			/* Make sure that the generation capacity limits are met.
-			 * The minimum and maximum for generators which are turned off are set to zero during pre-processing *
-			sprintf(elemName, "maxGen[%d][%d]", g, t);
-			IloConstraint c1a( genUsed[g][t] + overGen[g][t] <= genMax[g][t]);
-			c1a.setName(elemName); model.add(c1a);
-
-			sprintf(elemName, "minGen[%d][%d]", g, t);
-			IloConstraint c2( genUsed[g][t] + overGen[g][t] >= genMin[g][t]);
-			c2.setName(elemName); model.add(c2);
-
-			/* Stochastic generation consistency *
-			auto it = inst.stocObserv[2].mapVarNamesToIndex.find(genPtr.name);
-			if ( it != inst.stocObserv[2].mapVarNamesToIndex.end() ) {
-				sprintf(elemName, "stocAvail[%d][%d]", g, t);
-				if (genPtr.isMustUse) {	//TODO: Semih added this if-statement, please confirm.
-					IloConstraint c (genUsed[g][t] + overGen[g][t] == genAvail[g][t]); c.setName(elemName); model.add(c);
-				} else {
-					IloConstraint c (genUsed[g][t] + overGen[g][t] <= genAvail[g][t]); c.setName(elemName); model.add(c);
-				}
-
-				if ( t != 0 )
-					stocRows.push_back(elemName);
-			}
-		}	*/
+		/*	*/
 
 		for ( int g = 0; g < numGen; g++ ) {
 			Generator genPtr = inst.powSys->generators[g];
@@ -322,9 +297,10 @@ void EDmodel::formulate(instance &inst, int t0) {
 				/* Stochastic-supply generator */
 				sprintf(elemName, "stocAvail(%d)(%d)", g, t);
 				if (genPtr.isMustUse) {
-					IloConstraint c (genUsed[g][t] + overGen[g][t] == genAvail[g][t]); c.setName(elemName); model.add(c);
+					IloConstraint c (genUsed[g][t] == genAvail[g][t]); c.setName(elemName); model.add(c);
+					overGen[g][t].setUB(0);
 				} else {
-					IloConstraint c (genUsed[g][t] + overGen[g][t] <= genAvail[g][t]); c.setName(elemName); model.add(c);
+					IloConstraint c (genUsed[g][t] + overGen[g][t] == genAvail[g][t]); c.setName(elemName); model.add(c);
 				}
 
 				//TODO: Harsha, I'm not sure if this is in the right place:

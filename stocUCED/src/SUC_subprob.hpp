@@ -14,47 +14,28 @@
 #include <vector>
 #include <set>
 
+#include "BendersCutCoefs.hpp"
 #include "instance.hpp"
 
 using namespace std;
 
 class SUCsubprob {
-	friend class SUCmaster;
-	friend class LazySepCallbackI;
+	friend class SUCrecourse;
 	
 public:
 	SUCsubprob ();
 	~SUCsubprob ();
 	
 	void formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep);
-	bool solve ();
-	void setMasterSoln		(vector< vector<bool> > & gen_stat);
-	double getEDGenProd		(int genId, int period);				// reads from inst->Solution.gED
-	bool getGenState		(int genId, int period);				// reads from inst->Solution.x
+	
+	bool solve (int mappedScen, BendersCutCoefs &cutCoefs, double &objValue, vector<double> &initGen);
+	
+	double getEDGenProd	(int genId, int period);				// reads from inst->Solution.gED
+	bool getGenState	(int genId, int period);				// reads from inst->Solution.x
         
-	double getRecourseObjValue();
-	
-private:
-	
-	// Benders' Cut
-	struct BendersCutCoefs {
-		double pi_b;
-		vector< vector<double> > pi_T;
-		
-		void initialize(int numRows, int numCols) {
-			resize_matrix(pi_T, numRows, numCols);
-		};
-		
-		void reset() {
-			pi_b = 0;
-			for (int g=0; g < (int) pi_T.size(); g++) fill(pi_T[g].begin(), pi_T[g].end(), 0.0);
-		};
-	};
-	vector<BendersCutCoefs> multicutCoefs;
+	void setMasterSoln (vector<vector<bool>> & x);
 
-	struct Solver {
-		
-	};
+private:	
 	IloEnv		env;
 	IloModel	model;
 	IloCplex	cplex;
@@ -73,25 +54,20 @@ private:
 	
 	void	setup_subproblem (int &s);
 	double	getRandomCoef (int &s, int &t, int &loc);
-	void	updateExpectedInitialGen(int &s);
 	
-	vector<double> expInitGen;
-	vector<double> objValues;
-	vector<double> rndPermutation;
+	/* Keeping record of period 1 generation, later to be used by the ED model */
+	void getInitGen(vector<double> &initGen);
 	
-	void compute_optimality_cut_coefs	(int &s, BendersCutCoefs &cutCoefs);
-	void compute_feasibility_cut_coefs	(int &s, BendersCutCoefs &cutCoefs);
+	void compute_optimality_cut_coefs	(BendersCutCoefs &cutCoefs);
+	void compute_feasibility_cut_coefs	(BendersCutCoefs &cutCoefs);
 	
-	// First-Stage solution
-	vector< vector<bool> >* gen_stat;
-		
 	// Variables
     IloArray< IloNumVarArray > p, L, x;		// production, load-shedding, state-variables (latter to be fixed by the master problem)
 	
 	// data
 	void preprocessing();
 	
-	int numGen, numLine, numBus, numPeriods, numBaseTimePerPeriod, numScen, beginMin, rep;
+	int numGen, numLine, numBus, numPeriods, numBaseTimePerPeriod, beginMin, rep;
 	double periodLength;
 	
 	vector<double> minGenerationReq;	// minimum production requirements (obeying assumptions)

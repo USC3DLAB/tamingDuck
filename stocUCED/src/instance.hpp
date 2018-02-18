@@ -8,7 +8,6 @@
 #ifndef _INSTANCE_H_
 #define _INSTANCE_H_
 
-#include "misc.hpp"
 #include "config.hpp"
 #include "./stocProcess/stoc.hpp"
 #include "./powerSys/PowSys.hpp"
@@ -38,14 +37,21 @@ public:
 	
 	map< string, ScenarioType > observations;
 	
-	vector<double> DAUC_t;
-	vector<double> STUC_t;
-	vector<double> ED_t;
+	
+	/* log keeping */
+	ofstream&	out ();
+	string		getLogStreamName ();
+	bool		openLogFile (string filename);
+	void		closeLogFile();
 	
 private:
 	void summary();
 	
-#ifdef _SAMPLE_USING_R
+	/* log keeping */
+	ofstream	log_stream;
+	string		log_stream_name;
+	
+#ifdef SAMPLE_USING_R
 	RInside R;
 #endif
 	string RScriptsPath;

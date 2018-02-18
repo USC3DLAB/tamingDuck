@@ -29,10 +29,10 @@ istream& safeGetline(istream& is, string& t)
 				sb->sbumpc();
 			return is;
 		case std::streambuf::traits_type::eof():
-						// Also handle the case when the last line has no line ending
-						if(t.empty())
-							is.setstate(std::ios::eofbit);
-		return is;
+			// Also handle the case when the last line has no line ending
+			if(t.empty())
+				is.setstate(std::ios::eofbit);
+			return is;
 		default:
 			t += (char)c;
 		}

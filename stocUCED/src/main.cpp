@@ -10,8 +10,6 @@
 #include "config.hpp"
 #include "instance.hpp"
 #include "solution.hpp"
-#include "UCmodel.hpp"
-#include "EDmodel.hpp"
 #include "./powerSys/PowSys.hpp"
 #include "./stocProcess/stoc.hpp"
 #include <sstream>

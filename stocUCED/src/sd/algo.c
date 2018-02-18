@@ -28,7 +28,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC probName, vect
 	openSolver();
 	
 	/* open output */
-	file = fopen("optimization.log", "a");
+	file = openFile(outputDir, "sd.log", "a");
 
 	/* complete necessary initialization for the algorithm */
 	if ( setupAlgo(orig, stoc, tim, &prob, &cell) )
