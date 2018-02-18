@@ -448,6 +448,8 @@ void SUCsubprob::formulate_aggregate_system()
 }
 
 void SUCsubprob::setMasterSoln (vector<vector<bool>> &gen_stat) {
+	this->genState = &gen_stat;
+	
 	int c=0;
 	
 	// state constraints
@@ -503,12 +505,14 @@ void SUCsubprob::setup_subproblem(int &s) {
 		
 		auto it = inst->simulations.mapVarNamesToIndex.find(genPtr->name);
 		
-		if ( it != inst->simulations.mapVarNamesToIndex.end() ) {		// if random supply generator
-			for (int t=0; t<numPeriods; t++, c++) {						// Note: c is iterated in the secondary-loops
-				period = (beginMin/periodLength)+(t*numBaseTimePerPeriod);
-				supply = min(getRandomCoef(s, period, it->second), genPtr->maxCapacity);
-				
-				cons[c].setLinearCoef(x[g][t], -supply);
+		if ( it != inst->simulations.mapVarNamesToIndex.end() ) {	// if random supply generator
+			for (int t=0; t<numPeriods; t++, c++) {					// Note: c is iterated in the secondary-loops
+				if ((*genState)[g][t]) {		// Important: This is OK, only because if x[g][t]=0, its coefficient doesn't matter
+					period = (beginMin/periodLength)+(t*numBaseTimePerPeriod);
+					supply = min(getRandomCoef(s, period, it->second), genPtr->maxCapacity);
+										
+					cons[c].setLinearCoef(x[g][t], -supply);
+				}
 			}
 		} else {
 			c += numPeriods;

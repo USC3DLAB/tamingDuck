@@ -55,8 +55,11 @@ private:
 	void	setup_subproblem (int &s);
 	double	getRandomCoef (int &s, int &t, int &loc);
 	
-	/* Keeping record of period 1 generation, later to be used by the ED model */
+	/* Keep record of period 1 generation, later to be used by the ED model */
 	void getInitGen(vector<double> &initGen);
+	
+	// fixed master solution
+	vector<vector<bool>> *genState;
 	
 	void compute_optimality_cut_coefs	(BendersCutCoefs &cutCoefs);
 	void compute_feasibility_cut_coefs	(BendersCutCoefs &cutCoefs);
