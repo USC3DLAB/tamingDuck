@@ -316,7 +316,8 @@ void EDmodel::formulate(instance &inst, int t0) {
 				/* Stochastic-supply generator */
 				sprintf(elemName, "stocAvail(%d)(%d)", g, t);
 				if (genPtr.isMustUse) {
-					IloConstraint c (genUsed[g][t] + overGen[g][t] == genAvail[g][t]); c.setName(elemName); model.add(c);
+					IloConstraint c (genUsed[g][t] == genAvail[g][t]); c.setName(elemName); model.add(c);
+					overGen[g][t].setUB(0);
 				} else {
 					IloConstraint c (genUsed[g][t] + overGen[g][t] <= genAvail[g][t]); c.setName(elemName); model.add(c);
 				}
