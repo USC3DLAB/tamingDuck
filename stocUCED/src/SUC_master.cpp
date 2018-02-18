@@ -798,7 +798,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
      ************************************************************************/
     
 	cplex.use(LazySepCallback(env, *this));
-	cplex.use(rounding(env, x));
+//	cplex.use(rounding(env, x));
 	if (probType==DayAhead) {
 		cplex.use(IncCallback(env, *this));
 	}

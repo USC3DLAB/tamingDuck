@@ -510,7 +510,7 @@ void SUCsubprob::setup_subproblem(int &s) {
 				if ((*genState)[g][t]) {		// Important: This is OK, only because if x[g][t]=0, its coefficient doesn't matter
 					period = (beginMin/periodLength)+(t*numBaseTimePerPeriod);
 					supply = min(getRandomCoef(s, period, it->second), genPtr->maxCapacity);
-										
+					
 					cons[c].setLinearCoef(x[g][t], -supply);
 				}
 			}

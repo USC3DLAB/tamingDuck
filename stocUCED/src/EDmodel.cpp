@@ -92,6 +92,11 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 			/* Ramping restrictions */
 			genRampUp[g][t]		= genPtr.rampUpLim * runParam.ED_resolution;
 			genRampDown[g][t]	= genPtr.rampDownLim * runParam.ED_resolution;
+			
+			// is the generator shutting down?
+			if ( max(inst.solution.x[g][idxT] - inst.solution.x[g][min(idxT+1,runParam.numPeriods-1)], 0.0) > 0.5 ) {
+				genRampDown[g][t] = genPtr.maxCapacity;
+			}
 		}
 	}
 }
@@ -214,6 +219,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 			if ( t0 == 0 ) {
 				// Note: Initial generation is assumed to be the 1st-period generation quantities of ST-UC model
 				for ( int g = 0; g < numGen; g++ ) {
+					if (inst.solution.x[g][t] >= 0.5) {
 					/* ramp-up */
 					sprintf(elemName, "rampUp(%d)(%d)", g, t);
 					IloConstraint c1( genUsed[g][t] + overGen[g][t] -  inst.solution.g_DAUC[g][t0] <= genRampUp[g][t]);
@@ -223,11 +229,14 @@ void EDmodel::formulate(instance &inst, int t0) {
 					sprintf(elemName, "rampDown(%d)(%d)", g, t);
 					IloConstraint c2( inst.solution.g_DAUC[g][t0] - genUsed[g][t] - overGen[g][t] <= genRampDown[g][t]);
 					c2.setName(elemName); model.add(c2);
+					}
 				}
 			}
 			else {
 				/* The first time period of the ED horizon */
 				for ( int g = 0; g < numGen; g++ ) {
+					if (inst.solution.x[g][t] >= 0.5) {
+
 					/* ramp-up */
 					sprintf(elemName, "rampUp(%d)(%d)", g, t);
 					IloConstraint c1( genUsed[g][t] + overGen[g][t] -  inst.solution.g_ED[g][t0-1] <= genRampUp[g][t]);
@@ -237,25 +246,28 @@ void EDmodel::formulate(instance &inst, int t0) {
 					sprintf(elemName, "rampDown(%d)(%d)", g, t);
 					IloConstraint c2( inst.solution.g_ED[g][t0-1] - genUsed[g][t] - overGen[g][t] <= genRampDown[g][t]);
 					c2.setName(elemName); model.add(c2);
+					}
 				}
 			}
 		}
 		else {
 			/* The remaining periods of the ED horizon */
 			for ( int g = 0; g < numGen; g++ ) {
+				if (inst.solution.x[g][t] >= 0.5) {
+
 				/* ramp-up */
 				sprintf(elemName, "rampUp(%d)(%d)", g, t);
 				IloConstraint c1( genUsed[g][t] + overGen[g][t] - genUsed[g][t-1] - overGen[g][t-1] <= genRampUp[g][t]);
 				c1.setName(elemName); model.add(c1);
-
+				
 				/* ramp-down */
 				sprintf(elemName, "rampDown(%d)(%d)", g, t);
 				IloConstraint c2( genUsed[g][t-1] + overGen[g][t-1] - genUsed[g][t] - overGen[g][t] <= genRampDown[g][t]);
 				c2.setName(elemName); model.add(c2);
+				}
 			}
 		}
 		
-		cout << endl << "No spinning reserves" << endl;
 		/* spinning reserve constraints *
 		if (t != 0) {
 			IloExpr sysOverGen (env);
@@ -282,12 +294,12 @@ void EDmodel::formulate(instance &inst, int t0) {
 				/* Deterministic-supply generator */
 			
 				sprintf(elemName, "maxGenA(%d)(%d)", g, t);
-				IloConstraint c1a( genUsed[g][t] <= genMax[g][t]);
+				IloConstraint c1a( genUsed[g][t] + overGen[g][t] <= genMax[g][t]);
 				c1a.setName(elemName); model.add(c1a);
 
-				sprintf(elemName, "maxGenB(%d)(%d)", g, t);
-				IloConstraint c1b( genUsed[g][t] + overGen[g][t] <= genPtr.maxCapacity);
-				c1b.setName(elemName); model.add(c1b);
+	//			sprintf(elemName, "maxGenB(%d)(%d)", g, t);
+	//			IloConstraint c1b( genUsed[g][t] + overGen[g][t] <= genPtr.maxCapacity);
+	//			c1b.setName(elemName); model.add(c1b);
 
 				sprintf(elemName, "minGen(%d)(%d)", g, t);
 				IloConstraint c2( genUsed[g][t] >= genMin[g][t]);
@@ -377,6 +389,10 @@ bool EDmodel::solve(instance &inst, int t0) {
 			}
 		}
 		
+		if (!status) {
+			cplex.exportModel("infeasible_RTED.lp");
+			exit(1);
+		}
 		
 		// record the solution
 		if (status) {
