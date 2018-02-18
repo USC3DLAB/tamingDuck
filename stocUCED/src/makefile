@@ -44,7 +44,7 @@ CONCERTINCDIR = $(CONCERTDIR)/include/
 
 CONCERTLIBDIR = $(CONCERTDIR)/lib/$(SYSTEM)/$(LIBFORMAT)
 
-CCLNFLAGS = -lboost_thread -L$(CPLEXLIBDIR) -lilocplex -lcplex  -ldl -L$(CONCERTLIBDIR) -lconcert -lm -pthread
+CCLNFLAGS = -lboost_system -lboost_thread -L$(CPLEXLIBDIR) -lilocplex -lcplex  -ldl -L$(CONCERTLIBDIR) -lconcert -lm -pthread
 # ---------------------------------------------------------------------
 # To execute the CPLEX examples.
 # ---------------------------------------------------------------------
@@ -62,7 +62,7 @@ SOURCES = main.cpp setup.cpp UCmodel.cpp EDmodel.cpp instance.cpp integrateSD.cp
 
 HEADERS = UCmodel.hpp EDmodel.hpp instance.hpp integrateSD.hpp misc.hpp SUC_master.hpp SUC_subprob.hpp solution.hpp config.hpp SUC_recourse.hpp BendersCutCoefs.hpp ./powerSys/Bus.hpp ./powerSys/Generator.hpp ./powerSys/Line.hpp ./powerSys/PowSys.hpp ./stocProcess/stoc.hpp ./sd/twoSD.h ./solverUtilities/utils.h ./solverUtilities/solver.h  ./smpsReader/smps.h ./smpsReader/prob.h 
 
-OBJECTS = main.o setup.o UCmodel.o  EDmodel.o instance.o integrateSD.o misc.o SUC_master.o SUC_subprob.o SUC_recourse.o BendersCutCoefs.o Bus.o Generator.o Line.o PowSys.o stoc.o algo.o cuts.o master.o setupSD.o stocUpdate.o  evaluate.o optimal.o soln.o subprob.o solver.o utility.o smps.o prob.o rvgen.o
+OBJECTS = main.o setup.o UCmodel.o  EDmodel.o instance.o integrateSD.o misc.o SUC_master.o SUC_subprob.o SUC_recourse.o Bus.o Generator.o Line.o PowSys.o stoc.o algo.o cuts.o master.o setupSD.o stocUpdate.o  evaluate.o optimal.o soln.o subprob.o solver.o utility.o smps.o prob.o rvgen.o
 
 # ------------------------------------------------------------
 
