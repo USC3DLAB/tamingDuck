@@ -802,7 +802,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 	if (probType==DayAhead) {
 		cplex.use(IncCallback(env, *this));
 	}
-//	cplex.setOut( inst.out() );
+	cplex.setOut( inst.out() );
 	cplex.setWarning( inst.out() );
 	cplex.setParam(IloCplex::Threads, 1);
 //    cplex.setParam(IloCplex::FPHeur, 2);

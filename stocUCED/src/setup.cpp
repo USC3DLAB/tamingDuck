@@ -58,7 +58,7 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc, string &RScriptsPath) {
 		cout << "Observation-" << rep << endl;
 
 		/* allocate memory to hold solutions */
-		int beginMin = 0; 	timeInfo->tm_min = 0;	timeInfo->tm_hour = 0; mktime(timeInfo);
+		int beginMin = 0; 	timeInfo->tm_min = 0;	timeInfo->tm_hour = 1; mktime(timeInfo);
 		
 		bool status = true;
 
@@ -174,7 +174,7 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 		inst.setRSeed(rep);
 
 		/* allocate memory to hold solutions */
-		int beginMin = 0; 	timeInfo->tm_min = 0;	timeInfo->tm_hour = 0; mktime(timeInfo);
+		int beginMin = 0; 	timeInfo->tm_min = 0;	timeInfo->tm_hour = 1; mktime(timeInfo);
 
 		bool status;
 		
@@ -284,7 +284,7 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 		inst.setRSeed(rep);
 		
 		/* allocate memory to hold solutions */
-		int beginMin = 0; 	timeInfo->tm_min = 0;	timeInfo->tm_hour = 0; mktime(timeInfo);
+		int beginMin = 0; 	timeInfo->tm_min = 0;	timeInfo->tm_hour = 1; mktime(timeInfo);
 		
 		bool status;
 		
@@ -309,7 +309,7 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 			else		printf("Failed.\n");
 
 			timeLog << get_wall_time() - begin_t << endl;
-			return 0;
+
 			/* Short-term unit commitment */
 			for ( t = 0; t < runParam.ST_numSolves; t++ ) {
 				printf("\tShort-term Unit-Commitment (%02d:%02d): ", timeInfo->tm_hour, timeInfo->tm_min);

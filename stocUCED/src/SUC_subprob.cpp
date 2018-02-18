@@ -19,6 +19,7 @@ SUCsubprob::SUCsubprob () {
 
 	cplex.setOut(env.getNullStream());
 	cplex.setWarning(env.getNullStream());
+	cplex.setParam(IloCplex::Threads, 1);
 	cplex.setParam(IloCplex::RootAlg, IloCplex::Dual);	// Important
 	
 	solve_t = 0;
