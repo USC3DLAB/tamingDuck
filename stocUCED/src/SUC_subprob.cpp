@@ -137,7 +137,7 @@ double SUCsubprob::getRandomCoef (int &s, int &t, int &loc) {
 	}
 }
 
-void SUCsubprob::formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep)
+void SUCsubprob::formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep, IloArray<IloNumArray> &masterSoln)
 {
 	// get a handle on the instance and model type
 	this->inst		= &inst;
@@ -145,6 +145,7 @@ void SUCsubprob::formulate (instance &inst, ProblemType probType, ModelType mode
 	this->probType	= probType;
 	this->modelType = modelType;
 	this->rep		= rep;
+	this->genState	= &masterSoln;
 	
 	preprocessing();
 		
@@ -173,7 +174,7 @@ void SUCsubprob::formulate_production()
 	}
 
 	/** Constraints **/
- 
+
 	// state constraints
 	for (int g=0; g<numGen; g++) {
 		for (int t=0; t<numPeriods; t++) {
@@ -447,17 +448,24 @@ void SUCsubprob::formulate_aggregate_system()
 	cplex.extract(model);
 }
 
-void SUCsubprob::setMasterSoln (vector<vector<bool>> &gen_stat) {
-	this->genState = &gen_stat;
-	
+void SUCsubprob::setMasterSoln () {
 	int c=0;
 	
 	// state constraints
 	for (int g=0; g<numGen; g++) {
+		IloRangeArray stateCons (env);
 		for (int t=0; t<numPeriods; t++) {
-			cons[c].setBounds( gen_stat[g][t], gen_stat[g][t] );
+			stateCons.add(cons[c]);
 			c++;
 		}
+		stateCons.setBounds( (*genState)[g], (*genState)[g] );
+		stateCons.end();
+		
+		// Deprecated, as the above version seems faster. 
+//		for (int t=0; t<numPeriods; t++) {
+//			cons[c].setBounds( gen_stat[g][t], gen_stat[g][t] );
+//			c++;
+//		}
 	}
 
 	// rest of the constraints are not a function of x
@@ -507,12 +515,12 @@ void SUCsubprob::setup_subproblem(int &s) {
 		
 		if ( it != inst->simulations.mapVarNamesToIndex.end() ) {	// if random supply generator
 			for (int t=0; t<numPeriods; t++, c++) {					// Note: c is iterated in the secondary-loops
-				if ((*genState)[g][t]) {		// Important: This is OK, only because if x[g][t]=0, its coefficient doesn't matter
+//				if ((*genState)[g][t]) {		// Important: This is OK, only because if x[g][t]=0, its coefficient doesn't matter
 					period = (beginMin/periodLength)+(t*numBaseTimePerPeriod);
 					supply = min(getRandomCoef(s, period, it->second), genPtr->maxCapacity);
 					
 					cons[c].setLinearCoef(x[g][t], -supply);
-				}
+//				}
 			}
 		} else {
 			c += numPeriods;

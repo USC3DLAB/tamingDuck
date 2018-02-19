@@ -26,21 +26,21 @@ public:
 	SUCsubprob ();
 	~SUCsubprob ();
 	
-	void formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep);
+	void formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep, IloArray<IloNumArray> &masterSoln);
 	
 	bool solve (int mappedScen, BendersCutCoefs &cutCoefs, double &objValue, vector<double> &initGen);
 	
 	double getEDGenProd	(int genId, int period);				// reads from inst->Solution.gED
 	bool getGenState	(int genId, int period);				// reads from inst->Solution.x
         
-	void setMasterSoln (vector<vector<bool>> & x);
+	void setMasterSoln ();
 
 private:	
 	IloEnv		env;
 	IloModel	model;
 	IloCplex	cplex;
 	
-	IloRangeArray	cons;	// constraints which will be useful for L-shaped
+	IloRangeArray	cons;		// constraints which will be useful for L-shaped algorithm
 	IloNumArray		duals;
 	
 	instance*	inst;
@@ -59,7 +59,7 @@ private:
 	void getInitGen(vector<double> &initGen);
 	
 	// fixed master solution
-	vector<vector<bool>> *genState;
+	IloArray<IloNumArray> *genState;
 	
 	void compute_optimality_cut_coefs	(BendersCutCoefs &cutCoefs);
 	void compute_feasibility_cut_coefs	(BendersCutCoefs &cutCoefs);

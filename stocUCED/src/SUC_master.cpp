@@ -54,7 +54,7 @@ IloCplex::Callback IncCallback(IloEnv env, SUCmaster &me) {
 }
 
 void SUCmaster::IncCallbackI::main() {
-	// if the incumbent's objective is improving with the new osolution
+	// if the incumbent's objective is improving with the new solution
 	if ( getObjValue() < getIncumbentObjValue() ) {
 		
 		// request expected initial generation amounts
@@ -77,21 +77,29 @@ IloCplex::Callback LazySepCallback(IloEnv env, SUCmaster & me) {
 
 void SUCmaster::LazySepCallbackI::main()
 {
-	// get the solution
-	vector< vector<bool> > state;
-	resize_matrix(state, me.numGen, me.numPeriods);
-
-    IloNumArray x_vals (me.env);
-	for (int g=0; g<me.numGen; g++) {
-		getValues(x_vals, me.x[g]);
-		for (int t=0; t<me.numPeriods; t++) {
-			(x_vals[t] >= 0.5) ? state[g][t] = true : state[g][t] = false;
+	if ( me.LinProgRelaxFlag ) {
+		me.inst->out() << "LinProgRelax = " << getObjValue() << endl;
+		
+		if ( fabs(getObjValue() - me.LinProgRelaxObjVal) / (fabs(me.LinProgRelaxObjVal)+1e-14) < 0.005 ) {
+			me.LinProgRelaxNoObjImp++;
+		} else {
+			me.LinProgRelaxNoObjImp = 0;
 		}
+		
+		if ( me.LinProgRelaxNoObjImp > 5 ) {
+			return;
+		}
+			
+		me.LinProgRelaxObjVal = getObjValue();
 	}
-    x_vals.end();
-
+	
+	// get the solution
+	for (int g=0; g<me.numGen; g++) {
+		getValues(me.xvals[g], me.x[g]);
+	}	
+	 
 	// set the master solution in the subproblems
-	me.recourse.setMasterSoln(state);
+	me.recourse.setMasterSoln();
 	
 	// solve the subproblems
 	bool isFeasible = me.recourse.solve();
@@ -186,7 +194,13 @@ void SUCmaster::LazySepCallbackI::main()
 			
 			// add the cut
 			try {
-				add(BendersCut).end();
+				if (me.LinProgRelaxFlag) {
+					me.BendersCuts.add(BendersCut);
+					add(BendersCut);
+				}
+				else {
+					add(BendersCut).end();
+				}
 			}
 			catch (IloException &e) {
 				cout << "Exception: " << e << endl;
@@ -271,6 +285,11 @@ void SUCmaster::preprocessing ()
 	resize_matrix(expCapacity, numGen, numPeriods);		// max generator capacities
 	sysLoad.resize(numPeriods);							// aggregated system load
 	resize_matrix(busLoad, numBus, numPeriods);
+	xvals = IloArray<IloNumArray> (env, numGen);
+	for (int g=0; g<numGen; g++) {
+		xvals[g] = IloNumArray (env, numPeriods);
+	}
+	
 	
 	/* Min Generation Amounts */
 	for (int g=0; g<numGen; g++) {
@@ -768,7 +787,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 	model.add( IloMinimize(env, obj) );
 	
     // formulate the subproblem
-	recourse.formulate(inst, probType, modelType, beginMin, rep);
+	recourse.formulate(inst, probType, modelType, beginMin, rep, xvals);
 	
 	// formulate the warm-up problem
 	warmUpProb.formulate(inst, probType, modelType, beginMin, rep);
@@ -809,8 +828,6 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 //    cplex.setParam(IloCplex::HeurFreq, 10);
 //    cplex.setParam(IloCplex::LBHeur, 1);    // ??
     cplex.setParam(IloCplex::EpGap, 1e-2);
-	cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*7200 + (probType == ShortTerm)*1800);
-//	cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*300 + (probType == ShortTerm)*60);
 }
 
 bool SUCmaster::solve () {
@@ -828,15 +845,50 @@ bool SUCmaster::solve () {
 		}
 		/*        */
 		
-		//if (probType == ShortTerm) {
-		
 		// Benders' decomposition
 		inst->out() << "Executing Benders' decomposition for ";
 		if (probType == DayAhead)	inst->out() << "DAUC,";
 		else						inst->out() << "STUC,";
 		inst->out() << " at time = " << beginMin << " (mins)." << endl;
 		
+		/* Process the LP Relaxation */
+		
+		// convert variables from BOOL to FLOAT
+		IloNumVarArray vars (env);
+		for (int g=0; g<numGen; g++) {
+			for (int t=0; t<numPeriods; t++) {
+				vars.add(x[g][t]);
+				vars.add(s[g][t]);
+				vars.add(z[g][t]);
+			}
+		}
+		IloConversion convertToLP (env, vars, ILOFLOAT);
+		vars.end();
+		
+		// add conversion to the model
+		model.add(convertToLP);
+		
+		// add a dummy binary to keep the problem as an "MIP".
+		model.add( IloNumVar(env, 0, IloInfinity, ILOBOOL) );
+		
+		// initialize the LP relaxation
+		BendersCuts = IloRangeArray (env);
+		LinProgRelaxFlag = true;
+		cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*600 + (probType == ShortTerm)*300);
+		// solve
 		status = cplex.solve();
+		
+		// reformulate the problem with the new cuts
+		model.remove(convertToLP);
+		model.add(BendersCuts);
+		cplex.extract(model);
+		cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*7200 + (probType == ShortTerm)*1800);
+		//	cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*300 + (probType == ShortTerm)*60);
+		LinProgRelaxFlag = false;
+		/*					*/
+
+		status = cplex.solve();
+		
 		if (status) {
 			inst->out() << "Optimization is completed with status " << cplex.getCplexStatus() << endl;
 			inst->out() << "Obj = \t" << cplex.getObjValue() << endl;
@@ -867,31 +919,6 @@ bool SUCmaster::solve () {
 				}
 			}
 		}
-		/*}
-		else {
-			cout << "*** Reading solutions from data ***" << endl;
-			
-			ifstream input;
-			sprintf(buffer, "rep%d_commitments.sol", rep);
-			open_file(input, buffer);
-			
-			double state;
-			
-			for (int g=0; g<numGen; g++) {
-				Generator *genPtr = &(inst->powSys->generators[g]);
-				
-				for (int t=0; t<96; t++) {
-					input >> state;
-					move_cursor(input, delimiter);
-					if (genPtr->isDAUCGen) {
-						inst->solution.x[g][t] = state;
-					}
-				}
-			}
-			input.close();
-			status = true;
-		}
-		 */
 		
 		return status;
 	}

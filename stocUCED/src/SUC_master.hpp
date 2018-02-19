@@ -55,6 +55,12 @@ private:
 	IloArray<IloNumVarArray> s, x, z;
 	IloNumVarArray	eta;	// exp value of the 2nd-stage subproblem
 	
+	IloArray<IloNumArray> xvals;	// values to be passed to the subproblems
+	IloRangeArray BendersCuts;		// Benders Cuts collected from the LP relaxation
+	bool	LinProgRelaxFlag;
+	double	LinProgRelaxObjVal = 0;
+	int		LinProgRelaxNoObjImp = 0;
+	
 	bool multicut;
 	
 	instance*	inst;

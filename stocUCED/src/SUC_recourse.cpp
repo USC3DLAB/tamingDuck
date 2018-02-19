@@ -16,7 +16,7 @@ SUCrecourse::SUCrecourse () {
 
 SUCrecourse::~SUCrecourse() {}
 
-void SUCrecourse::formulate(instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep) {
+void SUCrecourse::formulate(instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep, IloArray<IloNumArray> &masterSoln) {
 	numScen = runParam.numLSScen;
 	
 	int numGen = inst.powSys->numGen;
@@ -24,7 +24,7 @@ void SUCrecourse::formulate(instance &inst, ProblemType probType, ModelType mode
 
 	/* formulate the subproblems */
 	for (int k=0; k<subprobs.size(); k++) {
-		subprobs[k].formulate(inst, probType, modelType, beginMin, rep);
+		subprobs[k].formulate(inst, probType, modelType, beginMin, rep, masterSoln);
 	}
 	
 	// allocate mem
@@ -111,9 +111,9 @@ bool SUCrecourse::solve() {
  * setMasterSoln
  * - Sets the master solution at each subprob math model (or solver) object
  ****************************************************************************/
-void SUCrecourse::setMasterSoln(vector<vector<bool>> &states) {
+void SUCrecourse::setMasterSoln() {
 	for (int k=0; k<subprobs.size(); k++) {
-		subprobs[k].setMasterSoln(states);
+		subprobs[k].setMasterSoln();
 	}
 }
 
