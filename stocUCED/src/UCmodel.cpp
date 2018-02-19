@@ -566,7 +566,11 @@ bool UCmodel::solve() {
 					if ( (probType == DayAhead && genPtr->isDAUCGen) || (probType == ShortTerm && !genPtr->isDAUCGen) ) {
 						setGenState(g,t, cplex.getValue(x[g][t]));
 					}
-					if (probType == DayAhead)	setDAGenProd (g,t, cplex.getValue(p[g][t]));
+					if (probType == DayAhead) {
+						// Note: Production = 0 when generator is not operational. Below line prevents numerical errors
+						// where there is >0 production but =0 commitment.
+						setDAGenProd (g,t, cplex.getValue(p[g][t]) * getGenState(g, t) );
+					}
 				}
 			}
 		}

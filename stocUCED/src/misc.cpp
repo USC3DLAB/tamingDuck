@@ -205,7 +205,8 @@ void print_matrix (ofstream &output, vector < vector<double> > &x, char delimite
 {
 	for (unsigned int i=0; i<x.size(); i++) {
 		for (unsigned int j=0; j<x[0].size(); j++) {
-			output << setprecision(precision) << fixed << x[i][j] << delimiter;
+			output << setprecision(precision) << fixed << x[i][j];
+			if ( j != x[0].size()-1 )	output << delimiter;
 		}
 		output << endl;
 	}
@@ -215,7 +216,8 @@ void print_matrix (ofstream &output, vector < vector<bool> > &x, char delimiter)
 {
 	for (unsigned int i=0; i<x.size(); i++) {
 		for (unsigned int j=0; j<x[0].size(); j++) {
-			output << x[i][j] << delimiter;
+			output << x[i][j];
+			if ( j != x[0].size()-1 )	output << delimiter;
 		}
 		output << endl;
 	}
@@ -225,7 +227,8 @@ void print_matrix (ofstream &output, vector < vector<int> > &x, char delimiter)
 {
 	for (unsigned int i=0; i<x.size(); i++) {
 		for (unsigned int j=0; j<x[0].size(); j++) {
-			output << x[i][j] << delimiter;
+			output << x[i][j];
+			if ( j != x[0].size()-1 )	output << delimiter;
 		}
 		output << endl;
 	}

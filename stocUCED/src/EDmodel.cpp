@@ -61,18 +61,9 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 			int idxT = min(t0+t, runParam.numPeriods-1);
 
 			/* Make sure that the generation capacity limits are met. The minimum and maximum for generators which are turned off are set to zero during pre-processing */
-			genMax[g][t] = inst.solution.x[g][idxT]*genPtr.maxCapacity;
-			//genMin[g][t] = inst.solution.x[g][idxT]*genPtr.minGenerationReq;
-
-			// TODO: Semih is unsure what to use for genMin
-			genMin[g][t] = inst.solution.x[g][idxT]* min(genPtr.minGenerationReq, min(genPtr.rampUpLim * runParam.ED_resolution, genPtr.rampDownLim * runParam.ED_resolution));
+			genMax[g][t] = inst.solution.x[g][idxT] * genPtr.maxCapacity;
+			genMin[g][t] = inst.solution.x[g][idxT] * min(genPtr.minGenerationReq, min(genPtr.rampUpLim * runParam.ED_resolution, genPtr.rampDownLim * runParam.ED_resolution));
 			
-			/* Stochastic generation set to what is available */
-/*			auto it = inst.stocObserv[2].mapVarNamesToIndex.find(genPtr.name);
-			if ( it != inst.stocObserv[2].mapVarNamesToIndex.end() ) {
-				genAvail[g][t] = min(genMax[g][t], inst.stocObserv[2].vals[rep][idxT][it->second]);
-			}
-*/
 			/* Stochastic generation set to what is available */
 			auto it = inst.observations["RT"].mapVarNamesToIndex.find(genPtr.name);
 			bool stocSupply = (it != inst.observations["RT"].mapVarNamesToIndex.end()) ? true : false;
@@ -87,7 +78,6 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 					genAvail[g][t] = min( inst.observations["DA"].vals[rep][t0+t][it->second], genMax[g][t] );
 				}
 			}
-			
 			
 			/* Ramping restrictions */
 			genRampUp[g][t]		= genPtr.rampUpLim * runParam.ED_resolution;
@@ -216,59 +206,51 @@ void EDmodel::formulate(instance &inst, int t0) {
 
 		/* Generation ramping constraints: applicable only if the generator continues to be ON, i.e., x[g][t] = 1. */
 		if ( t == 0 ) {
-			if ( t0 == 0 ) {
-				// Note: Initial generation is assumed to be the 1st-period generation quantities of ST-UC model
-				for ( int g = 0; g < numGen; g++ ) {
-					if (inst.solution.x[g][t] >= 0.5) {
-					/* ramp-up */
-					sprintf(elemName, "rampUp(%d)(%d)", g, t);
-					IloConstraint c1( genUsed[g][t] + overGen[g][t] -  inst.solution.g_DAUC[g][t0] <= genRampUp[g][t]);
-					c1.setName(elemName); model.add(c1);
-					
-					/* ramp-down */
-					sprintf(elemName, "rampDown(%d)(%d)", g, t);
-					IloConstraint c2( inst.solution.g_DAUC[g][t0] - genUsed[g][t] - overGen[g][t] <= genRampDown[g][t]);
-					c2.setName(elemName); model.add(c2);
-					}
+			// Note: Generation amounts at time t-1 comes from:
+			// a) If t-1 is earlier than the planning horizon, 1st-period generation levels of the DA-UC problem,
+			// b) Otherwise, the ED solutions obtained earlier.
+			double prevGen;
+			
+			for (int g=0; g<numGen; g++) {
+				if (inst.solution.x[g][t] < 0.5)	continue;		// generator is not operational
+				
+				// determine previous generation level
+				if ( t0 == 0 ) {
+					prevGen = inst.solution.g_DAUC[g][t0] * 1.0;	// all generators are assumed to be operational
+				} else {
+					prevGen = inst.solution.g_ED[g][t0-1] * round(inst.solution.x[g][t0-1]);	// the latter is to prevent numerical errors
 				}
-			}
-			else {
-				/* The first time period of the ED horizon */
-				for ( int g = 0; g < numGen; g++ ) {
-					if (inst.solution.x[g][t] >= 0.5) {
 
-					/* ramp-up */
-					sprintf(elemName, "rampUp(%d)(%d)", g, t);
-					IloConstraint c1( genUsed[g][t] + overGen[g][t] -  inst.solution.g_ED[g][t0-1] <= genRampUp[g][t]);
-					c1.setName(elemName); model.add(c1);
-
-					/* ramp-down */
-					sprintf(elemName, "rampDown(%d)(%d)", g, t);
-					IloConstraint c2( inst.solution.g_ED[g][t0-1] - genUsed[g][t] - overGen[g][t] <= genRampDown[g][t]);
-					c2.setName(elemName); model.add(c2);
-					}
-				}
+				// add the constraints
+				/* ramp-up */
+				sprintf(elemName, "rampUp(%d)(%d)", g, t);
+				IloConstraint c1( genUsed[g][t] + overGen[g][t] - prevGen <= genRampUp[g][t]);
+				c1.setName(elemName); model.add(c1);
+				
+				/* ramp-down */
+				sprintf(elemName, "rampDown(%d)(%d)", g, t);
+				IloConstraint c2( prevGen - genUsed[g][t] - overGen[g][t] <= genRampDown[g][t]);
+				c2.setName(elemName); model.add(c2);
 			}
 		}
-		else {
-			/* The remaining periods of the ED horizon */
+		else	/* The remaining periods of the ED horizon */
+		{
 			for ( int g = 0; g < numGen; g++ ) {
-				if (inst.solution.x[g][t] >= 0.5) {
+				if (inst.solution.x[g][t] < 0.5)	continue;	// generator is not operational
 
 				/* ramp-up */
 				sprintf(elemName, "rampUp(%d)(%d)", g, t);
 				IloConstraint c1( genUsed[g][t] + overGen[g][t] - genUsed[g][t-1] - overGen[g][t-1] <= genRampUp[g][t]);
 				c1.setName(elemName); model.add(c1);
-				
+					
 				/* ramp-down */
 				sprintf(elemName, "rampDown(%d)(%d)", g, t);
 				IloConstraint c2( genUsed[g][t-1] + overGen[g][t-1] - genUsed[g][t] - overGen[g][t] <= genRampDown[g][t]);
 				c2.setName(elemName); model.add(c2);
-				}
 			}
 		}
 		
-		/* spinning reserve constraints *
+		/* spinning-reserve constraints */
 		if (t != 0) {
 			IloExpr sysOverGen (env);
 			
@@ -292,8 +274,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 			
 			if ( !stocSupply ) {
 				/* Deterministic-supply generator */
-			
-				sprintf(elemName, "maxGenA(%d)(%d)", g, t);
+				sprintf(elemName, "maxGen(%d)(%d)", g, t);
 				IloConstraint c1a( genUsed[g][t] + overGen[g][t] <= genMax[g][t]);
 				c1a.setName(elemName); model.add(c1a);
 
@@ -315,7 +296,6 @@ void EDmodel::formulate(instance &inst, int t0) {
 					IloConstraint c (genUsed[g][t] + overGen[g][t] == genAvail[g][t]); c.setName(elemName); model.add(c);
 				}
 
-				//TODO: Harsha, I'm not sure if this is in the right place:
 				if ( t != 0 )
 					stocRows.push_back(elemName);
 			}
@@ -335,13 +315,13 @@ void EDmodel::formulate(instance &inst, int t0) {
 	for ( int t = 0; t < numPeriods; t++) {
 		/* Generation cost */
 		for ( int g = 0; g < numGen; g++ ) {
-			//TODO: Harsha, I have put penalties on overgeneration as well. Check if you think you should put extra penalties as well.
 			realTimeCost += (inst.powSys->generators[g].variableCost*runParam.ED_resolution/60.0)*(genUsed[g][t] + overGen[g][t]);
 		}
 
-		/* Load shedding penalty */
+		/* Load shedding penalty *
 		for ( int d = 0; d < numBus; d++ )
 			realTimeCost += loadShedPenaltyCoef*demShed[d][t];
+		/*	*/
 	}
 	obj = IloMinimize(env, realTimeCost);
 	obj.setName(elemName);
@@ -391,7 +371,7 @@ bool EDmodel::solve(instance &inst, int t0) {
 		
 		if (!status) {
 			cplex.exportModel("infeasible_RTED.lp");
-			exit(1);
+			exit(5);
 		}
 		
 		// record the solution

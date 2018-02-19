@@ -857,6 +857,13 @@ bool SUCmaster::solve () {
 					if ( (probType == DayAhead && genPtr->isDAUCGen) || (probType == ShortTerm && !genPtr->isDAUCGen) ) {
 						setGenState(g,t, cplex.getValue(x[g][t]));
 					}
+					if ( probType == DayAhead ) {
+						// Note: Production = 0 when generator is not operational. Below line prevents numerical errors
+						// where there is >0 production but =0 commitment.
+						if ( !getGenState(g,t) ) {
+							setDAGenProd(g, t, 0.0);
+						}
+					}
 				}
 			}
 		}
