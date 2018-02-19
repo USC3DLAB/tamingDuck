@@ -318,10 +318,9 @@ void EDmodel::formulate(instance &inst, int t0) {
 			realTimeCost += (inst.powSys->generators[g].variableCost*runParam.ED_resolution/60.0)*(genUsed[g][t] + overGen[g][t]);
 		}
 
-		/* Load shedding penalty *
+		/* Load shedding penalty */
 		for ( int d = 0; d < numBus; d++ )
 			realTimeCost += loadShedPenaltyCoef*demShed[d][t];
-		/*	*/
 	}
 	obj = IloMinimize(env, realTimeCost);
 	obj.setName(elemName);
