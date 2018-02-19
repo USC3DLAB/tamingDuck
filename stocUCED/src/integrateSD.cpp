@@ -389,7 +389,7 @@ timeType *buildTimeType(IloModel &model, vector<string> rowNames, vector<string>
 	return tim;
 }//END buildTimeType()
 
-stocType *buildStocType(IloModel &model, vector<string> stocRows, ScenarioType stocObserv, int t0) {
+stocType *buildStocType(IloModel &model, vector<string> stocRows, ScenarioType &stocObserv, int t0) {
 	stocType *stoc = NULL;
 
 	int maxOmegas = stocRows.size();

@@ -205,6 +205,8 @@ void EDmodel::formulate(instance &inst, int t0) {
 		}
 
 		/* Generation ramping constraints: applicable only if the generator continues to be ON, i.e., x[g][t] = 1. */
+		int idx = min(t0+t, runParam.numPeriods-1);
+		
 		if ( t == 0 ) {
 			// Note: Generation amounts at time t-1 comes from:
 			// a) If t-1 is earlier than the planning horizon, 1st-period generation levels of the DA-UC problem,
@@ -212,7 +214,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 			double prevGen;
 			
 			for (int g=0; g<numGen; g++) {
-				if (inst.solution.x[g][t] < 0.5)	continue;		// generator is not operational
+				if (inst.solution.x[g][idx] < 0.5)	continue;		// generator is not operational
 				
 				// determine previous generation level
 				if ( t0 == 0 ) {
@@ -229,14 +231,14 @@ void EDmodel::formulate(instance &inst, int t0) {
 				
 				/* ramp-down */
 				sprintf(elemName, "rampDown(%d)(%d)", g, t);
-				IloConstraint c2( prevGen - genUsed[g][t] - overGen[g][t] <= genRampDown[g][t]);
+				IloConstraint c2( prevGen - genUsed[g][t] - overGen[g][t] <= genRampDown[g][t] );	// the latter
 				c2.setName(elemName); model.add(c2);
 			}
 		}
 		else	/* The remaining periods of the ED horizon */
 		{
 			for ( int g = 0; g < numGen; g++ ) {
-				if (inst.solution.x[g][t] < 0.5)	continue;	// generator is not operational
+				if (inst.solution.x[g][idx] < 0.5)	continue;	// generator is not operational
 
 				/* ramp-up */
 				sprintf(elemName, "rampUp(%d)(%d)", g, t);
