@@ -1,5 +1,5 @@
 horizon	24 hours
-DA_time_horizon 8 hours
+DA_time_horizon 24 hours
 ST_time_horizon 3 hours
 ED_time_horizon 75 minutes
 DA_time_resolution 1 hours
@@ -8,6 +8,6 @@ ED_time_resolution 15 minutes
 DA_time_frequency 24 hours
 ST_time_frequency 1 hours
 ED_time_frequency 15 minutes
-numRep 7 scenarios
-numLSScen 10 scenarios
-numTotScen 100 scenarios
+numRep 5 scenarios
+numLSScen 100 scenarios
+numTotScen 1000 scenarios
