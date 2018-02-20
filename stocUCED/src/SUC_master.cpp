@@ -810,17 +810,13 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
     /************************************************************************/
 	
 	cplex.use(LazySepCallback(env, *this));
-//	cplex.use(rounding(env, x));
-	if (probType==DayAhead) {
-		cplex.use(IncCallback(env, *this));
-	}
 	cplex.setOut( inst.out() );
 	cplex.setWarning( inst.out() );
 	cplex.setParam(IloCplex::Threads, 1);
 //    cplex.setParam(IloCplex::FPHeur, 2);
 //    cplex.setParam(IloCplex::HeurFreq, 10);
 //    cplex.setParam(IloCplex::LBHeur, 1);    // ??
-    cplex.setParam(IloCplex::EpGap, 1e-2);
+    cplex.setParam(IloCplex::EpGap, 5e-2);
 }
 
 bool SUCmaster::solve () {
@@ -879,7 +875,11 @@ bool SUCmaster::solve () {
 		//	cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*300 + (probType == ShortTerm)*60);
 		LinProgRelaxFlag = false;
 		/*					*/
-
+		cplex.use(rounding(env, x));
+		if (probType == DayAhead) {
+			cplex.use(IncCallback(env, *this));
+		}
+		
 		status = cplex.solve();
 		
 		if (status) {
