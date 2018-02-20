@@ -577,6 +577,7 @@ bool UCmodel::solve() {
 		
 		if (!status) {
 			cplex.exportModel("infeasible_UC.lp");
+			exit(5);
 		}
 		
 		if (status) {

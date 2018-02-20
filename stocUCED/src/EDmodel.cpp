@@ -64,6 +64,14 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 			genMax[g][t] = inst.solution.x[g][idxT] * genPtr.maxCapacity;
 			genMin[g][t] = inst.solution.x[g][idxT] * min(genPtr.minGenerationReq, min(genPtr.rampUpLim * runParam.ED_resolution, genPtr.rampDownLim * runParam.ED_resolution));
 			
+			// error check
+			if (genMax[g][t] < 0 || genMin[g][t] < 0) {
+				ofstream errorlog;
+				open_file(errorlog, "error.log");
+				errorlog << "ED model genMax/genMin g " << g << " t " << t << " < 0 " << setprecision(10) << genMax[g][t] << "\t" << genMin[g][t] << endl;
+				errorlog.close();
+			}
+			
 			/* Stochastic generation set to what is available */
 			auto it = inst.observations["RT"].mapVarNamesToIndex.find(genPtr.name);
 			bool stocSupply = (it != inst.observations["RT"].mapVarNamesToIndex.end()) ? true : false;
