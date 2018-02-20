@@ -43,8 +43,6 @@ private:
 	IloRangeArray	cons;		// constraints which will be useful for L-shaped algorithm
 	IloNumArray		duals;
 	
-	IloRangeArray	stocCons;	// constraints whose rhs is stochastic
-	
 	instance*	inst;
 	
 	ModelType   modelType;
@@ -63,8 +61,8 @@ private:
 	// fixed master solution
 	IloArray<IloNumArray> *genState;
 	
-	void compute_optimality_cut_coefs	(int &s, BendersCutCoefs &cutCoefs);
-	void compute_feasibility_cut_coefs	(int &s, BendersCutCoefs &cutCoefs);
+	void compute_optimality_cut_coefs	(BendersCutCoefs &cutCoefs);
+	void compute_feasibility_cut_coefs	(BendersCutCoefs &cutCoefs);
 	
 	// Variables
     IloArray< IloNumVarArray > p, L, x;		// production, load-shedding, state-variables (latter to be fixed by the master problem)

@@ -12,7 +12,8 @@ extern runType runParam;
 
 ILOHEURISTICCALLBACK1(rounding, IloArray< IloNumVarArray >, x) {
 
-	if ( getNnodes() > 10 && getNnodes() % 100 != 0) {
+	if ( (getNnodes() > 10 && getNnodes() % 100 != 0)
+		|| fabs(getIncumbentObjValue()-getBestObjValue())/(fabs(getIncumbentObjValue())+1e-14) < 0.2) {
 		return;
 	}
 	
@@ -80,7 +81,7 @@ void SUCmaster::LazySepCallbackI::main()
 	if ( me.LinProgRelaxFlag ) {
 		me.inst->out() << "LinProgRelax = " << getObjValue() << endl;
 		
-		if ( fabs(getObjValue() - me.LinProgRelaxObjVal) / (fabs(me.LinProgRelaxObjVal)+1e-14) < 0.001 ) {
+		if ( fabs(getObjValue() - me.LinProgRelaxObjVal) / (fabs(me.LinProgRelaxObjVal)+1e-14) < 0.005 ) {
 			me.LinProgRelaxNoObjImp++;
 		} else {
 			me.LinProgRelaxNoObjImp = 0;
@@ -794,14 +795,6 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 	warmUpProb.cplex.setParam(IloCplex::SolnPoolGap, 5e-2);
 	warmUpProb.cplex.setParam(IloCplex::SolnPoolCapacity, 10);
 
-    /*************************************************************************
-     * DISABLED: Didn't improve the progress of the algorithm. Donno why..
-     *
-     * // compute a lower bound on eta
-     * double eta_lb = sub.computeLowerBound();
-     * eta.setLB( eta_lb );
-     ************************************************************************/
-     
     // prepare the solver
 	cplex.extract(model);
 
@@ -809,13 +802,13 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
      * DISABLED: Didn't improve the progress much.. reduced it in some cases.
      *
      * // assign priorities to state variables
-     * for (int g=0; g<inst.G; g++) {
-	 *    for (int t=0; t<inst.T; t++) {
+     * for (int g=0; g<numGen; g++) {
+	 *    for (int t=0; t<numPeriods; t++) {
      *         cplex.setPriority(x[g][t], 1);
      *     }
      * }
-     ************************************************************************/
-    
+    /************************************************************************/
+	
 	cplex.use(LazySepCallback(env, *this));
 //	cplex.use(rounding(env, x));
 	if (probType==DayAhead) {
