@@ -100,7 +100,7 @@ void SUCmaster::LazySepCallbackI::main()
 	}	
 	 
 	// set the master solution in the subproblems
-	me.recourse.setMasterSoln();
+	//me.recourse.setMasterSoln();
 	
 	// solve the subproblems
 	bool isFeasible = me.recourse.solve();
