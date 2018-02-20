@@ -80,7 +80,7 @@ void SUCmaster::LazySepCallbackI::main()
 	if ( me.LinProgRelaxFlag ) {
 		me.inst->out() << "LinProgRelax = " << getObjValue() << endl;
 		
-		if ( fabs(getObjValue() - me.LinProgRelaxObjVal) / (fabs(me.LinProgRelaxObjVal)+1e-14) < 0.005 ) {
+		if ( fabs(getObjValue() - me.LinProgRelaxObjVal) / (fabs(me.LinProgRelaxObjVal)+1e-14) < 0.001 ) {
 			me.LinProgRelaxNoObjImp++;
 		} else {
 			me.LinProgRelaxNoObjImp = 0;
@@ -184,7 +184,7 @@ void SUCmaster::LazySepCallbackI::main()
 				}
 				pi_b += cutCoefs->pi_b;
 			}
-			
+
 			pi_Tx *= sceProb;
 			pi_b  *= sceProb;
 			
