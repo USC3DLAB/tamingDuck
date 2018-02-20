@@ -1,21 +1,22 @@
-varSimulate <- function(varModel, simLength, numScenarios, simFrequency, type) {
+varSimulate <- function(varModel, simLength, lookaheadPeriods, simFrequency, numScenarios, type) {
   
   simLength <- simLength*simFrequency;
-  trend <- NULL
+  trend <- matrix(nrow = (simLength+lookaheadPeriods), ncol = varModel$ts$N);
   for ( l in 1:varModel$ts$N ) {
     temp <- spline(x = 1:dim(varModel$ts$dailyMean)[1], y = varModel$ts$dailyMean[,l], n = simLength)
     temp$y[temp$y < 0] <- 0
-    trend <- abind(trend, temp$y, along = 2)
+    trend[1:simLength, l] <- temp$y;
+    trend[(simLength+1):(simLength+lookaheadPeriods), l] <- temp$y[1:(lookaheadPeriods)];
   }
   
   samplePaths <- NULL;
   for (s in 1:numScenarios) {
 	  
-	if (s %% 100 == 0) {
-		print(s);
-	}
+	  if (s %% 100 == 0) {
+		  print(s);
+	  }
 	
-	residualPath <- NULL;
+	  residualPath <- NULL;
     
     # prepare to simulate scenarios from selected model.
     coeff <- NULL;
@@ -40,7 +41,7 @@ varSimulate <- function(varModel, simLength, numScenarios, simFrequency, type) {
     Spoly <- diag(x = 1, varModel$ts$N);
     
     # simulate scenarios using VARMAsim
-    windowSim <- MTS::VARMAsim(nobs = simLength, arlags = arlags, malags = NULL, cnst = cnst, phi = Apoly, theta = Bpoly, sigma = Spoly, skip = skip);
+    windowSim <- MTS::VARMAsim(nobs = (simLength+lookaheadPeriods), arlags = arlags, malags = NULL, cnst = cnst, phi = Apoly, theta = Bpoly, sigma = Spoly, skip = skip);
     
     oneSample <- windowSim$noises + trend;
     oneSample[oneSample < 0] <- 0

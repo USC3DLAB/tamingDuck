@@ -20,30 +20,30 @@ library("MTS");
 library("abind");
 
 # Source the functions
+RScriptsPath = "./";
 source(paste(RScriptsPath, "preprocessNRELdata.R", sep=""));
 source(paste(RScriptsPath, "varModelFit.R", sep=""));
 source(paste(RScriptsPath, "varSimulate.R", sep=""));
-# source("preprocessNRELdata.R");
-# source("varModelFit.R");
-# source("varSimulate.R");
+source(paste(RScriptsPath, "varParallelSimulate.R", sep=""));
 
 # Data parameters
-# dataFolder = "/Users/semihatakan/Documents/Coding Projects/Power Systems/tamingDuck/tamingDuck/stocUCED/datasets/3d-nrel118/"
-# dataType   = "Solar";
-# fileName   = "DA.csv";
-# fitModel	 = TRUE;
+ dataFolder = "/Users/semihatakan/Documents/Coding Projects/Power Systems/tamingDuck/tamingDuck/stocUCED/datasets/3d-nrel118/"
+ dataTypes   = c("Solar", "Wind");
+ fileName   = "DA.csv";
+ fitModel	 = TRUE;
 dataFrequency = 1;
 infoCrit = "SC"
 
 # Simulation parameters 
-# simLength <- 24;
+simLength <- 24;
 simFrequency = 4;
+lookaheadPeriods <- 12;
+# so in total, we'll get simLength*simFrequency + lookaheadPeriods many components
 # numScenarios <- 2;
-day = 1;
 
 # Fit model
 if (fitModel) {
-	#	set.seed(11)
+#	set.seed(11)
 	
 	varModel = NULL;
 	colNames = NULL;
@@ -61,12 +61,16 @@ for (i in 1:length(dataTypes)) {
 	numComponents = numComponents + varModel[[i]]$ts$N;
 }
 
-scenarios = array(0, dim = c(simLength*simFrequency, numComponents, numScenarios))
+scenarios = array(0, dim = c(simLength*simFrequency+lookaheadPeriods, numComponents, numScenarios))
 #scenarios = vector(mode = "double", length = numComponents*simLength*simFrequency*numScenarios)
 
 j = 1;
 for (i in 1:length(dataTypes)) {
-	tmp <- varSimulate(varModel[[i]], simLength, numScenarios, simFrequency, dataTypes[i])
+  # serial simulation
+	tmp <- varSimulate(varModel[[i]], simLength, lookaheadPeriods, simFrequency, numScenarios, dataTypes[i])
+  
+  # parallel simulation
+  # tmp <- varParallelSimulate(varModel[[i]], simLength, lookaheadPeriods, simFrequency, numScenarios, dataTypes[i])
 	# tmp[time, generator, scenario]
 	
 	scenarios[, j:(j+varModel[[i]]$ts$N-1), ] = tmp;
