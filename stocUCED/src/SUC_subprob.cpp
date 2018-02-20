@@ -451,22 +451,16 @@ void SUCsubprob::formulate_aggregate_system()
 void SUCsubprob::setMasterSoln () {
 	int c=0;
 	
-	IloRangeArray stateCons (env);
-	IloNumArray stateVals (env);
-
 	// state constraints
 	for (int g=0; g<numGen; g++) {
+		IloRangeArray stateCons (env);
 		for (int t=0; t<numPeriods; t++) {
 			stateCons.add(cons[c]);
-			stateVals.add( (*genState)[g][t] );
 			c++;
 		}
+		stateCons.setBounds( (*genState)[g], (*genState)[g] );
+		stateCons.end();
 	}
-
-	stateCons.setBounds(stateVals, stateVals);
-
-	stateCons.end();
-	stateVals.end();
 
 	// rest of the constraints are not a function of x
 }
@@ -475,8 +469,7 @@ bool SUCsubprob::solve(int mappedScen, BendersCutCoefs &cutCoefs, double &objVal
 	
 	cutCoefs.reset();
 	
-	setMasterSoln();
-//	setup_subproblem (mappedScen);			// prepare the subproblem
+	setup_subproblem (mappedScen);			// prepare the subproblem
 	bool status = cplex.solve();	// solve the subproblem
 	
 	// feasibility

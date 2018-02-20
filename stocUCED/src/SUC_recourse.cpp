@@ -10,7 +10,9 @@
 
 extern runType runParam;
 
-SUCrecourse::SUCrecourse () {}
+SUCrecourse::SUCrecourse () {
+	subprobs.resize(numThreads);
+}
 
 SUCrecourse::~SUCrecourse() {}
 
@@ -19,17 +21,10 @@ void SUCrecourse::formulate(instance &inst, ProblemType probType, ModelType mode
 	
 	int numGen = inst.powSys->numGen;
 	int numPeriods = (probType == DayAhead) ? runParam.DA_numPeriods : runParam.ST_numPeriods;
-	
-	rndPermutation.resize(numScen);
-	for (int s=0; s<numScen; s++) {
-		rndPermutation[s] = rand() % inst.simulations.vals.size();
-	}
 
 	/* formulate the subproblems */
-	subprobs.resize(numScen);
 	for (int k=0; k<subprobs.size(); k++) {
 		subprobs[k].formulate(inst, probType, modelType, beginMin, rep, masterSoln);
-		subprobs[k].setup_subproblem(rndPermutation[k]);
 	}
 	
 	// allocate mem
@@ -37,8 +32,14 @@ void SUCrecourse::formulate(instance &inst, ProblemType probType, ModelType mode
 	cutCoefs.resize(numScen);
 	for (int s=0; s<numScen; s++) {
 		cutCoefs[s].initialize(numGen, numPeriods);
-	}	
+	}
+	
 	resize_matrix(initGens, numScen, numGen);
+	
+	rndPermutation.resize(numScen);
+	for (int s=0; s<numScen; s++) {
+		rndPermutation[s] = rand() % inst.simulations.vals.size();
+	}
 }
 
 /****************************************************************************
@@ -66,7 +67,7 @@ bool SUCrecourse::solve() {
 	// solve subproblems
 	for (int s=0; s<numScen; s++) {
 		io_service.post( boost::bind(&SUCrecourse::solveOneSubproblem, boost::ref(*this),
-									 s, boost::ref(cutCoefs[s]), boost::ref(objValues[s]), boost::ref(initGens[s])) );
+									 rndPermutation[s], boost::ref(cutCoefs[s]), boost::ref(objValues[s]), boost::ref(initGens[s])) );
 	}
 	
 	/***** Parallel programming stuff (START) *****/
@@ -86,8 +87,7 @@ bool SUCrecourse::solve() {
 }
 
 void SUCrecourse::solveOneSubproblem (int s, BendersCutCoefs &cutCoefs, double &objValue, vector<double> &initGens) {
-	//subprobs[ thread_map[boost::this_thread::get_id()] ].solve(s, cutCoefs, objValue, initGens);
-	subprobs[s].solve(rndPermutation[s], cutCoefs, objValue, initGens);
+	subprobs[ thread_map[boost::this_thread::get_id()] ].solve(s, cutCoefs, objValue, initGens);
 }
 
 #else
