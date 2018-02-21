@@ -65,11 +65,27 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 			genMin[g][t] = inst.solution.x[g][idxT] * min(genPtr.minGenerationReq, min(genPtr.rampUpLim * runParam.ED_resolution, genPtr.rampDownLim * runParam.ED_resolution));
 			
 			// error check
-			if (genMax[g][t] < 0 || genMin[g][t] < 0) {
+			if (genMax[g][t] < 0) {
 				ofstream errorlog;
 				open_file(errorlog, "error.log");
-				errorlog << "ED model genMax/genMin g " << g << " t " << t << " < 0 " << setprecision(10) << genMax[g][t] << "\t" << genMin[g][t] << endl;
+				errorlog << "Error:" << endl;
+				errorlog << "genMax g: " << g << " t: " << t << " " << setprecision(10) << genMax[g][t] << endl;
+				errorlog << "genMin g: " << g << " t: " << t << " " << setprecision(10) << genMin[g][t] << endl;
+				errorlog << "x g: " << g << " t: " << t << " idxT " << idxT << " " << inst.solution.x[g][idxT] << endl;
+				errorlog << "maxCapacity: " << genPtr.maxCapacity << endl;
 				errorlog.close();
+				inst.printSolution("infeasRTED");
+			}
+			if (genMin[g][t] < 0) {
+				ofstream errorlog;
+				open_file(errorlog, "error.log");
+				errorlog << "Error:" << endl;
+				errorlog << "genMax g: " << g << " t: " << t << " " << setprecision(10) << genMax[g][t] << endl;
+				errorlog << "genMin g: " << g << " t: " << t << " " << setprecision(10) << genMin[g][t] << endl;
+				errorlog << "x g: " << g << " t: " << t << " idxT " << idxT << " " << inst.solution.x[g][idxT] << endl;
+				errorlog << "maxCapacity: " << genPtr.maxCapacity << endl;
+				errorlog.close();
+				inst.printSolution("infeasRTED");
 			}
 			
 			/* Stochastic generation set to what is available */
@@ -391,7 +407,8 @@ bool EDmodel::solve(instance &inst, int t0) {
 					for (int g = 0; g < numGen; g++) {
 						inst.solution.usedGen_ED[g][t0+t] = cplex.getValue(genUsed[g][t]);
 						inst.solution.overGen_ED[g][t0+t] = cplex.getValue(overGen[g][t]);
-						inst.solution.g_ED[g][t0+t]		  = inst.solution.usedGen_ED[g][t0+t] + inst.solution.overGen_ED[g][t0+t];
+						inst.solution.g_ED[g][t0+t] = inst.solution.usedGen_ED[g][t0+t] + inst.solution.overGen_ED[g][t0+t];
+						inst.solution.g_ED[g][t0+t] = max(0.0, inst.solution.g_ED[g][t0+t]);	// numerical corrections
 					}
 					
 					// record load-shedding amounts

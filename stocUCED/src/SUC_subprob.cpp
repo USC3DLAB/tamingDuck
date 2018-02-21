@@ -840,9 +840,9 @@ bool SUCsubprob::getGenState(int genId, int period) {
 		return true;
 	}
 	else if (reqSolnComp < (int) inst->solution.x[genId].size()) {	// return the corresponding solution
-		return round(inst->solution.x[genId][reqSolnComp]);
+		return (inst->solution.x[genId][reqSolnComp] > EPSzero);
 	}
 	else {														// asking what's beyond the planning horizon, we return the last solution
-		return round(inst->solution.x[genId][ inst->solution.x[genId].size()-1 ]);
+		return (inst->solution.x[genId][ inst->solution.x[genId].size()-1 ] > EPSzero);
 	}
 }

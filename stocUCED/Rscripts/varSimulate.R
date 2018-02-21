@@ -12,6 +12,7 @@ varSimulate <- function(varModel, simLength, lookaheadPeriods, simFrequency, num
   samplePaths <- NULL;
   for (s in 1:numScenarios) {
 	  
+    print(s);
 	  if (s %% 100 == 0) {
 		  print(s);
 	  }

@@ -67,7 +67,8 @@ int integrateSD(instance &inst, EDmodel &rtED, string probName, string &configPa
 	for (int g=0; j<inst.powSys->numGen*2; g++, j=j+2) {
 		inst.solution.usedGen_ED[g][t0] = edSols[j];
 		inst.solution.overGen_ED[g][t0] = edSols[j+1];
-		inst.solution.g_ED[g][t0]		= edSols[j] + edSols[j+1];
+		inst.solution.g_ED[g][t0] = edSols[j] + edSols[j+1];
+		inst.solution.g_ED[g][t0] = max(0.0, inst.solution.g_ED[g][t0]);	// correcting numerical errors
 	}
 	
 	for (int b=0; j<inst.powSys->numGen*2+inst.powSys->numBus*3; b++, j=j+3) {

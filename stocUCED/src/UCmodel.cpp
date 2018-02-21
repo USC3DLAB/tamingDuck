@@ -623,10 +623,10 @@ bool UCmodel::getGenState(int genId, int period) {
 		return true;
 	}
 	else if (reqSolnComp < (int) inst->solution.x[genId].size()) {	// return the corresponding solution
-		return round(inst->solution.x[genId][reqSolnComp]);
+		return ( inst->solution.x[genId][reqSolnComp] > EPSzero );
 	}
 	else {														// asking what's beyond the planning horizon, we return the last solution
-		return round(inst->solution.x[genId][ inst->solution.x[genId].size()-1 ]);
+		return ( inst->solution.x[genId][ inst->solution.x[genId].size()-1 ] > EPSzero );
 	}
 }
 
@@ -663,6 +663,9 @@ void UCmodel::setGenState(int genId, int period, double value) {
 	// which Solution component is being set?
 	int solnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
 	
+	// correct potential numerical errors (important for binary variables)
+	value = round(value);
+	
 	// set the solution
 	if (solnComp >= 0 && solnComp < (int) inst->solution.x[genId].size()) {
 		for (int t=solnComp; t<solnComp+numBaseTimePerPeriod; t++) {
@@ -681,6 +684,9 @@ void UCmodel::setGenState(int genId, int period, double value) {
 void UCmodel::setDAGenProd(int genId, int period, double value) {
 	// which Solution component is being set?
 	int solnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
+	
+	// correct potential numerical errors
+	value = max(0.0, value);
 	
 	// set the solution
 	if (solnComp >= 0 && solnComp < (int) inst->solution.g_DAUC[genId].size()) {

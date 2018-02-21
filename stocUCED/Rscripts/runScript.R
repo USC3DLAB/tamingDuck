@@ -71,7 +71,8 @@ for (i in 1:length(dataTypes)) {
   
   # parallel simulation
   # tmp <- varParallelSimulate(varModel[[i]], simLength, lookaheadPeriods, simFrequency, numScenarios, dataTypes[i])
-	# tmp[time, generator, scenario]
+	
+  # tmp[time, generator, scenario]
 	
 	scenarios[, j:(j+varModel[[i]]$ts$N-1), ] = tmp;
 	j = j + varModel[[i]]$ts$N;
