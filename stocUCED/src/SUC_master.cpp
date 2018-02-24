@@ -27,7 +27,7 @@ ILOHEURISTICCALLBACK1(rounding, IloArray< IloNumVarArray >, x) {
 		getValues(temp, x[g]);
 		for (int t=0; t<temp.getSize(); t++) {
 			//temp[t] = round(temp[t]);
-			temp[t] = (rand() < temp[t])*1.0;
+			temp[t] = (double(rand())/double(RAND_MAX) < temp[t])*1.0;
 		}
 		vals.add(temp);
 		temp.end();
