@@ -15,7 +15,7 @@ interpolate <- function(simLength, lookahead, varmodel, varpaths, numScenarios) 
                      totLength = simLength+lookahead,
                      desiredFreq = 4,
                      function(j, gen, varpaths, totLength, desiredFreq) {
-                       tmp <- spline(x = 1:totLength, y = varpaths[,gen,j], xout = seq(from = 1, to = (totLength*desiredFreq+1), by = 0.25))
+                       tmp <- spline(x = 1:totLength, y = varpaths[,gen,j], xout = seq(from = 0.5, to = (totLength+0.5-0.01), by = 0.25))
                        tmp$y[ tmp$y<0 ] <- 0
                        return (tmp$y)
                      })

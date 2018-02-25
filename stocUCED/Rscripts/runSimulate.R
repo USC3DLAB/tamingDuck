@@ -12,7 +12,7 @@ wPaths <- interpolate(simLength = simLength, lookahead = lookahead, varmodel = w
 sPaths <- interpolate(simLength = simLength, lookahead = lookahead, varmodel = sModel, varpaths = sPaths, numScenarios = numScenarios)
 
 # set supply to 0 during no-sun hours
-sunrise = (sModel$model$dayTime[1])*4 - 2  # 1/2 is subtracted for a smoother sunrise
+sunrise = (sModel$model$dayTime[1])*4 #- 2  # 1/2 is subtracted for a smoother sunrise
 sunset = sModel$model$dayTime[ length(sModel$model$dayTime) ]*4
 sPaths[-(sunrise:sunset),,] = 0
 

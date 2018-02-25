@@ -2,13 +2,13 @@
 rm(list=ls(all=TRUE))
 set.seed(0)
 numScenarios = 1000
-nRep = 5
+nRep = 7
 
 # fit the model
 source("runModel.R")
 
 # simulate
-for (rep in 1:nRep) {
+for (rep in 5:nRep) {
   # set the seed
   set.seed(rep)
   
