@@ -1,4 +1,4 @@
-readNRELData <- function(dataSet = NULL) {
+readNRELData <- function(dataSet = NULL, inputDir = NULL) {
   # Reads the NREL dataset for wind, solar and load and puts it into a standard dataSet  
   
   # Make sure that the dataSet directory exists
@@ -6,7 +6,9 @@ readNRELData <- function(dataSet = NULL) {
     dir.create("../dataSets")
   
   # Setup the full path for the files and read them.
-  inputDir = sprintf('../dataSets/nrelData/');
+  if (is.null(inputDir)) {
+    inputDir = sprintf('../dataSets/nrelData/');
+  }
   
   # Read the data from all the files in the folder.
   dataType <- NULL;

@@ -8,7 +8,7 @@ windVARModel <- function(dataSet, decomposeBy = 'monthly', identifier = 'Februar
   #   - lag.max     = maximum lag order for model estimation, 
   #   - infocrit    = information criteria used for model order selection)
   
-  source('../tsUtilities/decomposeTSData.R')
+  # source('../tsUtilities/decomposeTSData.R')
   
   # Read from data set corresponding to wind generators
   ts <- NULL; cap <- NULL

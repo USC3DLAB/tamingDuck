@@ -1,12 +1,13 @@
-solarSimulate <- function(sModel, simLength = 24, numScenarios = 10) {
+solarSimulate <- function(sModel, simLength = 24, lookahead = 3, numScenarios = 10) {
   # INPUT:
   #   - sModel    - solar statistical model
   #   - simLength - simulation length in hours
+  #   - lookahead - # of lookahead periods in hours
   #   - numScenarios - number of scenarios to be simulated
   # OUTPUT:
   #   - A matrix with scenarios (time point x location x sample)
   
-  source('../tsUtilities/varSimulate.R')
+  # source('../tsUtilities/varSimulate.R')
   
   # Number of hours of data points to be computed
   nDays   <- simLength/24;
@@ -27,8 +28,15 @@ solarSimulate <- function(sModel, simLength = 24, numScenarios = 10) {
   for ( d in 1:nDays ) {
     tempTS <- replicate(n = numScenarios, expr = sModel$model$clearSky);
     tempTS[sModel$model$dayTime,,] <- tempTS[sModel$model$dayTime,,]*simPaths[((d-1)*nDayHours+1):(d*nDayHours),,]
-    samplePaths <- abind::abind(samplePaths, tempTS, along = 2)
+    samplePaths <- abind::abind(samplePaths, tempTS, along = 1)
   }
   
+  if (lookahead >= sModel$model$dayTime[1]) {
+    print("Error: I cannot lookahead another day-time, during solar forecasting")
+  } else if (lookahead > 0) {
+    for (l in 1:lookahead) {
+      samplePaths <- abind::abind(samplePaths, matrix(data = 0, nrow = sModel$numLoc, ncol = numScenarios), along = 1)
+    }
+  }
   return(samplePaths)
 }
