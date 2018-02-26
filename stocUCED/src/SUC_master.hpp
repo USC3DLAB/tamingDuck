@@ -62,6 +62,8 @@ private:
 	double	LinProgRelaxObjVal = 0;
 	int		LinProgRelaxNoObjImp = 0;
 	
+	vector<int> rndPermutation;
+	
 	set< vector<bool> > testedHeurSolns;	// keep track of tested heuristic solutions, so that you don't test them again
 	
 	bool multicut;

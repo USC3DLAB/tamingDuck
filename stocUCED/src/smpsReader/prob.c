@@ -510,11 +510,11 @@ vectorC meanProblem(oneProblem *orig, stocType *stoc) {
 	}
 
 	/* write the mean value problem */
-	status = writeProblem(orig->lp, "original.lp");
-	if ( status ) {
-		errMsg("solver", "meanProblem", "failed to write the problem", 0);
-		return NULL;
-	}
+//	status = writeProblem(orig->lp, "original.lp");
+//	if ( status ) {
+//		errMsg("solver", "meanProblem", "failed to write the problem", 0);
+//		return NULL;
+//	}
 
 	/* solve the mean value problem */
 	//MARK: PROB_LP is changed to PROB_Qp

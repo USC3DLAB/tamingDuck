@@ -329,6 +329,12 @@ void SUCmaster::preprocessing ()
 		if (minDownTimePeriods[g] < 1)	minDownTimePeriods[g] = 1;
 	}
 	
+	/* Select a random permutation of scenarios from the sample space */
+	rndPermutation.resize(runParam.numLSScen);
+	for (int s=0; s<runParam.numLSScen; s++) {
+		rndPermutation[s] = rand() % inst->simulations.vals.size();
+	}
+	
 	/* Mean Generator Capacity */
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
@@ -347,13 +353,14 @@ void SUCmaster::preprocessing ()
 				
 				if ( t==0 && probType==ShortTerm ) {
 					it = inst->observations["RT"].mapVarNamesToIndex.find(genPtr->name);
-					expCapacity[g][t] += min( inst->observations["RT"].vals[rep][period][it->second], genPtr->maxCapacity );
+					expCapacity[g][t] = min( inst->observations["RT"].vals[rep][period][it->second], genPtr->maxCapacity );
 				}
 				else {
 					it = inst->simulations.mapVarNamesToIndex.find(genPtr->name);
-					for (int s=0; s < (int) inst->simulations.vals.size(); s++) {
-						expCapacity[g][t] += 1.0/(double)(inst->simulations.vals.size()) * min( inst->simulations.vals[s][period][it->second], genPtr->maxCapacity );
+					for (int s=0; s<runParam.numLSScen; s++) {
+						expCapacity[g][t] += min( inst->simulations.vals[ rndPermutation[s] ][period][it->second], genPtr->maxCapacity );
 					}
+					expCapacity[g][t] *= 1.0/(double)(runParam.numLSScen);
 				}
 			}
 		}
@@ -803,7 +810,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 	model.add( IloMinimize(env, obj) );
 	
     // formulate the subproblem
-	recourse.formulate(inst, probType, modelType, beginMin, rep, xvals);
+	recourse.formulate(inst, probType, modelType, beginMin, rep, xvals, rndPermutation);
 	
 	// formulate the warm-up problem
 	warmUpProb.formulate(inst, probType, modelType, beginMin, rep);

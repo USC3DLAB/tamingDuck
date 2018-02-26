@@ -45,7 +45,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC probName, vect
 	/* Write solution statistics for optimization process */
 	fprintf(file, "\n\nLower bound estimate                   : %f\n", cell->incumbEst);
 	fprintf(file, "Total time = %f\n", totalTime);
-	writeStatistic(&soln, prob[0], cell, probName);
+	//writeStatistic(&soln, prob[0], cell, probName);
 
 	/* evaluating the optimal solution*/
 	if (config.EVAL_FLAG == 1) {

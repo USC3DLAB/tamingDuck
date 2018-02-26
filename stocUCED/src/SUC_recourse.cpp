@@ -16,7 +16,7 @@ SUCrecourse::SUCrecourse () {
 
 SUCrecourse::~SUCrecourse() {}
 
-void SUCrecourse::formulate(instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep, IloArray<IloNumArray> &masterSoln) {
+void SUCrecourse::formulate(instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep, IloArray<IloNumArray> &masterSoln, vector<int> &rndPermutation) {
 	numScen = runParam.numLSScen;
 	
 	int numGen = inst.powSys->numGen;
@@ -36,10 +36,7 @@ void SUCrecourse::formulate(instance &inst, ProblemType probType, ModelType mode
 	
 	resize_matrix(initGens, numScen, numGen);
 	
-	rndPermutation.resize(numScen);
-	for (int s=0; s<numScen; s++) {
-		rndPermutation[s] = rand() % inst.simulations.vals.size();
-	}
+	this->rndPermutation = rndPermutation;
 }
 
 /****************************************************************************
@@ -64,17 +61,25 @@ bool SUCrecourse::solve() {
 	}
 	/***** Parallel programming stuff (END)   *****/
 	
+	// shuffle subproblem solving sequence
+	vector<int> randomized_order (numScen);
+	for (int s=0; s<randomized_order.size(); s++) randomized_order[s] = s;
+	random_shuffle(randomized_order.begin(), randomized_order.end());
+	
 	// solve subproblems
 	for (int s=0; s<numScen; s++) {
 		io_service.post( boost::bind(&SUCrecourse::solveOneSubproblem, boost::ref(*this),
-									 rndPermutation[s], boost::ref(cutCoefs[s]), boost::ref(objValues[s]), boost::ref(initGens[s])) );
+									 rndPermutation[ randomized_order[s] ],
+									 boost::ref(cutCoefs[ randomized_order[s] ]),
+									 boost::ref(objValues[ randomized_order[s] ]),
+									 boost::ref(initGens[ randomized_order[s] ])) );
 	}
-	
+
 	/***** Parallel programming stuff (START) *****/
 	work.~work();		// let the io_service shutdown by removing the thread
 	threads.join_all();
 	/***** Parallel programming stuff (END)   *****/
-
+	
 	/* check feasibility */
 	for (int s=0; s<numScen; s++) {
 		if (objValues[s] == INFINITY)	{
@@ -82,7 +87,7 @@ bool SUCrecourse::solve() {
 			break;
 		}
 	}
-	
+
 	return status;
 }
 
