@@ -272,10 +272,13 @@ ScenarioType createScenarioList(string &simulationsFolder, vector<string> &stocE
 	cout << endl << "**** Reading " << numScen << " scenarios from .csv files ****" << endl;
 	cout << "**** Warning: stocElems must be provided in correct order. Num of stocElems are hardcoded. stocElems' names are hardcoded." << endl;
 	
+	int nGens = 31;
+	int nPeriods = 108;
+	
 	// read from memory
 	observ.vals.resize( numScen );
 	for (int s=0; s<numScen; s++) {
-		resize_matrix(observ.vals[s], 108, 92);
+		resize_matrix(observ.vals[s], nPeriods, nGens);
 	}
 	
 	char fname[256];
@@ -289,15 +292,15 @@ ScenarioType createScenarioList(string &simulationsFolder, vector<string> &stocE
 		safeGetline(input, temp_str);
 		
 		// read the data
-		for (int t=0; t<108; t++) {
+		for (int t=0; t<nPeriods; t++) {
 			
 			// skip the row header
 			move_cursor(input, delimiter);
 			
-			for (int g=0; g<92; g++) {
+			for (int g=0; g<nGens; g++) {
 				input >> observ.vals[s][t][g];
-				if (g != 91)	move_cursor(input, delimiter);
-				else			move_cursor(input, '\n');
+				if (g != nGens-1)	move_cursor(input, delimiter);
+				else				move_cursor(input, '\n');
 			}
 		}
 		input.close();
@@ -310,11 +313,20 @@ ScenarioType createScenarioList(string &simulationsFolder, vector<string> &stocE
 	
 	// register the indices
 	vector<string> colNames;
-	for (int i=0; i<75; i++) {
-		char genName[256];
-		sprintf(genName, "Solar%02d", i+1);
-		colNames.push_back(genName);
-	}
+	colNames.push_back("Solar-bus015");
+	colNames.push_back("Solar-bus018");
+	colNames.push_back("Solar-bus019");
+	colNames.push_back("Solar-bus032");
+	colNames.push_back("Solar-bus054");
+	colNames.push_back("Solar-bus055");
+	colNames.push_back("Solar-bus069");
+	colNames.push_back("Solar-bus076");
+	colNames.push_back("Solar-bus092");
+	colNames.push_back("Solar-bus100");
+	colNames.push_back("Solar-bus104");
+	colNames.push_back("Solar-bus105");
+	colNames.push_back("Solar-bus110");
+	colNames.push_back("Solar-bus112");
 	for (int i=0; i<17; i++) {
 		char genName[256];
 		sprintf(genName, "Wind%02d", i+1);

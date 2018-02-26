@@ -10,13 +10,14 @@
 
 extern runType runParam;
 
-ILOHEURISTICCALLBACK1(rounding, IloArray< IloNumVarArray >, x) {
+ILOHEURISTICCALLBACK2(rounding, IloArray< IloNumVarArray >&, x, set< vector<bool> >&, testedHeurSolns) {
 
 	if ( (getNnodes() > 10 && getNnodes() % 100 != 0)
 		|| fabs(getIncumbentObjValue()-getBestObjValue())/(fabs(getIncumbentObjValue())+1e-14) < 0.2) {
 		return;
 	}
 	
+	/* construct a solution */
 	IloNumVarArray	vars (getEnv());
 	IloNumArray		vals (getEnv());
 	
@@ -31,16 +32,30 @@ ILOHEURISTICCALLBACK1(rounding, IloArray< IloNumVarArray >, x) {
 		}
 		vals.add(temp);
 		temp.end();
+		
+		
 	}
 	
-	try {
-		setSolution(vars, vals);
-		solve();
+	/* check if the solution has been observed before *
+	vector<bool> producedSoln ( vals.getSize() );
+	for (int i=0; i<vals.getSize(); i++) {
+		producedSoln[i] = (vals[i] > 0.5)*1;
 	}
-	catch (IloException &e) {
-		cout << e << endl;
-	}
+	auto it = testedHeurSolns.find(producedSoln);
+	/* check if the solution has been observed before */
 	
+	//if (it == testedHeurSolns.end() ) {	// soln not seen before
+		/* evaluate the solution */
+		//testedHeurSolns.insert(producedSoln);
+		try {
+			setSolution(vars, vals);
+			solve();
+		}
+		catch (IloException &e) {
+			cout << e << endl;
+		}
+	//}
+
 	vals.end();
 	vars.end();
 }
@@ -875,7 +890,7 @@ bool SUCmaster::solve () {
 		//	cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*300 + (probType == ShortTerm)*60);
 		LinProgRelaxFlag = false;
 		/*					*/
-		cplex.use(rounding(env, x));
+		cplex.use(rounding(env, x, testedHeurSolns));
 		if (probType == DayAhead) {
 			cplex.use(IncCallback(env, *this));
 		}

@@ -8,7 +8,7 @@ nRep = 7
 source("runModel.R")
 
 # simulate
-for (rep in 5:nRep) {
+for (rep in 1:1) {
   # set the seed
   set.seed(rep)
   

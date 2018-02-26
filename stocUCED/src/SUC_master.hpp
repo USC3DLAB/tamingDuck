@@ -11,6 +11,7 @@
 
 #include <stdio.h>
 #include <ilcplex/ilocplex.h>
+#include <set>
 
 #include "SUC_recourse.hpp"
 #include "UCmodel.hpp"
@@ -60,6 +61,8 @@ private:
 	bool	LinProgRelaxFlag;
 	double	LinProgRelaxObjVal = 0;
 	int		LinProgRelaxNoObjImp = 0;
+	
+	set< vector<bool> > testedHeurSolns;	// keep track of tested heuristic solutions, so that you don't test them again
 	
 	bool multicut;
 	
