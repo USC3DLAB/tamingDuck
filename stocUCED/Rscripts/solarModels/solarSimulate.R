@@ -1,4 +1,4 @@
-solarSimulate <- function(sModel, simLength = 24, lookahead = 3, numScenarios = 10) {
+solarSimulate <- function(sModel, simLength = 24, lookahead = 3, numScenarios = 10, clearSky = TRUE) {
   # INPUT:
   #   - sModel    - solar statistical model
   #   - simLength - simulation length in hours
@@ -17,18 +17,33 @@ solarSimulate <- function(sModel, simLength = 24, lookahead = 3, numScenarios = 
   simPaths <- varSimulate(varModel = sModel$model$est, sim.len  = nPoints, sim.freq = sModel$freq, 
                              numScenarios = numScenarios)
   
-  # Normalize the values to be within [0,1]
-  if ( min(simPaths) < 0 )
-    simPaths <- simPaths - min(simPaths)
-  simPaths <- simPaths/max(simPaths)
+  if (clearSky) {
+    # Normalize the values to be within [0,1]
+    if ( min(simPaths) < 0 )
+      simPaths <- simPaths - min(simPaths)
+    simPaths <- simPaths/max(simPaths)
+  } 
+  else {
+    capacityMatrix <- replicate(n = numScenarios, t(replicate(n = nPoints, sModel$model$capacity)))
+    simPaths <- simPaths/max(simPaths)
+    simPaths <- simPaths*capacityMatrix
+  }
   
   # Loop across the days to align the clear sky model 
   nDayHours <- length(sModel$model$dayTime)
   samplePaths <- NULL
   for ( d in 1:nDays ) {
-    tempTS <- replicate(n = numScenarios, expr = sModel$model$clearSky);
-    tempTS[sModel$model$dayTime,,] <- tempTS[sModel$model$dayTime,,]*simPaths[((d-1)*nDayHours+1):(d*nDayHours),,]
-    samplePaths <- abind::abind(samplePaths, tempTS, along = 1)
+    if (clearSky) {
+      tempTS <- replicate(n = numScenarios, expr = sModel$model$clearSky);
+      tempTS[sModel$model$dayTime,,] <- tempTS[sModel$model$dayTime,,]*simPaths[((d-1)*nDayHours+1):(d*nDayHours),,]
+      samplePaths <- abind::abind(samplePaths, tempTS, along = 1)
+    }
+    else {
+      tempTS <- replicate(n = numScenarios, expr = sModel$model$avgSky);
+      tempTS[sModel$model$dayTime,,] <- simPaths[((d-1)*nDayHours+1):(d*nDayHours),,] +  tempTS[sModel$model$dayTime,,]
+      tempTS[ tempTS < 0 ] <- 0
+      samplePaths <- abind::abind(samplePaths, tempTS, along = 1)
+    }
   }
   
   if (lookahead >= sModel$model$dayTime[1]) {
@@ -38,5 +53,12 @@ solarSimulate <- function(sModel, simLength = 24, lookahead = 3, numScenarios = 
       samplePaths <- abind::abind(samplePaths, matrix(data = 0, nrow = sModel$numLoc, ncol = numScenarios), along = 1)
     }
   }
+  
+  if (!clearSky) {
+    capacityMatrix <- replicate(n = numScenarios, t(replicate(n = (simLength+lookahead)*sModel$freq, sModel$model$capacity)))
+    samplePaths[samplePaths < 0] <- 0;
+    samplePaths[samplePaths > capacityMatrix] <- capacityMatrix[samplePaths > capacityMatrix]
+  }
+  
   return(samplePaths)
 }

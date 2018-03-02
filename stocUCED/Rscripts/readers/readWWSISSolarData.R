@@ -1,26 +1,26 @@
-readWWSISSolarData <- function(state, stateCode, dataSets = NULL, plotmap = FALSE) {
+readWWSISSolarData <- function(state, stateCode, dataset = NULL, plotmap = FALSE) {
   require(ggmap)
   
-  # Make sure that the dataSets directory exists
-  if ( !dir.exists("../dataSets") )
-    dir.create("../dataSets")
+  # Make sure that the dataset directory exists
+  if ( !dir.exists("../dataset") )
+    dir.create("../dataset")
   
   # Download the file, extract and delete the zip file
-  inputDir = paste('../dataSets/',stateCode,'-pv-2006/', sep = '')
+  inputDir = paste('../dataset/',stateCode,'-pv-2006/', sep = '')
   if ( !dir.exists(inputDir) ) {
     downloadLink = paste('https://www.nrel.gov/grid/assets/downloads/',stateCode,'-pv-2006.zip', sep = '');
     download.file(url = downloadLink, destfile = 'temp.zip', quiet = TRUE);
     unzip(zipfile = 'temp.zip', exdir = inputDir);
     file.remove('temp.zip');
-    print("Downloaded and extracted the data into ../dataSets folder.") }
+    print("Downloaded and extracted the data into ../dataset folder.") }
   else
-    print("Data already exists in ../dataSets folder.")
+    print("Data already exists in ../dataset folder.")
   
   # Read the data from all the files in the folder.
   dataType <- NULL;
-  if ( is.null(dataSets) ) {
+  if ( is.null(dataset) ) {
     fileNames = list.files(path = inputDir);
-    dataSet <- array(data = list(NULL)); i = 1;
+    dataset <- array(data = list(NULL)); i = 1;
     for (l in 1:length(fileNames)) {
       if ( fileNames[l] != "README" ) {
         temp <- unlist(strsplit(x = fileNames[l], split = "_"))
@@ -62,19 +62,19 @@ readWWSISSolarData <- function(state, stateCode, dataSets = NULL, plotmap = FALS
         
         # Check to see if there is an entry for the location 
         if ( j == 1 ) {
-          dataSet[[i]] <- tempList
+          dataset[[i]] <- tempList
           temp <- read.csv(file = paste(inputDir, fileNames[l], sep = ""), header = TRUE);
           if ( dim(temp)[1] == 0 )
             stop('No data availale for: ', fileNames[l])
-          dataSet[[i]]$timeStamp <- temp[,1]
-          dataSet[[i]]$ts[[dataType[[j]]]] <- temp[,2] 
-          dataSet[[i]]$freq[[dataType[j]]] <- tempFreq
+          dataset[[i]]$timeStamp <- temp[,1]
+          dataset[[i]]$ts[[dataType[[j]]]] <- temp[,2] 
+          dataset[[i]]$freq[[dataType[j]]] <- tempFreq
         }
         else {
           k = 1;
           while ( k <= i ) {
-            if ( dataSet[[k]]$latitude == tempList$latitude && dataSet[[k]]$longitude == tempList$longitude && 
-                 dataSet[[k]]$capacity == tempList$capacity) {
+            if ( dataset[[k]]$latitude == tempList$latitude && dataset[[k]]$longitude == tempList$longitude && 
+                 dataset[[k]]$capacity == tempList$capacity) {
               break; 
             }
             k <- k+1 
@@ -83,8 +83,8 @@ readWWSISSolarData <- function(state, stateCode, dataSets = NULL, plotmap = FALS
             temp <- read.csv(file = paste(inputDir, fileNames[l], sep = ""), header = TRUE);
             if ( dim(temp)[1] == 0 )
               stop('No data availale for: ', fileNames[l])
-            dataSet[[k]]$ts[[dataType[[j]]]] <- temp[,2] 
-            dataSet[[k]]$freq[[dataType[j]]] <- tempFreq
+            dataset[[k]]$ts[[dataType[[j]]]] <- temp[,2] 
+            dataset[[k]]$freq[[dataType[j]]] <- tempFreq
           }
           else {
             stop("Failed to identify the location.")
@@ -99,18 +99,18 @@ readWWSISSolarData <- function(state, stateCode, dataSets = NULL, plotmap = FALS
   if ( plotmap ) {
     # Plot the data on the maps
     df <- NULL;
-    for ( l in 1:length(dataSet)) {
-      df = abind::abind(df, c(dataSet[[l]]$longitude, dataSet[[l]]$latitude), along = 2)
+    for ( l in 1:length(dataset)) {
+      df = abind::abind(df, c(dataset[[l]]$longitude, dataset[[l]]$latitude), along = 2)
     }
     df <- data.frame(lon = df[1,], lat = df[2,])
     df <- unique(df)
     
     # Download the maps and plot the locations
-    jpeg(filename = paste("../figures/",state,"_pv-2006"))
-    map.background <- get_googlemap(state, zoom = 6)
+    png(filename = paste(getwd(), "/", state,"_pv-2006", sep = ""))
+    map.background <- get_googlemap(state, zoom = 6, key = "AIzaSyDi-HXKpj26zQonCSyn91geb59nj0vwHUU")
     ggmap(map.background, extent = 'panel') + geom_point(data = df, aes(x = lon, y = lat), color = "orange")
     dev.off()
   }
   
-  return(dataSet)
+  return(dataset)
 }
