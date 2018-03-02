@@ -5,9 +5,10 @@ interpolate <- function(simLength, lookahead, varmodel, varpaths, numScenarios) 
   
   cl <- makeCluster(nThreads)
   
-  subhourlyPaths <- array(0, dim = c((simLength+lookahead)*4/varmodel$freq, varmodel$numLoc, numScenarios) )
+  subhourlyPaths <- array(0, dim = c((simLength+lookahead)*4, varmodel$numLoc, numScenarios) )
   for (gen in 1:varmodel$numLoc) {  # for every generator, interpolate the scenarios
     
+    # this interpolation assumes the hourly data was recorded at HH:30.
     tmp <- parLapply(cl, 
                      (1:numScenarios), 
                      gen = gen, 
@@ -15,7 +16,7 @@ interpolate <- function(simLength, lookahead, varmodel, varpaths, numScenarios) 
                      totLength = simLength+lookahead,
                      desiredFreq = 4,
                      function(j, gen, varpaths, totLength, desiredFreq) {
-                       tmp <- spline(x = 1:totLength, y = varpaths[,gen,j], xout = seq(from = 0.5, to = (totLength+0.5-0.01), by = 0.25))
+                       tmp <- spline(x = 1:totLength, y = varpaths[,gen,j], xout = seq(from = 1, to = (totLength+1-1e-6), by = 0.25))
                        tmp$y[ tmp$y<0 ] <- 0
                        return (tmp$y)
                      })

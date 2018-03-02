@@ -40,7 +40,8 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, string RScriptsPath
 		}
 		
 		//TODO: Generalize
-		int dataPeriodLengthInMins = fileNames[f] == "DA" ? 60 : 15;
+		//int dataPeriodLengthInMins = fileNames[f] == "DA" ? 60 : 15;
+		int dataPeriodLengthInMins = 15;
 		
 		observations.insert(pair<string, ScenarioType> (fileNames[f],
 														createScenarioList(stoc, stocIndices, numSimLengthInDays, runParam.numPeriods/(60.0/runParam.baseTime), runParam.numRep, dataPeriodLengthInMins)
@@ -98,7 +99,7 @@ void instance::simulateScenarios(int numScen, bool fitModel, int rep) {
 #ifdef SAMPLE_USING_R
 	simulations = createScenarioList(R, fitModel, powSys->path, stocElems, numSimLengthInDays, numScen, rep);
 #else
-	string simulationsFolder = "./Simulations/";
+	string simulationsFolder = "../Release/Simulations/";
 	simulations = createScenarioList(simulationsFolder, stocElems, numSimLengthInDays, numScen, rep);
 #endif
 	

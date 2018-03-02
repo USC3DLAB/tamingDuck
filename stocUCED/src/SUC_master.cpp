@@ -166,7 +166,13 @@ void SUCmaster::LazySepCallbackI::main()
 				
 				// add the cut
 				try {
-					add(BendersCut).end();
+					if (me.LinProgRelaxFlag) {
+						me.BendersCuts.add(BendersCut);
+						add(BendersCut);
+					}
+					else {
+						add(BendersCut).end();
+					}
 				}
 				catch (IloException &e) {
 					cout << "Exception: " << e << endl;
