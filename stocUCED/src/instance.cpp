@@ -44,10 +44,14 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, string RScriptsPath
 		int dataPeriodLengthInMins = 15;
 		
 		observations.insert(pair<string, ScenarioType> (fileNames[f],
-														createScenarioList(stoc, stocIndices, numSimLengthInDays, runParam.numPeriods/(60.0/runParam.baseTime), runParam.numRep, dataPeriodLengthInMins)
-														)
-							);
+														createScenarioList(stoc, stocIndices, numSimLengthInDays, runParam.numPeriods/(60.0/runParam.baseTime), runParam.numRep, dataPeriodLengthInMins)));
 		observations[fileNames[f]].name = fileNames[f] + "_observations";
+		
+		cout << observations[fileNames[f]].name << ":" << endl;
+		int i=0;
+		for (auto it=observations[fileNames[f]].mapVarNamesToIndex.begin(); it!=observations[fileNames[f]].mapVarNamesToIndex.end(); ++it) {
+			cout << setw(4) << left << ++i << setw(30) << it->first << "\t[OK]" << endl;
+		}
 		
 		correctSupplyExceedingCapacity(observations[fileNames[f]]);
 	}
