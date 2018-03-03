@@ -53,7 +53,7 @@ private:
 	IloModel	model;
 	IloCplex	cplex;
 	
-	IloArray<IloNumVarArray> s, x, z;
+	IloArray<IloNumVarArray> s, x, z, p, L, O;
 	IloNumVarArray	eta;	// exp value of the 2nd-stage subproblem
 	
 	IloArray<IloNumArray> xvals;	// values to be passed to the subproblems

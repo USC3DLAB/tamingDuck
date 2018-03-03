@@ -6,6 +6,10 @@ varSimulate <- function(varModel, sim.len, sim.freq, numScenarios) {
   # Output:
   #   varSimulate         = a matrix with simulated outcome (each row is a new realization)
   
+  # Thx to: http://gforge.se/2015/02/how-to-go-parallel-in-r-basics-tips/
+  library(parallel)
+  nThreads <- detectCores()
+  
   simLength <- sim.len*sim.freq;
   # prepare to simulate scenarios from selected model.
   coeff <- NULL;
@@ -28,13 +32,17 @@ varSimulate <- function(varModel, sim.len, sim.freq, numScenarios) {
   # setting covariance to identify-matrix
   Spoly <- diag(x = 1, varModel$K);
   
-  samplePaths <- NULL;
-  for (s in 1:numScenarios) {
-    # simulate scenarios using VARMAsim
-    oneSample <- MTS::VARMAsim(nobs = simLength, arlags = arlags, malags = NULL, cnst = cnst, 
-                               phi = Apoly, theta = Bpoly, sigma = Spoly, skip = skip);
-    
-    samplePaths <- abind(samplePaths, oneSample$series, along = 3);
-  }
+  # simulate sample paths
+  cl <- makeCluster(nThreads)
+  samplePaths <- parLapply(cl, 1:numScenarios, 
+                       nobs = simLength, arlags = arlags, malags = NULL, cnst = cnst,
+                       phi = Apoly, theta = Bpoly, sigma = Spoly, skip = skip,
+                       function(s, nobs, arlags, malags, cnst, phi, theta, sigma, skip) {
+                         sample = MTS::VARMAsim(nobs = simLength, arlags = arlags, malags = malags, cnst = cnst, phi = Apoly, theta = Bpoly, sigma = Spoly, skip = skip)
+                         return (sample$series)
+                       })
+  stopCluster(cl)
+  samplePaths <- array(unlist(samplePaths), dim = c(nrow(samplePaths[[1]]), ncol(samplePaths[[1]]), length(samplePaths)))
+
   return(samplePaths)
 }

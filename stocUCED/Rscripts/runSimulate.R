@@ -8,8 +8,8 @@ sPaths = solarSimulate(sModel = sModel, simLength = simLength, lookahead = looka
 print("Simulation is completed")
 
 ### Interpolation for Obtaining Subhourly Data ###
-wPaths <- interpolate(simLength = simLength, lookahead = lookahead, varmodel = wModel, varpaths = wPaths, numScenarios = numScenarios)
-sPaths <- interpolate(simLength = simLength, lookahead = lookahead, varmodel = sModel, varpaths = sPaths, numScenarios = numScenarios)
+wPaths <- interpolate(simLength = simLength, lookahead = lookahead, nComponents = wModel$numLoc, varpaths = wPaths, numScenarios = numScenarios)
+sPaths <- interpolate(simLength = simLength, lookahead = lookahead, nComponents = sModel$numLoc, varpaths = sPaths, numScenarios = numScenarios)
 
 # set supply to 0 during no-sun hours
 sunrise = (sModel$model$dayTime[1]-1-1)*4+2

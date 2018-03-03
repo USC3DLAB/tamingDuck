@@ -112,20 +112,43 @@ void SUCmaster::LazySepCallbackI::main()
 	// get the solution
 	for (int g=0; g<me.numGen; g++) {
 		getValues(me.xvals[g], me.x[g]);
-	}	
+	}
 	 
 	// set the master solution in the subproblems
 	me.recourse.setMasterSoln();
 	
+	double time_t = get_wall_time();
 	// solve the subproblems
 	bool isFeasible = me.recourse.solve();
+	cout << get_wall_time() - time_t << endl;
+
+	/*
+	cout << me.recourse.getObjValue() << endl;
+	for (int g=0; g<me.numGen; g++) {
+		cout << g+1 << " " << me.xvals[g] << endl;
+	}
+	 */
+	/* adjust for the constants
+	double constant = 0;
+	for (int b=0; b<me.numBus; b++) {
+		constant += getValue( IloSum(me.L[b]) ) * loadShedPenaltyCoef;
+		constant += getValue( IloSum(me.O[b]) ) * overGenPenaltyCoef;
+	}
+	for (int g=0; g<me.numGen; g++) {
+		Generator *genPtr = &(me.inst->powSys->generators[g]);
+		constant += getValue( IloSum(me.p[g]) ) * genPtr->variableCost*me.periodLength/60.0;
+	}
+	for (int s=0; s<runParam.numLSScen; s++) {
+		me.recourse.objValues[s] -= constant;
+	}
+	 */
 	
     // check if we need to add a cut (feasible and not within optimality tolerances, or infeasible)
     bool addCut = true;
     if (isFeasible) {
-		double abs_diff = fabs(me.recourse.getObjValue() - 1.0/((double)me.eta.getSize())*getValue(IloSum(me.eta)));
-        if ( abs_diff/(fabs(me.recourse.getObjValue())+1e-14) < me.cplex.getParam(IloCplex::EpGap)
-            || abs_diff < me.cplex.getParam(IloCplex::EpAGap) ) {
+		double diff = me.recourse.getObjValue() - 1.0/((double)me.eta.getSize())*getValue(IloSum(me.eta));
+        if ( diff/(fabs(me.recourse.getObjValue())+1e-14) < me.cplex.getParam(IloCplex::EpGap)
+            || diff < me.cplex.getParam(IloCplex::EpAGap) ) {
             addCut = false;
         }
     }
@@ -139,10 +162,10 @@ void SUCmaster::LazySepCallbackI::main()
 			int optcut_cnt = 0;
 			for (int s=0; s<me.eta.getSize(); s++) {
 				
-				double abs_diff = fabs(me.recourse.getScenObjValue(s) - getValue(me.eta[s]));
+				double diff = me.recourse.getScenObjValue(s) - getValue(me.eta[s]);
 				
-				if ( abs_diff/(fabs(me.recourse.getScenObjValue(s))+1e-14) < me.cplex.getParam(IloCplex::EpGap)
-					|| abs_diff < me.cplex.getParam(IloCplex::EpAGap) ) {
+				if ( diff/(fabs(me.recourse.getScenObjValue(s))+1e-14) < me.cplex.getParam(IloCplex::EpGap)
+					|| diff < me.cplex.getParam(IloCplex::EpAGap) ) {
 					continue;
 				}
 				
@@ -185,8 +208,6 @@ void SUCmaster::LazySepCallbackI::main()
 		}
 		else
 		{
-			me.inst->out() << "(optcut)" << endl;
-			
 			double sceProb = 1.0/(double)me.eta.getSize();
 			
 			IloExpr pi_Tx (me.env);
@@ -210,7 +231,6 @@ void SUCmaster::LazySepCallbackI::main()
 			pi_Tx *= sceProb;
 			pi_b  *= sceProb;
 			
-			
 			IloRange BendersCut;
 			BendersCut = IloRange(me.env, pi_b, me.eta[0]-pi_Tx);	// optimality cut
 			
@@ -229,6 +249,8 @@ void SUCmaster::LazySepCallbackI::main()
 				BendersCut.end();
 			}
 			pi_Tx.end();
+			
+			me.inst->out() << "(optcut: eta= " << getValue(me.eta[0]) << ", obj= " << me.recourse.getObjValue() << ")" << endl;
 		}
 	}
 	else {
@@ -439,11 +461,9 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 
 	/* Master Formulation */
 	// create the variables
-	//IloNumVar L (env);
-	
 	eta = IloNumVarArray (env, multicut ? runParam.numLSScen : 1, 0, IloInfinity, ILOFLOAT);	// 2nd-stage approximation
 	
-	IloArray<IloNumVarArray> p (env, numGen);	// production amounts
+	p = IloArray<IloNumVarArray> (env, numGen);	// production amounts
 	IloArray<IloNumVarArray> p_var (env, numGen);	// variable-production amounts
 
     s = IloArray< IloNumVarArray > (env, numGen);
@@ -536,7 +556,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
         }
     }
     
-    /* demand-based valid inequality */
+    /* demand-based valid inequality *
     // the capacities of operational generators must exceed the system demand at any point
     for (int t=0; t<numPeriods; t++) {
         IloExpr expr (env);
@@ -546,7 +566,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
         model.add( expr >= sysLoad[t] );
         expr.end();
     }
-	/********************/
+	/*********************************/
 	
 	// must-run units must be committed
 	for (int g=0; g<numGen; g++) {
@@ -584,7 +604,59 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 		}
 	}
 	
-	/*************
+	/****** Symmetry Breaking ******/
+	for (int g=0; g<numGen; g++) {
+		Generator *genPtr = &(inst.powSys->generators[g]);
+		
+		// compare characteristics of generator g, with an other generator k
+		for (int k=g+1; k<numGen; k++) {
+			Generator *gen2Ptr = &(inst.powSys->generators[k]);
+			
+			// check if gen g and k are the same
+			if ( genPtr->type == gen2Ptr->type
+				&& genPtr->connectedBusName == gen2Ptr->connectedBusName
+				&& fabs(genPtr->rampUpLim - gen2Ptr->rampUpLim) < EPSzero
+				&& fabs(genPtr->rampDownLim - gen2Ptr->rampDownLim) < EPSzero
+				&& fabs(genPtr->minGenerationReq - gen2Ptr->minGenerationReq) < EPSzero
+				&& fabs(genPtr->maxCapacity - gen2Ptr->maxCapacity) < EPSzero
+				&& fabs(genPtr->minUpTime - gen2Ptr->minUpTime) < EPSzero
+				&& fabs(genPtr->minDownTime - gen2Ptr->minDownTime) < EPSzero
+				&& fabs(genPtr->isDAUCGen - gen2Ptr->isDAUCGen) < EPSzero
+				&& fabs(genPtr->isMustRun - gen2Ptr->isMustRun) < EPSzero
+				&& fabs(genPtr->isMustUse - gen2Ptr->isMustUse) < EPSzero
+				&& fabs(genPtr->noLoadCost - gen2Ptr->noLoadCost) < EPSzero
+				&& fabs(genPtr->startupCost - gen2Ptr->startupCost) < EPSzero
+				&& fabs(genPtr->variableCost - gen2Ptr->variableCost) < EPSzero){
+				
+				// if these generators are the same, create a symmetry-breaking constraint
+				for (int t=0; t<numPeriods; t++) {
+					model.add( x[g][t] >= x[k][t] );	// if you need to open k, make sure g is already open
+				}
+				break;
+			}
+		}
+	}
+	/****** Symmetry Breaking ******/
+	
+	// create the objective function
+	IloExpr obj (env);
+	
+	for (int g=0; g<numGen; g++) {
+		Generator *genPtr = &(inst.powSys->generators[g]);
+
+		for (int t=0; t<numPeriods; t++) {
+			obj += genPtr->startupCost * s[g][t];					// start up cost
+			obj += genPtr->noLoadCost*periodLength/60.0 * x[g][t];	// no-load cost
+//			obj += genPtr->variableCost*periodLength/60.0 * p[g][t];		// generation cost
+			obj += minGenerationReq[g]*genPtr->variableCost*periodLength/60.0 * x[g][t];	// minimum generation cost
+		}
+	}
+	for (int s=0; s<eta.getSize(); s++) {
+		obj += 1.0/(double)eta.getSize() * eta[s];
+	}
+	
+	
+	/****** MEAN SCENARIO CONSTRAINTS ******
 	// capacity constraints
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst.powSys->generators[g]);
@@ -652,11 +724,6 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 				}
 			}
 		}
-		
-		if (shutDownPeriod >= 0) {
-			inst.out() << "Warning: Generator " << g << " (" << genPtr->name << ") cannot ramp down to 0 in the ST-UC problem" << endl;
-		}
-		
 		int t=0;
 		if ( beginMin != 0 ) {
 			double rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
@@ -671,25 +738,6 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 			sprintf(buffer, "RD_%d_%d", g, t); c.setName(buffer); model.add(c);
 		}
 	}
-	 /********************/
-	
-	// create the objective function
-	IloExpr obj (env);
-	
-	for (int g=0; g<numGen; g++) {
-		Generator *genPtr = &(inst.powSys->generators[g]);
-
-		for (int t=0; t<numPeriods; t++) {
-			obj += genPtr->startupCost * s[g][t];					// start up cost
-			obj += genPtr->noLoadCost*periodLength/60.0 * x[g][t];	// no-load cost
-			obj += minGenerationReq[g]*genPtr->variableCost*periodLength/60.0 * x[g][t];	// minimum generation cost
-		}
-	}
-	for (int s=0; s<eta.getSize(); s++) {
-		obj += 1.0/(double)eta.getSize() * eta[s];
-	}
-	
-	/** Model-dependent obj function components, constraints **
 	if (modelType == System)
 	{
 		IloNumVarArray L (env, numPeriods, 0, IloInfinity, ILOFLOAT);	// load shedding
@@ -714,8 +762,8 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 	}
 	else	// (modelType == Transmission)
 	{
-		IloArray< IloNumVarArray > L (env, numBus);	// load shedding
-		IloArray< IloNumVarArray > O (env, numBus);	// over generation
+		L = IloArray< IloNumVarArray > (env, numBus);	// load shedding
+		O = IloArray< IloNumVarArray > (env, numBus);	// over generation
 		IloArray< IloNumVarArray > T (env, numBus);		// phase angles
 		IloArray< IloNumVarArray > F (env, numLine);	// flows
 		
@@ -852,7 +900,7 @@ bool SUCmaster::solve () {
 		bool status;
 		
 		/* warm up *
-		*(inst->getLogStream()) << "Executing warm up MIP..." << endl;
+		inst->out() << "Executing warm up MIP..." << endl;
 		status = warmUpProb.solve();
 		if (status) {
 			setWarmUp();

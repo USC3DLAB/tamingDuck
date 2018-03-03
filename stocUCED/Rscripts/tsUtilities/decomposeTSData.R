@@ -59,7 +59,7 @@ decomposeTSData <- function(inputTS, freq, decomposeBy = 'seasonal', identifier 
     # Daily data
     tsData <- t(matrix(data = inputTS, nrow = Nhour*24))
   }
-  else if ( decomposeBy == ' weekly' ) {
+  else if ( decomposeBy == 'weekly' ) {
     # Weekly data
     tsData <- t(matrix(data = inputTS, nrow = Nhour*24*7))
   }

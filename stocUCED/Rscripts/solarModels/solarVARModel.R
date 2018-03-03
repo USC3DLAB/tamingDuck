@@ -1,27 +1,11 @@
-solarVARModel <- function(dataSet, decomposeBy = 'monthly', identifier = 'February', forecastType = 'DA',
-                       lag.max = 3, infocrit = 'SC', clearSky = TRUE) {
+solarVARModel <- function(tsData, freq, lag.max = 3, infocrit = 'SC', clearSky = TRUE) {
   # Setup and fit a VAR model for the solar dataSet
-  #   - dataSet     = standard dataSet
-  #   - decomposeBy = 'seasonal', 'monthly', 'weekly', or 'daily'
-  #   - identifier  = ('summer', 'autumn', 'winter', 'spring') or name of the month
-  #   - forecastType = ('DA', 'RT')
+  #   - tsData = time-series related data
+  #   - freq = dataset frequency
   #   - lag.max     = maximum lag order for model estimation, 
   #   - infocrit    = information criteria used for model order selection
   
-  # source('../tsUtilities/decomposeTSData.R')
-  
-  # Read from data set corresponding to wind generators
-  ts <- NULL; cap <- NULL;
-  for (d in 1:length(dataSet)) {
-    if ( dataSet[[d]]$srcType == 'Solar' || dataSet[[d]]$srcType == 'DPV' || dataSet[[d]]$srcType == 'UPV') {
-      ts <- abind::abind(ts, decomposeTSData(inputTS = dataSet[[d]]$ts[[forecastType]], 
-                                      freq = dataSet[[d]]$freq[[forecastType]], 
-                                      decomposeBy = decomposeBy, identifier = identifier), along = 3)
-      cap <- abind::abind(cap, dataSet[[d]]$capacity)
-      freq <- dataSet[[d]]$freq[[forecastType]]
-    }
-  }
-  ts <- aperm(ts, c(2,3,1))
+  ts = tsData$ts; cap = tsData$cap; freq = tsData$freq;
   
   # Data parameters
   numDataPoints <- dim(ts)[1]; numLoc <- dim(ts)[2]; numDays <- dim(ts)[3]
@@ -65,6 +49,13 @@ solarVARModel <- function(dataSet, decomposeBy = 'monthly', identifier = 'Februa
   
   # Use the normalized data to fit a VAR model
   varsimest <- vars::VAR(normalizedTS, type = "const", lag.max = lag.max, ic = infocrit);
+  
+  # check for NA coefficients
+  for (name in names(varsimest$varresult)) {
+    if (anyNA(varsimest$varresult[[name]]$coefficients)) {
+      print("Error! The VAR model cannot estimate regression coefficients!")
+    }
+  }
   
   return(list(ts = ts, numLoc = numLoc, freq = freq,
               model = list(clearSky = clearSkyGeneration, avgSky = avgSkyGeneration, capacity = cap, dayTime = dayTime, est = varsimest)))
