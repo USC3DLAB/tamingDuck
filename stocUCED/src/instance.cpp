@@ -103,7 +103,7 @@ void instance::simulateScenarios(int numScen, bool fitModel, int rep) {
 #ifdef SAMPLE_USING_R
 	simulations = createScenarioList(R, fitModel, powSys->path, stocElems, numSimLengthInDays, numScen, rep);
 #else
-	string simulationsFolder = "../Release/Simulations/";
+	string simulationsFolder = "./Simulations/";
 	simulations = createScenarioList(simulationsFolder, stocElems, numSimLengthInDays, numScen, rep);
 #endif
 	

@@ -395,6 +395,40 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 		}
 	}
 	
+	/****** Symmetry Breaking ******/
+	for (int g=0; g<numGen; g++) {
+		Generator *genPtr = &(inst.powSys->generators[g]);
+		
+		// compare characteristics of generator g, with an other generator k
+		for (int k=g+1; k<numGen; k++) {
+			Generator *gen2Ptr = &(inst.powSys->generators[k]);
+			
+			// check if gen g and k are the same
+			if ( genPtr->type == gen2Ptr->type
+				&& genPtr->connectedBusName == gen2Ptr->connectedBusName
+				&& fabs(genPtr->rampUpLim - gen2Ptr->rampUpLim) < EPSzero
+				&& fabs(genPtr->rampDownLim - gen2Ptr->rampDownLim) < EPSzero
+				&& fabs(genPtr->minGenerationReq - gen2Ptr->minGenerationReq) < EPSzero
+				&& fabs(genPtr->maxCapacity - gen2Ptr->maxCapacity) < EPSzero
+				&& fabs(genPtr->minUpTime - gen2Ptr->minUpTime) < EPSzero
+				&& fabs(genPtr->minDownTime - gen2Ptr->minDownTime) < EPSzero
+				&& fabs(genPtr->isDAUCGen - gen2Ptr->isDAUCGen) < EPSzero
+				&& fabs(genPtr->isMustRun - gen2Ptr->isMustRun) < EPSzero
+				&& fabs(genPtr->isMustUse - gen2Ptr->isMustUse) < EPSzero
+				&& fabs(genPtr->noLoadCost - gen2Ptr->noLoadCost) < EPSzero
+				&& fabs(genPtr->startupCost - gen2Ptr->startupCost) < EPSzero
+				&& fabs(genPtr->variableCost - gen2Ptr->variableCost) < EPSzero){
+				
+				// if these generators are the same, create a symmetry-breaking constraint
+				for (int t=0; t<numPeriods; t++) {
+					model.add( x[g][t] >= x[k][t] );	// if you need to open k, make sure g is already open
+				}
+				break;
+			}
+		}
+	}
+	/****** Symmetry Breaking ******/
+
 	
 	/** Objective Function **/
 	IloExpr obj (env);

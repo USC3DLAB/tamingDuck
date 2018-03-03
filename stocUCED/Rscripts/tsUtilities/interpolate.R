@@ -1,14 +1,19 @@
-interpolate <- function(simLength, lookahead, varmodel, varpaths, numScenarios) {
+interpolate <- function(simLength, lookahead, nComponents, varpaths, numScenarios) {
   # Thx to: http://gforge.se/2015/02/how-to-go-parallel-in-r-basics-tips/
   library(parallel)
   nThreads <- detectCores()
   
+  # if a matrix, instead of 3D array is provided, do the conversion
+  if (numScenarios == 1 && length(dim(varpaths)) == 2) { 
+    varpaths = array(varpaths, dim = c(dim(varpaths), 1))
+  }
+  
   cl <- makeCluster(nThreads)
   
-  subhourlyPaths <- array(0, dim = c((simLength+lookahead)*4, varmodel$numLoc, numScenarios) )
-  for (gen in 1:varmodel$numLoc) {  # for every generator, interpolate the scenarios
+  subhourlyPaths <- NULL
+  for (gen in 1:nComponents) {  # for every generator, interpolate the scenarios
     
-    # this interpolation assumes the hourly data was recorded at HH:30.
+    # this interpolation assumes the hourly data was recorded at HH:00.
     tmp <- parLapply(cl, 
                      (1:numScenarios), 
                      gen = gen, 
@@ -22,13 +27,16 @@ interpolate <- function(simLength, lookahead, varmodel, varpaths, numScenarios) 
                      })
     
     # combine the results
-    for (t in 1:((simLength+lookahead)*4/wModel$freq)) {
-      for (s in 1:numScenarios) {
-        subhourlyPaths[t,gen,s] = tmp[[s]][t]
-      }
-    }
+    subhourlyPaths <- abind::abind(subhourlyPaths, array(unlist(tmp), c(length(tmp[[1]]), length(tmp))), along = 3)
+#    for (t in 1:((simLength+lookahead)*4)) {
+#      for (s in 1:numScenarios) {
+#        subhourlyPaths[t,gen,s] = tmp[[s]][t]
+#      }
+#    }
   }
   stopCluster(cl)
+  
+  subhourlyPaths <- aperm(subhourlyPaths, c(1,3,2))
   
   return(subhourlyPaths)
 }
