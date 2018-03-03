@@ -166,7 +166,7 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 
 	cout << "------------------------------------------------------------------" << endl;
 	cout << "---------- Det UC & Stoch ED Optimization / Simulation -----------" << endl;
-	for (int rep = 1; rep < runParam.numRep; rep++) {
+	for (int rep = 0; rep < runParam.numRep; rep++) {
 		cout << "Observation-" << rep << endl;
 
 		/* random sampling */

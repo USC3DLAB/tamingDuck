@@ -30,6 +30,10 @@ StocProcess::StocProcess(string inputDir, string sysName) {
 
 	/* Loop through all the random variables */
 	for ( unsigned int r = 0; r < rType.size(); r++ ) {
+		if (rType[r] == "stocProcesses") {
+			continue;
+		}
+		
 		vector<string> fType;
 
 		getFiles((inputDir + sysName + "/" + rType[r]), fType);
