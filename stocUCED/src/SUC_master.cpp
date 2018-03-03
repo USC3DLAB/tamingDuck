@@ -10,7 +10,7 @@
 
 extern runType runParam;
 
-ILOHEURISTICCALLBACK2(rounding, IloArray< IloNumVarArray >&, x, set< vector<bool> >&, testedHeurSolns) {
+ILOHEURISTICCALLBACK1(rounding, IloArray< IloNumVarArray >&, x) {
 
 	if ( (getNnodes() > 10 && getNnodes() % 100 != 0)
 		|| fabs(getIncumbentObjValue()-getBestObjValue())/(fabs(getIncumbentObjValue())+1e-14) < 0.2) {
@@ -36,25 +36,13 @@ ILOHEURISTICCALLBACK2(rounding, IloArray< IloNumVarArray >&, x, set< vector<bool
 		
 	}
 	
-	/* check if the solution has been observed before *
-	vector<bool> producedSoln ( vals.getSize() );
-	for (int i=0; i<vals.getSize(); i++) {
-		producedSoln[i] = (vals[i] > 0.5)*1;
+	try {
+		setSolution(vars, vals);
+		solve();
 	}
-	auto it = testedHeurSolns.find(producedSoln);
-	/* check if the solution has been observed before */
-	
-	//if (it == testedHeurSolns.end() ) {	// soln not seen before
-		/* evaluate the solution */
-		//testedHeurSolns.insert(producedSoln);
-		try {
-			setSolution(vars, vals);
-			solve();
-		}
-		catch (IloException &e) {
-			cout << e << endl;
-		}
-	//}
+	catch (IloException &e) {
+		cout << e << endl;
+	}
 
 	vals.end();
 	vars.end();
@@ -105,7 +93,6 @@ void SUCmaster::LazySepCallbackI::main()
 		if ( me.LinProgRelaxNoObjImp > 5 ) {
 			return;
 		}
-			
 		me.LinProgRelaxObjVal = getObjValue();
 	}
 	
@@ -113,14 +100,31 @@ void SUCmaster::LazySepCallbackI::main()
 	for (int g=0; g<me.numGen; g++) {
 		getValues(me.xvals[g], me.x[g]);
 	}
-	 
+	
+	// add solution to the pool, test if it has been seen before
+	if (!me.LinProgRelaxFlag) {
+		vector<bool> x;
+		for (int g=0; g<me.numGen; g++) {
+			for (int t=0; t<me.numPeriods; t++) {
+				x.push_back( me.xvals[g][t] );
+			}
+		}
+		// test if the solution was in the pool, no cut is necessary if it has already been solved before
+		auto it = me.evaluatedSolns.find( x );
+		if (it == me.evaluatedSolns.end()) {
+			me.evaluatedSolns.insert(x);
+		}
+		else {
+			me.inst->out() << "(no cut! I've seen this soln before)" << endl;
+			return;
+		}
+	}
+	
 	// set the master solution in the subproblems
 	me.recourse.setMasterSoln();
 	
-	double time_t = get_wall_time();
 	// solve the subproblems
 	bool isFeasible = me.recourse.solve();
-	cout << get_wall_time() - time_t << endl;
 
 	/*
 	cout << me.recourse.getObjValue() << endl;
@@ -362,6 +366,7 @@ void SUCmaster::preprocessing ()
 	for (int s=0; s<runParam.numLSScen; s++) {
 		rndPermutation[s] = rand() % inst->simulations.vals.size();
 	}
+	
 	
 	/* Mean Generator Capacity */
 	for (int g=0; g<numGen; g++) {
@@ -899,7 +904,7 @@ bool SUCmaster::solve () {
 	try{
 		bool status;
 		
-		/* warm up *
+		/* warm up */
 		inst->out() << "Executing warm up MIP..." << endl;
 		status = warmUpProb.solve();
 		if (status) {
@@ -916,8 +921,7 @@ bool SUCmaster::solve () {
 		else						inst->out() << "STUC,";
 		inst->out() << " at time = " << beginMin << " (mins)." << endl;
 		
-		/* Process the LP Relaxation */
-		
+		/****** Process the LP Relaxation ******
 		// convert variables from BOOL to FLOAT
 		IloNumVarArray vars (env);
 		for (int g=0; g<numGen; g++) {
@@ -950,8 +954,10 @@ bool SUCmaster::solve () {
 		cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*7200 + (probType == ShortTerm)*1800);
 		//	cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*300 + (probType == ShortTerm)*60);
 		LinProgRelaxFlag = false;
-		/*					*/
-		cplex.use(rounding(env, x, testedHeurSolns));
+		/****** Process the LP Relaxation ******/
+		
+		/****** Process the MIP ******/
+		cplex.use(rounding(env, x));
 		if (probType == DayAhead) {
 			cplex.use(IncCallback(env, *this));
 		}
@@ -968,6 +974,7 @@ bool SUCmaster::solve () {
 			inst->out() << "Benders' decomposition has failed." << endl;
 			exit(1);
 		}
+		/****** Process the MIP ******/
 		
 		// Record the optimal solution
 		if (status) {
