@@ -64,7 +64,7 @@ private:
 	
 	vector<int> rndPermutation;
 	
-	set< vector<bool> > testedHeurSolns;	// keep track of tested heuristic solutions, so that you don't test them again
+	set< vector<bool> > evaluatedSolns;		// keep track of evaluated solutions, so that you don't test them again!
 	
 	bool multicut;
 	
