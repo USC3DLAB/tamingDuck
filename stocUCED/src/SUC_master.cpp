@@ -32,8 +32,6 @@ ILOHEURISTICCALLBACK1(rounding, IloArray< IloNumVarArray >&, x) {
 		}
 		vals.add(temp);
 		temp.end();
-		
-		
 	}
 	
 	try {
@@ -98,7 +96,13 @@ void SUCmaster::LazySepCallbackI::main()
 	
 	// get the solution
 	for (int g=0; g<me.numGen; g++) {
-		getValues(me.xvals[g], me.x[g]);
+		if (me.LinProgRelaxFlag) {
+			getValues(me.xvals[g], me.x[g]);
+		} else {
+			for (int t=0; t<me.numPeriods; t++) {
+				me.xvals[g][t] = round(getValue( me.x[g][t] ));
+			}
+		}
 	}
 	
 	// add solution to the pool, test if it has been seen before
@@ -106,7 +110,7 @@ void SUCmaster::LazySepCallbackI::main()
 		vector<bool> x;
 		for (int g=0; g<me.numGen; g++) {
 			for (int t=0; t<me.numPeriods; t++) {
-				x.push_back( me.xvals[g][t] );
+				x.push_back( round(me.xvals[g][t]) );
 			}
 		}
 		// test if the solution was in the pool, no cut is necessary if it has already been solved before
@@ -115,7 +119,7 @@ void SUCmaster::LazySepCallbackI::main()
 			me.evaluatedSolns.insert(x);
 		}
 		else {
-			me.inst->out() << "(no cut! I've seen this soln before)" << endl;
+			me.inst->out() << "(no cut! I've seen this soln before. eta= " << getValue(me.eta[0]) << ")" << endl;
 			return;
 		}
 	}
@@ -124,8 +128,9 @@ void SUCmaster::LazySepCallbackI::main()
 	me.recourse.setMasterSoln();
 	
 	// solve the subproblems
+	double time_t = get_wall_time();
 	bool isFeasible = me.recourse.solve();
-
+	cout << get_wall_time() - time_t << endl;
 	/*
 	cout << me.recourse.getObjValue() << endl;
 	for (int g=0; g<me.numGen; g++) {
@@ -951,12 +956,11 @@ bool SUCmaster::solve () {
 		model.remove(convertToLP);
 		model.add(BendersCuts);
 		cplex.extract(model);
-		cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*7200 + (probType == ShortTerm)*1800);
-		//	cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*300 + (probType == ShortTerm)*60);
 		LinProgRelaxFlag = false;
 		/****** Process the LP Relaxation ******/
 		
 		/****** Process the MIP ******/
+		cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*7200 + (probType == ShortTerm)*1800);
 		cplex.use(rounding(env, x));
 		if (probType == DayAhead) {
 			cplex.use(IncCallback(env, *this));

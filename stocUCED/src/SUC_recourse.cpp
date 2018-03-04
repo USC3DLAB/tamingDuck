@@ -49,6 +49,11 @@ void SUCrecourse::formulate(instance &inst, ProblemType probType, ModelType mode
 bool SUCrecourse::solve() {
 	bool status = true;
 	
+	// shuffle subproblem solving sequence
+	vector<int> randomized_order (numScen);
+	for (int s=0; s<randomized_order.size(); s++) randomized_order[s] = s;
+	random_shuffle(randomized_order.begin(), randomized_order.end());
+	
 	/***** Parallel programming stuff (START) *****/
 	boost::asio::io_service io_service;				// create an io_service
 	boost::asio::io_service::work work(io_service);	// and some work to stop its run() function from exiting if it has nothing else to do
@@ -60,11 +65,6 @@ bool SUCrecourse::solve() {
 		thread_map.insert( pair<boost::thread::id, unsigned short> (new_thread->get_id(), k) );
 	}
 	/***** Parallel programming stuff (END)   *****/
-	
-	// shuffle subproblem solving sequence
-	vector<int> randomized_order (numScen);
-	for (int s=0; s<randomized_order.size(); s++) randomized_order[s] = s;
-	random_shuffle(randomized_order.begin(), randomized_order.end());
 	
 	// solve subproblems
 	for (int s=0; s<numScen; s++) {
