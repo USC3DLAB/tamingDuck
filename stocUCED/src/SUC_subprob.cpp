@@ -133,11 +133,15 @@ double SUCsubprob::getRandomCoef (int &s, int &t, int &loc) {
 		return inst->observations["RT"].vals[rep][t][loc];
 	}
 	else {
-		return inst->simulations.vals[s][t][loc];
+		if (s == -1) {
+			return (*expCapacity)[loc][t];
+		} else {
+			return inst->simulations.vals[s][t][loc];
+		}
 	}
 }
 
-void SUCsubprob::formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep, IloArray<IloNumArray> &masterSoln)
+void SUCsubprob::formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep, IloArray<IloNumArray> &masterSoln, vector<vector<double>> &expCapacity)
 {
 	// get a handle on the instance and model type
 	this->inst		= &inst;
@@ -146,6 +150,7 @@ void SUCsubprob::formulate (instance &inst, ProblemType probType, ModelType mode
 	this->modelType = modelType;
 	this->rep		= rep;
 	this->genState	= &masterSoln;
+	this->expCapacity = &expCapacity;
 	
 	preprocessing();
 		
@@ -513,7 +518,8 @@ void SUCsubprob::setup_subproblem(int &s) {
 		if ( it != inst->simulations.mapVarNamesToIndex.end() ) {	// if random supply generator
 			for (int t=0; t<numPeriods; t++, c++) {					// Note: c is iterated in the secondary-loops
 				period = (beginMin/periodLength)+(t*numBaseTimePerPeriod);
-				supply = min(getRandomCoef(s, period, it->second), genPtr->maxCapacity);
+				if (s==-1)	{ supply = min(getRandomCoef(s, period, g), genPtr->maxCapacity); }
+				else 		{ supply = min(getRandomCoef(s, period, it->second), genPtr->maxCapacity); }
 				
 				cons[c].setLinearCoef(x[g][t], -supply);
 			}

@@ -26,7 +26,7 @@ public:
 	SUCsubprob ();
 	~SUCsubprob ();
 	
-	void formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep, IloArray<IloNumArray> &masterSoln);
+	void formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep, IloArray<IloNumArray> &masterSoln, vector<vector<double>> &expCapacity);
 	
 	bool solve (int mappedScen, BendersCutCoefs &cutCoefs, double &objValue, vector<double> &initGen);
 	
@@ -60,6 +60,7 @@ private:
 	
 	// fixed master solution
 	IloArray<IloNumArray> *genState;
+	vector<vector<double>> *expCapacity;
 	
 	void compute_optimality_cut_coefs	(BendersCutCoefs &cutCoefs);
 	void compute_feasibility_cut_coefs	(BendersCutCoefs &cutCoefs);

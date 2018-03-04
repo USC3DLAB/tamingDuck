@@ -94,6 +94,10 @@ void SUCmaster::LazySepCallbackI::main()
 		me.LinProgRelaxObjVal = getObjValue();
 	}
 	
+//	if ( me.MeanProbFlag ) {
+//		me.inst->out() << "Mean Prob = " << getObjValue() << endl;
+//	}
+	
 	// get the solution
 	for (int g=0; g<me.numGen; g++) {
 		if (me.LinProgRelaxFlag) {
@@ -106,6 +110,7 @@ void SUCmaster::LazySepCallbackI::main()
 	}
 	
 	// add solution to the pool, test if it has been seen before
+	map<vector<bool>, int>::iterator it;
 	if (!me.LinProgRelaxFlag) {
 		vector<bool> x;
 		for (int g=0; g<me.numGen; g++) {
@@ -114,13 +119,22 @@ void SUCmaster::LazySepCallbackI::main()
 			}
 		}
 		// test if the solution was in the pool, no cut is necessary if it has already been solved before
-		auto it = me.evaluatedSolns.find( x );
+		it = me.evaluatedSolns.find( x );
 		if (it == me.evaluatedSolns.end()) {
-			me.evaluatedSolns.insert(x);
+			me.evaluatedSolns.insert( pair<vector<bool>, int> (x, 1) );
+			me.MeanProbFlag = true;
+			me.inst->out() << "(solving mean-scenario. obj= " << getObjValue() << " eta= " << getValue(me.eta[0]) << ")" << endl;
 		}
 		else {
-			me.inst->out() << "(no cut! I've seen this soln before. eta= " << getValue(me.eta[0]) << ")" << endl;
-			return;
+			if (it->second == 1) {
+				me.MeanProbFlag = false;
+				it->second = 2;
+				me.inst->out() << "(solving all scenarios. obj= " << getObjValue() << " eta= " << getValue(me.eta[0]) << ")" << endl;
+			}
+			else {
+				me.inst->out() << "(no cut! I've seen this soln before. obj= " << getObjValue() << " eta= " << getValue(me.eta[0]) << ")" << endl;
+				return;
+			}
 		}
 	}
 	
@@ -128,9 +142,15 @@ void SUCmaster::LazySepCallbackI::main()
 	me.recourse.setMasterSoln();
 	
 	// solve the subproblems
-	double time_t = get_wall_time();
-	bool isFeasible = me.recourse.solve();
-	cout << get_wall_time() - time_t << endl;
+	//double time_t = get_wall_time();
+	bool isFeasible;
+	if (me.MeanProbFlag) {
+		isFeasible = me.recourse.solveMeanProb();
+	}
+	else {
+		isFeasible = me.recourse.solve();
+	}
+	//cout << get_wall_time() - time_t << endl;
 	/*
 	cout << me.recourse.getObjValue() << endl;
 	for (int g=0; g<me.numGen; g++) {
@@ -155,13 +175,34 @@ void SUCmaster::LazySepCallbackI::main()
     // check if we need to add a cut (feasible and not within optimality tolerances, or infeasible)
     bool addCut = true;
     if (isFeasible) {
-		double diff = me.recourse.getObjValue() - 1.0/((double)me.eta.getSize())*getValue(IloSum(me.eta));
-        if ( diff/(fabs(me.recourse.getObjValue())+1e-14) < me.cplex.getParam(IloCplex::EpGap)
-            || diff < me.cplex.getParam(IloCplex::EpAGap) ) {
-            addCut = false;
-        }
+		if (!me.MeanProbFlag) {
+			double diff = me.recourse.getObjValue() - 1.0/((double)me.eta.getSize())*getValue(IloSum(me.eta));
+			if ( diff/(fabs(me.recourse.getObjValue())+1e-14) < me.cplex.getParam(IloCplex::EpGap)
+				|| diff < me.cplex.getParam(IloCplex::EpAGap) ) {
+				addCut = false;
+			}
+		} else {
+			double diff = me.recourse.objValues[0] - 1.0/((double)me.eta.getSize())*getValue(IloSum(me.eta));
+			if ( diff/(fabs(me.recourse.objValues[0])+1e-14) < me.cplex.getParam(IloCplex::EpGap)
+				|| diff < me.cplex.getParam(IloCplex::EpAGap) ) {
+				addCut = false;
+			}
+		}
     }
-
+	
+	if (me.MeanProbFlag && !addCut && isFeasible) {
+		me.inst->out() << "(solving all scenarios, mean-cut was useless. obj= " << getObjValue() << " eta= " << getValue(me.eta[0]) << ")" << endl;
+		me.recourse.solve();
+		
+		it->second = 2;
+		addCut = true;
+		double diff = me.recourse.getObjValue() - 1.0/((double)me.eta.getSize())*getValue(IloSum(me.eta));
+		if ( diff/(fabs(me.recourse.getObjValue())+1e-14) < me.cplex.getParam(IloCplex::EpGap)
+			|| diff < me.cplex.getParam(IloCplex::EpAGap) ) {
+			addCut = false;
+		}		
+	}
+	
 	if (!addCut)	return;
 	
 	if (isFeasible) {
@@ -235,23 +276,27 @@ void SUCmaster::LazySepCallbackI::main()
 					}
 				}
 				pi_b += cutCoefs->pi_b;
+				
+				if (me.MeanProbFlag) break;
 			}
 
-			pi_Tx *= sceProb;
-			pi_b  *= sceProb;
+			if (!me.MeanProbFlag) {
+				pi_Tx *= sceProb;
+				pi_b  *= sceProb;
+			}
 			
 			IloRange BendersCut;
 			BendersCut = IloRange(me.env, pi_b, me.eta[0]-pi_Tx);	// optimality cut
 			
 			// add the cut
 			try {
-				if (me.LinProgRelaxFlag) {
-					me.BendersCuts.add(BendersCut);
-					add(BendersCut);
-				}
-				else {
+//				if (me.LinProgRelaxFlag || me.MeanProbFlag) {
+//					me.BendersCuts.add(BendersCut);
+//					add(BendersCut);
+//				}
+//				else {
 					add(BendersCut).end();
-				}
+//				}
 			}
 			catch (IloException &e) {
 				cout << "Exception: " << e << endl;
@@ -394,6 +439,8 @@ void SUCmaster::preprocessing ()
 					expCapacity[g][t] = min( inst->observations["RT"].vals[rep][period][it->second], genPtr->maxCapacity );
 				}
 				else {
+//					it = inst->observations["DA"].mapVarNamesToIndex.find(genPtr->name);
+//					expCapacity[g][t] = min( inst->observations["DA"].vals[rep][period][it->second], genPtr->maxCapacity );
 					it = inst->simulations.mapVarNamesToIndex.find(genPtr->name);
 					for (int s=0; s<runParam.numLSScen; s++) {
 						expCapacity[g][t] += min( inst->simulations.vals[ rndPermutation[s] ][period][it->second], genPtr->maxCapacity );
@@ -868,18 +915,31 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 			}
 		}
 	}
+	
+//	IloExpr meanVal (env);
+//	for (int t=0; t<numPeriods; t++) {
+//		for (int g=0; g<numGen; g++) {
+//			Generator *genPtr = &(inst.powSys->generators[g]);
+//			meanVal += genPtr->variableCost*periodLength/60.0 * p_var[g][t];		// generation cost
+//		}
+//		for (int b=0; b<numBus; b++) {
+//			meanVal += overGenPenaltyCoef * O[b][t];
+//			meanVal += loadShedPenaltyCoef * L[b][t];
+//		}
+//	}
+//	model.add(eta[0] >= meanVal);
 	 /**************************/
 	
     // set the objective function
 	model.add( IloMinimize(env, obj) );
 	
     // formulate the subproblem
-	recourse.formulate(inst, probType, modelType, beginMin, rep, xvals, rndPermutation);
+	recourse.formulate(inst, probType, modelType, beginMin, rep, xvals, rndPermutation, expCapacity);
 	
 	// formulate the warm-up problem
 	warmUpProb.formulate(inst, probType, modelType, beginMin, rep);
 	warmUpProb.cplex.setParam(IloCplex::SolnPoolGap, 5e-2);
-	warmUpProb.cplex.setParam(IloCplex::SolnPoolCapacity, 10);
+	warmUpProb.cplex.setParam(IloCplex::SolnPoolCapacity, 5);
 
     // prepare the solver
 	cplex.extract(model);
@@ -908,17 +968,6 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 bool SUCmaster::solve () {
 	try{
 		bool status;
-		
-		/* warm up */
-		inst->out() << "Executing warm up MIP..." << endl;
-		status = warmUpProb.solve();
-		if (status) {
-			setWarmUp();
-			inst->out() << "Warm up model provided " << warmUpProb.cplex.getSolnPoolNsolns() << " solutions (Best Obj= " << warmUpProb.getObjValue() << ")." << endl;
-		} else {
-			inst->out() << "Warm up has failed." << endl;
-		}
-		/*        */
 		
 		// Benders' decomposition
 		inst->out() << "Executing Benders' decomposition for ";
@@ -959,7 +1008,53 @@ bool SUCmaster::solve () {
 		LinProgRelaxFlag = false;
 		/****** Process the LP Relaxation ******/
 		
+		/****** Mean Value Problem ******
+		inst->out() << "****** SOLVING MEAN VALUE PROBLEM ******" << endl;
+		
+		// convert variables from BOOL to FLOAT
+		IloNumVarArray vars (env);
+		for (int g=0; g<numGen; g++) {
+			for (int t=0; t<numPeriods; t++) {
+				vars.add(x[g][t]);
+				vars.add(s[g][t]);
+				vars.add(z[g][t]);
+			}
+		}
+		IloConversion convertToLP (env, vars, ILOFLOAT);
+		vars.end();
+		
+		// add conversion to the model
+		model.add(convertToLP);
+		
+		// add a dummy binary to keep the problem as an "MIP".
+		model.add( IloNumVar(env, 0, IloInfinity, ILOBOOL) );
+		
+
+		
+		MeanProbFlag = true;
+		BendersCuts = IloRangeArray (env);
+		cplex.solve();
+		inst->out() << "Mean-Value Obj = " << cplex.getObjValue() << endl;
+		model.remove(convertToLP);
+		model.add(BendersCuts);
+		cplex.extract(model);
+		evaluatedSolns.clear();
+		MeanProbFlag = false;			
+		/****** Mean Value Problem ******/
+		
+		/* warm up */
+		inst->out() << "Executing warm up MIP..." << endl;
+		status = warmUpProb.solve();
+		if (status) {
+			setWarmUp();
+			inst->out() << "Warm up model provided " << warmUpProb.cplex.getSolnPoolNsolns() << " solutions (Best Obj= " << warmUpProb.getObjValue() << ")." << endl;
+		} else {
+			inst->out() << "Warm up has failed." << endl;
+		}
+		/*        */
+
 		/****** Process the MIP ******/
+		inst->out() << "****** SOLVING THE PROBLEM ******" << endl;
 		cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*7200 + (probType == ShortTerm)*1800);
 		cplex.use(rounding(env, x));
 		if (probType == DayAhead) {

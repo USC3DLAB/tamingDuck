@@ -58,13 +58,13 @@ private:
 	
 	IloArray<IloNumArray> xvals;	// values to be passed to the subproblems
 	IloRangeArray BendersCuts;		// Benders Cuts collected from the LP relaxation
-	bool	LinProgRelaxFlag;
+	bool	LinProgRelaxFlag, MeanProbFlag;
 	double	LinProgRelaxObjVal = 0;
 	int		LinProgRelaxNoObjImp = 0;
 	
 	vector<int> rndPermutation;
 	
-	set< vector<bool> > evaluatedSolns;		// keep track of evaluated solutions, so that you don't test them again!
+	map< vector<bool>, int > evaluatedSolns;		// keep track of evaluated solutions, so that you don't test them again!
 	
 	bool multicut;
 	
