@@ -1,5 +1,5 @@
 horizon	24 hours
-DA_time_horizon 8 hours
+DA_time_horizon 24 hours
 ST_time_horizon 3 hours
 ED_time_horizon 75 minutes
 DA_time_resolution 1 hours

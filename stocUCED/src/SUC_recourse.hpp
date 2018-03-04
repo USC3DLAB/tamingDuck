@@ -25,8 +25,9 @@ public:
 	SUCrecourse ();
 	~SUCrecourse();
 	
-	void formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep, IloArray<IloNumArray> &masterSoln, vector<int> &rndPermutation);
+	void formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep, IloArray<IloNumArray> &masterSoln, vector<int> &rndPermutation, vector<vector<double>> &expCapacity);
 	bool solve ();
+	bool solveMeanProb ();
 	
 	void setMasterSoln ();
 	
