@@ -10,16 +10,17 @@
 
 extern runType runParam;
 
-ILOHEURISTICCALLBACK1(rounding, IloArray< IloNumVarArray >&, x) {
-
-	if ( (getNnodes() > 10 && getNnodes() % 100 != 0)
-		|| fabs(getIncumbentObjValue()-getBestObjValue())/(fabs(getIncumbentObjValue())+1e-14) < 0.2) {
+ILOHEURISTICCALLBACK2(rounding, IloArray<IloNumVarArray> &, x, SUCmaster &, me) {
+	
+	/* Heuristic frequency: Every 100 nodes, after node 10 */
+	if (getNnodes() < 10 || getNnodes() % 100 != 0){
 		return;
 	}
 	
-	/* construct a solution */
+	/* Construct a Solution */
 	IloNumVarArray	vars (getEnv());
 	IloNumArray		vals (getEnv());
+	vector<bool> 	vals_bool;
 	
 	for (int g=0; g<x.getSize(); g++) {
 		vars.add( x[g] );
@@ -29,14 +30,25 @@ ILOHEURISTICCALLBACK1(rounding, IloArray< IloNumVarArray >&, x) {
 		for (int t=0; t<temp.getSize(); t++) {
 			//temp[t] = round(temp[t]);
 			temp[t] = (double(rand())/double(RAND_MAX) < temp[t])*1.0;
+			vals_bool.push_back( round(temp[t]) );
 		}
 		vals.add(temp);
 		temp.end();
 	}
 	
+	/* Evaluate the Solution */
 	try {
-		setSolution(vars, vals);
-		solve();
+		// Important: Check if the produced solution is evaluated before. If it is, don't evaluate!
+		// It is important that you don't visit the same solution multiple times, especially
+		// if you're not evaluating them in the lazy-constraint callback
+		auto it = me.evaluatedSolns.find(vals_bool);
+		if (it == me.evaluatedSolns.end()) {
+			me.inst->out() << "Heuristic is evaluating a new solution" << endl;
+			setSolution(vars, vals);
+			solve();
+		} else {
+			me.inst->out() << "Heuristic has ignored Sol" << me.evaluatedSolns[vals_bool][2] << endl;
+		}
 	}
 	catch (IloException &e) {
 		cout << e << endl;
@@ -77,8 +89,16 @@ IloCplex::Callback LazySepCallback(IloEnv env, SUCmaster & me) {
 	return (IloCplex::Callback(new(env) SUCmaster::LazySepCallbackI(env, me)));
 }
 
+bool warmup = true;
 void SUCmaster::LazySepCallbackI::main()
 {
+	if (warmup) {
+		if ( (getNodeId())._id > 0) {
+			warmup = false;
+			me.evaluatedSolns.clear();
+		}
+	}
+	
 	if ( me.LinProgRelaxFlag ) {
 		me.inst->out() << "LinProgRelax = " << getObjValue() << endl;
 		
@@ -94,10 +114,6 @@ void SUCmaster::LazySepCallbackI::main()
 		me.LinProgRelaxObjVal = getObjValue();
 	}
 	
-//	if ( me.MeanProbFlag ) {
-//		me.inst->out() << "Mean Prob = " << getObjValue() << endl;
-//	}
-	
 	// get the solution
 	for (int g=0; g<me.numGen; g++) {
 		if (me.LinProgRelaxFlag) {
@@ -110,37 +126,49 @@ void SUCmaster::LazySepCallbackI::main()
 	}
 	
 	// add solution to the pool, test if it has been seen before
-	map<vector<bool>, int>::iterator it;
+	vector<bool> x;
 	if (!me.LinProgRelaxFlag) {
-		vector<bool> x;
 		for (int g=0; g<me.numGen; g++) {
 			for (int t=0; t<me.numPeriods; t++) {
 				x.push_back( round(me.xvals[g][t]) );
 			}
 		}
 		// test if the solution was in the pool, no cut is necessary if it has already been solved before
-		it = me.evaluatedSolns.find( x );
+		auto it = me.evaluatedSolns.find( x );
 		if (it == me.evaluatedSolns.end()) {
-			me.evaluatedSolns.insert( pair<vector<bool>, int> (x, 1) );
+			vector<int> val; val.push_back(1); val.push_back( me.evaluatedSolns.size()+1 );
+			me.evaluatedSolns.insert( pair<vector<bool>, vector<int>> (x, val) );
 			me.MeanProbFlag = true;
-			me.inst->out() << "(solving mean-scenario. obj= " << getObjValue() << " eta= " << getValue(me.eta[0]) << ")" << endl;
+
+//			me.inst->out() << "(Sol " << (me.evaluatedSolns[x])[1] << ": solving mean-scenario. obj= " << getObjValue() << " eta= " << getValue(me.eta[0]) << ")" << endl;
 		}
 		else {
-			if (it->second == 1) {
+			if ( (me.evaluatedSolns[x])[0] == 1) {
 				me.MeanProbFlag = false;
-				it->second = 2;
-				me.inst->out() << "(solving all scenarios. obj= " << getObjValue() << " eta= " << getValue(me.eta[0]) << ")" << endl;
+				(me.evaluatedSolns[x])[0] = 2;
+//				me.inst->out() << "(Sol " << (me.evaluatedSolns[x])[1] << ": solving all scenarios. obj= " << getObjValue() << " eta= " << getValue(me.eta[0]) << ")" << endl;
 			}
 			else {
-				me.inst->out() << "(no cut! I've seen this soln before. obj= " << getObjValue() << " eta= " << getValue(me.eta[0]) << ")" << endl;
+//				cout << "Returning since I've seen this soln?" << endl;
+//				me.inst->out() << "(Sol " << (me.evaluatedSolns[x])[1] << ": no cut! I've seen this soln before. obj= " << getObjValue() << " eta= " << getValue(me.eta[0]) << ")" << endl;
 				return;
 			}
 		}
 	}
 	
+	me.evaluatedSolns[x][0] = 2;
+	me.MeanProbFlag = false;
+	
 	// set the master solution in the subproblems
 	me.recourse.setMasterSoln();
 	
+//	me.recourse.solveMeanProb();
+//	double mean = me.recourse.getScenObjValue(0);
+//	me.recourse.solve();
+//	double scen = me.recourse.getObjValue();
+//	if ( mean > scen ) {
+//		cout << mean << "," << scen << endl;
+//	}
 	// solve the subproblems
 	//double time_t = get_wall_time();
 	bool isFeasible;
@@ -150,6 +178,11 @@ void SUCmaster::LazySepCallbackI::main()
 	else {
 		isFeasible = me.recourse.solve();
 	}
+	me.inst->out() << "- Sol " << me.evaluatedSolns[x][1] << ": Obj= " << getObjValue() << " eta= " << getValue(me.eta[0]);
+	if (me.MeanProbFlag) 	me.inst->out() << " RecObj= " << me.recourse.getScenObjValue(0) << " " << flush;
+	else					me.inst->out() << " RecObj= " << me.recourse.getObjValue() << " " << flush;
+	
+
 	//cout << get_wall_time() - time_t << endl;
 	/*
 	cout << me.recourse.getObjValue() << endl;
@@ -176,94 +209,101 @@ void SUCmaster::LazySepCallbackI::main()
     bool addCut = true;
     if (isFeasible) {
 		if (!me.MeanProbFlag) {
-			double diff = me.recourse.getObjValue() - 1.0/((double)me.eta.getSize())*getValue(IloSum(me.eta));
+			double diff = me.recourse.getObjValue() - getValue(IloSum(me.eta));
 			if ( diff/(fabs(me.recourse.getObjValue())+1e-14) < me.cplex.getParam(IloCplex::EpGap)
 				|| diff < me.cplex.getParam(IloCplex::EpAGap) ) {
 				addCut = false;
 			}
+			me.inst->out() << " RecRelGap= " << diff/(fabs(me.recourse.getObjValue())+1e-14) << " RecAbsGap= " << diff << " " << endl;
 		} else {
-			double diff = me.recourse.objValues[0] - 1.0/((double)me.eta.getSize())*getValue(IloSum(me.eta));
+			double diff = me.recourse.objValues[0] - getValue(IloSum(me.eta));
 			if ( diff/(fabs(me.recourse.objValues[0])+1e-14) < me.cplex.getParam(IloCplex::EpGap)
 				|| diff < me.cplex.getParam(IloCplex::EpAGap) ) {
 				addCut = false;
 			}
+			me.inst->out() << " RecRelGap= " << diff/(fabs(me.recourse.getScenObjValue(0))+1e-14) << " RecAbsGap= " << diff << " " << endl;
 		}
     }
 	
 	if (me.MeanProbFlag && !addCut && isFeasible) {
-		me.inst->out() << "(solving all scenarios, mean-cut was useless. obj= " << getObjValue() << " eta= " << getValue(me.eta[0]) << ")" << endl;
+		me.inst->out() << "  (useless mean-scen cut) " << endl;
+		//me.inst->out() << "(Sol " << (me.evaluatedSolns[x])[1] << ": solving all scenarios, mean-cut was useless. obj= " << getObjValue() << " eta= " << getValue(me.eta[0]) << ")" << endl;
+		me.MeanProbFlag = false;
 		me.recourse.solve();
-		
-		it->second = 2;
+
+		(me.evaluatedSolns[x])[0] = 2;
 		addCut = true;
-		double diff = me.recourse.getObjValue() - 1.0/((double)me.eta.getSize())*getValue(IloSum(me.eta));
+		double diff = me.recourse.getObjValue() - getValue(IloSum(me.eta));
 		if ( diff/(fabs(me.recourse.getObjValue())+1e-14) < me.cplex.getParam(IloCplex::EpGap)
 			|| diff < me.cplex.getParam(IloCplex::EpAGap) ) {
 			addCut = false;
-		}		
+		}
 	}
 	
-	if (!addCut)	return;
+	if (!addCut) {
+		return;
+	}
 	
 	if (isFeasible) {
 		/* optimality cut */
 		
 		if ( me.multicut ) {
-			int optcut_cnt = 0;
-			for (int s=0; s<me.eta.getSize(); s++) {
-				
-				double diff = me.recourse.getScenObjValue(s) - getValue(me.eta[s]);
-				
-				if ( diff/(fabs(me.recourse.getScenObjValue(s))+1e-14) < me.cplex.getParam(IloCplex::EpGap)
-					|| diff < me.cplex.getParam(IloCplex::EpAGap) ) {
-					continue;
-				}
-				
-				optcut_cnt++;
-				
-				// get the Benders's cut coefs
-				BendersCutCoefs *cutCoefs = &(me.recourse.cutCoefs[s]);
-				
-				// create the cut
-				IloExpr pi_Tx (me.env);
-				for (int g=0; g<me.numGen; g++) {
-					for (int t=0; t<me.numPeriods; t++) {
-						if ( fabs(cutCoefs->pi_T[g][t]) > 1e-10 ) {
-							pi_Tx += cutCoefs->pi_T[g][t] * me.x[g][t];
-						}
-					}
-				}
-				
-				IloRange BendersCut;
-				BendersCut = IloRange(me.env, cutCoefs->pi_b, me.eta[s]-pi_Tx);	// optimality cut
-				
-				// add the cut
-				try {
-					if (me.LinProgRelaxFlag) {
-						me.BendersCuts.add(BendersCut);
-						add(BendersCut);
-					}
-					else {
-						add(BendersCut).end();
-					}
-				}
-				catch (IloException &e) {
-					cout << "Exception: " << e << endl;
-					BendersCut.end();
-				}
-				pi_Tx.end();
-			}
-			
-			me.inst->out() << "(optcut " << optcut_cnt << "/" << me.eta.getSize() << ")" << endl;
+			cout << "No multicut" << endl;
+//			int optcut_cnt = 0;
+//			for (int s=0; s<me.eta.getSize(); s++) {
+//
+//				double diff = me.recourse.getScenObjValue(s) - getValue(me.eta[s]) - EPSzero;
+//
+//				if ( diff/(fabs(me.recourse.getScenObjValue(s))+1e-14) < me.cplex.getParam(IloCplex::EpGap)
+//					|| diff < me.cplex.getParam(IloCplex::EpAGap) ) {
+//					continue;
+//				}
+//
+//				optcut_cnt++;
+//
+//				// get the Benders's cut coefs
+//				BendersCutCoefs *cutCoefs = &(me.recourse.cutCoefs[s]);
+//
+//				// create the cut
+//				IloExpr pi_Tx (me.env);
+//				for (int g=0; g<me.numGen; g++) {
+//					for (int t=0; t<me.numPeriods; t++) {
+//						if ( fabs(cutCoefs->pi_T[g][t]) > 1e-10 ) {
+//							pi_Tx += cutCoefs->pi_T[g][t] * me.x[g][t];
+//						}
+//					}
+//				}
+//
+//				IloRange BendersCut;
+//				BendersCut = IloRange(me.env, cutCoefs->pi_b, me.eta[s]-pi_Tx);	// optimality cut
+//
+//				// add the cut
+//				try {
+//					if (me.LinProgRelaxFlag) {
+//						me.BendersCuts.add(BendersCut);
+//						add(BendersCut);
+//					}
+//					else {
+//						add(BendersCut).end();
+//					}
+//				}
+//				catch (IloException &e) {
+//					cout << "Exception: " << e << endl;
+//					BendersCut.end();
+//				}
+//				pi_Tx.end();
+//			}
+//
+//			me.inst->out() << "(optcut " << optcut_cnt << "/" << me.eta.getSize() << ")" << endl;
 		}
 		else
 		{
-			double sceProb = 1.0/(double)me.eta.getSize();
+			double sceProb = 1.0/(double)runParam.numLSScen;
 			
 			IloExpr pi_Tx (me.env);
-			double  pi_b = 0;
+			IloNum  pi_b = 0;
 			
-			for (int s=0; s<me.eta.getSize(); s++) {
+			for (int s=0; s<runParam.numLSScen; s++) {
 				// get the Benders's cut coefs
 				BendersCutCoefs *cutCoefs = &(me.recourse.cutCoefs[s]);
 				
@@ -276,7 +316,7 @@ void SUCmaster::LazySepCallbackI::main()
 					}
 				}
 				pi_b += cutCoefs->pi_b;
-				
+
 				if (me.MeanProbFlag) break;
 			}
 
@@ -285,9 +325,8 @@ void SUCmaster::LazySepCallbackI::main()
 				pi_b  *= sceProb;
 			}
 			
-			IloRange BendersCut;
-			BendersCut = IloRange(me.env, pi_b, me.eta[0]-pi_Tx);	// optimality cut
-			
+			IloRange BendersCut (me.env, pi_b, me.eta[0]-pi_Tx);	// optimality cut
+
 			// add the cut
 			try {
 //				if (me.LinProgRelaxFlag || me.MeanProbFlag) {
@@ -304,7 +343,7 @@ void SUCmaster::LazySepCallbackI::main()
 			}
 			pi_Tx.end();
 			
-			me.inst->out() << "(optcut: eta= " << getValue(me.eta[0]) << ", obj= " << me.recourse.getObjValue() << ")" << endl;
+			me.inst->out() << "  (optcut)" << endl;
 		}
 	}
 	else {
@@ -415,6 +454,7 @@ void SUCmaster::preprocessing ()
 	rndPermutation.resize(runParam.numLSScen);
 	for (int s=0; s<runParam.numLSScen; s++) {
 		rndPermutation[s] = rand() % inst->simulations.vals.size();
+//		rndPermutation[s] = s;
 	}
 	
 	
@@ -439,8 +479,6 @@ void SUCmaster::preprocessing ()
 					expCapacity[g][t] = min( inst->observations["RT"].vals[rep][period][it->second], genPtr->maxCapacity );
 				}
 				else {
-//					it = inst->observations["DA"].mapVarNamesToIndex.find(genPtr->name);
-//					expCapacity[g][t] = min( inst->observations["DA"].vals[rep][period][it->second], genPtr->maxCapacity );
 					it = inst->simulations.mapVarNamesToIndex.find(genPtr->name);
 					for (int s=0; s<runParam.numLSScen; s++) {
 						expCapacity[g][t] += min( inst->simulations.vals[ rndPermutation[s] ][period][it->second], genPtr->maxCapacity );
@@ -713,7 +751,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 	}
 	
 	
-	/****** MEAN SCENARIO CONSTRAINTS ******
+	/****** MEAN SCENARIO CONSTRAINTS ******/
 	// capacity constraints
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst.powSys->generators[g]);
@@ -907,27 +945,26 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 			}
 		}
 		
-		// load-shedding penalties
-		for (int b=0; b<numBus; b++) {
-			for (int t=0; t<numPeriods; t++) {
-				obj += loadShedPenaltyCoef * L[b][t];
-				obj += overGenPenaltyCoef * O[b][t];
+//		// load-shedding penalties
+//		for (int b=0; b<numBus; b++) {
+//			for (int t=0; t<numPeriods; t++) {
+//				obj += loadShedPenaltyCoef * L[b][t];
+//				obj += overGenPenaltyCoef * O[b][t];
+//			}
+//		}
+		IloExpr meanVal (env);
+		for (int t=0; t<numPeriods; t++) {
+			for (int g=0; g<numGen; g++) {
+				Generator *genPtr = &(inst.powSys->generators[g]);
+				meanVal += genPtr->variableCost*periodLength/60.0 * p_var[g][t];		// generation cost
+			}
+			for (int b=0; b<numBus; b++) {
+				meanVal += overGenPenaltyCoef * O[b][t];
+				meanVal += loadShedPenaltyCoef * L[b][t];
 			}
 		}
+		model.add(eta[0] >= meanVal);
 	}
-	
-//	IloExpr meanVal (env);
-//	for (int t=0; t<numPeriods; t++) {
-//		for (int g=0; g<numGen; g++) {
-//			Generator *genPtr = &(inst.powSys->generators[g]);
-//			meanVal += genPtr->variableCost*periodLength/60.0 * p_var[g][t];		// generation cost
-//		}
-//		for (int b=0; b<numBus; b++) {
-//			meanVal += overGenPenaltyCoef * O[b][t];
-//			meanVal += loadShedPenaltyCoef * L[b][t];
-//		}
-//	}
-//	model.add(eta[0] >= meanVal);
 	 /**************************/
 	
     // set the objective function
@@ -960,6 +997,9 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 	cplex.setWarning( inst.out() );
 	cplex.setParam(IloCplex::Threads, 1);
 //    cplex.setParam(IloCplex::FPHeur, 2);
+//	cplex.setParam(IloCplex::ImplBd, 2);
+//	cplex.setParam(IloCplex::FlowPaths, 2);
+//	cplex.setParam(IloCplex::MIRCuts, 2);
 //    cplex.setParam(IloCplex::HeurFreq, 10);
 //    cplex.setParam(IloCplex::LBHeur, 1);    // ??
     cplex.setParam(IloCplex::EpGap, 1e-2);
@@ -1042,6 +1082,8 @@ bool SUCmaster::solve () {
 		MeanProbFlag = false;			
 		/****** Mean Value Problem ******/
 		
+		LinProgRelaxFlag = false;
+		
 		/* warm up */
 		inst->out() << "Executing warm up MIP..." << endl;
 		status = warmUpProb.solve();
@@ -1056,7 +1098,7 @@ bool SUCmaster::solve () {
 		/****** Process the MIP ******/
 		inst->out() << "****** SOLVING THE PROBLEM ******" << endl;
 		cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*7200 + (probType == ShortTerm)*1800);
-		cplex.use(rounding(env, x));
+		cplex.use(rounding(env, x, *this));
 		if (probType == DayAhead) {
 			cplex.use(IncCallback(env, *this));
 		}
