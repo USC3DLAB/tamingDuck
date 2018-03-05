@@ -20,6 +20,7 @@ SUCsubprob::SUCsubprob () {
 	cplex.setOut(env.getNullStream());
 	cplex.setWarning(env.getNullStream());
 	cplex.setParam(IloCplex::Threads, 1);
+	cplex.setParam(IloCplex::PreInd, 0);
 	cplex.setParam(IloCplex::RootAlg, IloCplex::Dual);	// Important
 	
 	solve_t = 0;
@@ -130,13 +131,13 @@ void SUCsubprob::preprocessing ()
 
 double SUCsubprob::getRandomCoef (int &s, int &t, int &loc) {
 	if (t == 0 && probType == ShortTerm) {
-		return inst->observations["RT"].vals[rep][t][loc];
+		return inst->observations["RT"].vals[rep][(beginMin/periodLength)+(t*numBaseTimePerPeriod)][loc];
 	}
 	else {
 		if (s == -1) {
 			return (*expCapacity)[loc][t];
 		} else {
-			return inst->simulations.vals[s][t][loc];
+			return inst->simulations.vals[s][(beginMin/periodLength)+(t*numBaseTimePerPeriod)][loc];
 		}
 	}
 }
@@ -188,17 +189,31 @@ void SUCsubprob::formulate_production()
 	}
 	
 	// capacity constraints
+	// Variant 1: Leads to random coefficient matrix
+//	for (int g=0; g<numGen; g++) {
+//		Generator *genPtr = &(inst->powSys->generators[g]);
+//
+//		for (int t=0; t<numPeriods; t++) {
+//			if (genPtr->isMustUse) {
+//				cons.add( IloRange(env, 0, p[g][t] - x[g][t] * genPtr->maxCapacity, 0) );
+//			} else {
+//				cons.add( IloRange(env, -IloInfinity, p[g][t] - x[g][t] * genPtr->maxCapacity, 0) );
+//			}
+//		}
+//	}
+	// Variant 2: Leads to random rhs vector
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
 		for (int t=0; t<numPeriods; t++) {
 			if (genPtr->isMustUse) {
-				cons.add( IloRange(env, 0, p[g][t] - x[g][t] * genPtr->maxCapacity, 0) );
+				cons.add( IloRange(env, genPtr->maxCapacity, p[g][t], genPtr->maxCapacity) );
 			} else {
-				cons.add( IloRange(env, -IloInfinity, p[g][t] - x[g][t] * genPtr->maxCapacity, 0) );
+				cons.add( IloRange(env, -IloInfinity, p[g][t], genPtr->maxCapacity) );
 			}
 		}
 	}
+
 	
 	// minimum production constraints
 	for (int g=0; g<numGen; g++) {
@@ -484,7 +499,7 @@ bool SUCsubprob::solve(int mappedScen, BendersCutCoefs &cutCoefs, double &objVal
 	
 	// feasibility
 	if (status) {
-		compute_optimality_cut_coefs(cutCoefs);
+		compute_optimality_cut_coefs(cutCoefs, mappedScen);
 		objValue = cplex.getObjValue();
 		
 		if (probType==DayAhead)	getInitGen(initGen);
@@ -492,7 +507,7 @@ bool SUCsubprob::solve(int mappedScen, BendersCutCoefs &cutCoefs, double &objVal
 	
 	// infeasibility
 	if (cplex.getCplexStatus() == IloCplex::Infeasible ) {
-		compute_feasibility_cut_coefs(cutCoefs);
+		compute_feasibility_cut_coefs(cutCoefs, mappedScen);
 		objValue = INFINITY;
 	}
 	
@@ -507,8 +522,8 @@ void SUCsubprob::getInitGen(vector<double> &initGen) {
 
 void SUCsubprob::setup_subproblem(int &s) {
 	double supply;
-	int c=numGen*numPeriods, period;
-	
+	int c=numGen*numPeriods;
+
 	// capacity constraints
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
@@ -517,19 +532,47 @@ void SUCsubprob::setup_subproblem(int &s) {
 		
 		if ( it != inst->simulations.mapVarNamesToIndex.end() ) {	// if random supply generator
 			for (int t=0; t<numPeriods; t++, c++) {					// Note: c is iterated in the secondary-loops
-				period = (beginMin/periodLength)+(t*numBaseTimePerPeriod);
-				if (s==-1)	{ supply = min(getRandomCoef(s, period, g), genPtr->maxCapacity); }
-				else 		{ supply = min(getRandomCoef(s, period, it->second), genPtr->maxCapacity); }
+				// Variant 1: Modifying random coefficient matrices
+//				if (s==-1)	{ supply = min(getRandomCoef(s, t, g), genPtr->maxCapacity); }
+//				else 		{ supply = min(getRandomCoef(s, t, it->second), genPtr->maxCapacity); }
+//
+//				cons[c].setLinearCoef(x[g][t], -supply);
+
+				// Variant 2: Modifying random rhs vector
+				if ( fabs((double)(*genState)[g][t]) < 0.5 ) {
+					supply = 0;
+				} else {
+					if (s==-1)	{ supply = min(getRandomCoef(s, t, g), genPtr->maxCapacity); }
+					else 		{ supply = min(getRandomCoef(s, t, it->second), genPtr->maxCapacity); }
+				}
 				
-				cons[c].setLinearCoef(x[g][t], -supply);
+				if (genPtr->isMustUse) {
+					cons[c].setBounds(supply, supply);	// ax = b
+				} else {
+					cons[c].setUB(supply);	// ax <= b
+				}
 			}
 		} else {
-			c += numPeriods;
+//			// Variant 1:
+//			c += numPeriods;
+			// Variant 2:
+			for (int t=0; t<numPeriods; t++, c++) {					// Note: c is iterated in the secondary-loops
+				if ( fabs((double)(*genState)[g][t]) < 0.5 ) {
+					supply = 0;
+				} else {
+					supply = genPtr->maxCapacity;
+				}
+				if (genPtr->isMustUse) {
+					cons[c].setBounds(supply, supply);	// ax = b
+				} else {
+					cons[c].setUB(supply);	// ax <= b
+				}
+			}
 		}
 	}
 }
 
-void SUCsubprob::compute_optimality_cut_coefs(BendersCutCoefs &cutCoefs)
+void SUCsubprob::compute_optimality_cut_coefs(BendersCutCoefs &cutCoefs, int &s)
 {
 	// get dual multipliers
 	cplex.getDuals(duals, cons);
@@ -546,8 +589,32 @@ void SUCsubprob::compute_optimality_cut_coefs(BendersCutCoefs &cutCoefs)
 	}
 	
 	// capacity
-	// skipped, as all necessary coefs are 0
-	c += numGen * numPeriods;
+	// Variant 1: Randomness is in the coefficient matrix
+//	// skipped, as all necessary coefs are 0
+//	c += numGen * numPeriods;
+	
+	// Variant 2: Randomness is in the rhs vector
+	for (int g=0; g<numGen; g++) {
+		Generator *genPtr = &(inst->powSys->generators[g]);
+		
+		double supply;
+		
+		auto it = inst->simulations.mapVarNamesToIndex.find(genPtr->name);
+		
+		if ( it != inst->simulations.mapVarNamesToIndex.end() ) {	// if random supply generator
+			for (int t=0; t<numPeriods; t++, c++) {					// Note: c is iterated in the secondary-loops
+				if (s==-1)	{ supply = min(getRandomCoef(s, t, g), genPtr->maxCapacity); }
+				else 		{ supply = min(getRandomCoef(s, t, it->second), genPtr->maxCapacity); }
+				cutCoefs.pi_T[g][t] += duals[c] * supply;
+			}
+		} else {
+			for (int t=0; t<numPeriods; t++, c++) {					// Note: c is iterated in the secondary-loops
+				supply = genPtr->maxCapacity;
+				cutCoefs.pi_T[g][t] += duals[c] * supply;
+			}
+		}
+	}
+
 	
 	// minimum generation requirements
 	// skipped, as all necessary coefs are 0
@@ -660,7 +727,7 @@ void SUCsubprob::compute_optimality_cut_coefs(BendersCutCoefs &cutCoefs)
 	}
 }
 
-void SUCsubprob::compute_feasibility_cut_coefs(BendersCutCoefs &cutCoefs)
+void SUCsubprob::compute_feasibility_cut_coefs(BendersCutCoefs &cutCoefs, int &s)
 {
 	// reset earlier (optimality-)cut coefficient entries
 	cutCoefs.reset();
@@ -704,8 +771,31 @@ void SUCsubprob::compute_feasibility_cut_coefs(BendersCutCoefs &cutCoefs)
 	}
 	
 	// capacity constraints
-	// skipped, as all necessary coefs are 0
-	c += numGen*numPeriods;
+	// Variant 1: Randomness is in the coefficient matrix
+//	// skipped, as all necessary coefs are 0
+//	c += numGen*numPeriods;
+	// Variant 2: Randomness is in the rhs vector
+	for (int g=0; g<numGen; g++) {
+		Generator *genPtr = &(inst->powSys->generators[g]);
+		
+		double supply;
+		
+		auto it = inst->simulations.mapVarNamesToIndex.find(genPtr->name);
+		
+		if ( it != inst->simulations.mapVarNamesToIndex.end() ) {	// if random supply generator
+			for (int t=0; t<numPeriods; t++, c++) {					// Note: c is iterated in the secondary-loops
+				if (s==-1)	{ supply = min(getRandomCoef(s, t, g), genPtr->maxCapacity); }
+				else 		{ supply = min(getRandomCoef(s, t, it->second), genPtr->maxCapacity); }
+				cutCoefs.pi_T[g][t] += farkasMap[ cons[c].getId() ] * supply;
+			}
+		} else {
+			for (int t=0; t<numPeriods; t++, c++) {					// Note: c is iterated in the secondary-loops
+				supply = genPtr->maxCapacity;
+				cutCoefs.pi_T[g][t] += farkasMap[ cons[c].getId() ] * supply;
+			}
+		}
+	}
+
 	
 	// ramp up constraints
 	for (int g=0; g<numGen; g++) {
