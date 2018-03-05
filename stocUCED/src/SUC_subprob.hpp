@@ -62,8 +62,8 @@ private:
 	IloArray<IloNumArray> *genState;
 	vector<vector<double>> *expCapacity;
 	
-	void compute_optimality_cut_coefs	(BendersCutCoefs &cutCoefs);
-	void compute_feasibility_cut_coefs	(BendersCutCoefs &cutCoefs);
+	void compute_optimality_cut_coefs	(BendersCutCoefs &cutCoefs, int &s);
+	void compute_feasibility_cut_coefs	(BendersCutCoefs &cutCoefs, int &s);
 	
 	// Variables
     IloArray< IloNumVarArray > p, L, x;		// production, load-shedding, state-variables (latter to be fixed by the master problem)

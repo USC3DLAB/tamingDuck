@@ -19,6 +19,8 @@
 #include "config.hpp"
 #include "misc.hpp"
 
+#include "ilconcert/ilothread.h"		// for mutex (must be included below boost libraries to avoid errors)
+
 class SUCmaster {
 
 public:
@@ -48,6 +50,9 @@ public:
 		void main();
 	};
 
+	map< vector<bool>, vector<int> > evaluatedSolns;		// keep track of evaluated solutions, so that you don't test them again!
+	instance*	inst;
+
 private:
 	IloEnv		env;
 	IloModel	model;
@@ -64,11 +69,9 @@ private:
 	
 	vector<int> rndPermutation;
 	
-	map< vector<bool>, int > evaluatedSolns;		// keep track of evaluated solutions, so that you don't test them again!
 	
 	bool multicut;
 	
-	instance*	inst;
 	
 	ProblemType probType;
 	ModelType	modelType;
