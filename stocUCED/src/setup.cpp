@@ -69,6 +69,7 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc, string &RScriptsPath) {
 		/* Long-term unit commitment */
 		for ( h = 0; h < runParam.DA_numSolves; h++ ) {
 			printf("Long-term Unit-Commitment (%02d:%02d): ", timeInfo->tm_hour, timeInfo->tm_min);
+			fflush(stdout);
 			
 			UCmodel DAmodel;
 			DAmodel.formulate(inst, DayAhead, Transmission, beginMin, rep);
@@ -76,11 +77,14 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc, string &RScriptsPath) {
 			status = DAmodel.solve();
 			if (status)	printf("Success (Obj= %.2f).\n", DAmodel.getObjValue());
 			else		printf("Failed.\n");
+			fflush(stdout);
+			
 			timeLog << get_wall_time() - begin_t << endl;
 			
 			/* Short-term unit commitment */
 			for ( t = 0; t < runParam.ST_numSolves; t++ ) {
 				printf("\tShort-term Unit-Commitment (%02d:%02d): ", timeInfo->tm_hour, timeInfo->tm_min);
+				fflush(stdout);
 				
 				UCmodel STmodel;
 				STmodel.formulate(inst, ShortTerm, Transmission, beginMin, rep);
@@ -88,11 +92,14 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc, string &RScriptsPath) {
 				status = STmodel.solve();
 				if (status)	printf("Success (Obj= %.2f).\n", STmodel.getObjValue());
 				else		printf("Failed.\n");
+				fflush(stdout);
+				
 				timeLog << get_wall_time() - begin_t << endl;
 				
 				/* Economic dispatch */
 				for ( n = 0; n < runParam.ED_numSolves; n++ ) {
 					printf("\t\tEconomic Dispatch (%02d:%02d): ", timeInfo->tm_hour, timeInfo->tm_min);
+					fflush(stdout);
 					
 					int ED_beginPeriod = beginMin/runParam.ED_resolution;
 					
@@ -102,6 +109,8 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc, string &RScriptsPath) {
 					status = DED.solve(inst, ED_beginPeriod);
 					if (status)	printf("Success (Obj= %.2f).\n", DED.getObjValue());
 					else		printf("Failed.\n");
+					fflush(stdout);
+					
 					timeLog << get_wall_time() - begin_t << endl;
 					
 					/* Move to the next period */
@@ -184,7 +193,8 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 		/* Long-term unit commitment */
 		for ( h = 0; h < runParam.DA_numSolves; h++ ) {
 			printf("Long-term Unit-Commitment (%02d:%02d): ", timeInfo->tm_hour, timeInfo->tm_min);
-
+			fflush(stdout);
+			
 			/* simulate scenarios */
 			inst.simulateScenarios(runParam.numTotScen, false, rep);
 			
@@ -195,24 +205,29 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 			status = DAmodel.solve();
 			if (status)	printf("Success (Obj= %.2f).\n", DAmodel.getObjValue());
 			else		printf("Failed.\n");
+			fflush(stdout);
 			
 			timeLog << get_wall_time() - begin_t << endl;
 
 			/* Short-term unit commitment */
 			for ( t = 0; t < runParam.ST_numSolves; t++ ) {
 				printf("\tShort-term Unit-Commitment (%02d:%02d): ", timeInfo->tm_hour, timeInfo->tm_min);
+				fflush(stdout);
+				
 				UCmodel STmodel;
 				STmodel.formulate(inst, ShortTerm, Transmission, beginMin, rep);
 				status = STmodel.solve();
 				if (status)	printf("Success (Obj= %.2f).\n", STmodel.getObjValue());
 				else		printf("Failed.\n");
+				fflush(stdout);
 				
 				timeLog << get_wall_time() - begin_t << endl;
 				
 				/* Economic dispatch */
 				for ( n = 0; n < runParam.ED_numSolves; n++ ) {
 					printf("\t\tEconomic Dispatch (%02d:%02d): ", timeInfo->tm_hour, timeInfo->tm_min);
-
+					fflush(stdout);
+					
 					int ED_beginPeriod = beginMin/runParam.ED_resolution;
 					
 					/* setup the ED model in cplex.concert */
@@ -231,6 +246,7 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 					int stat = integrateSD(inst, DED, "rted", configPath, ED_beginPeriod, SD_objVal);
 					if (stat != 1)	printf("Success (Obj= %.2f).\n", SD_objVal);
 					else			printf("Failed.\n");
+					fflush(stdout);
 
 					timeLog << get_wall_time() - begin_t << endl;
 					
@@ -294,6 +310,7 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 		/* Long-term unit commitment */
 		for ( h = 0; h < runParam.DA_numSolves; h++ ) {
 			printf("Long-term Unit-Commitment (%02d:%02d): ", timeInfo->tm_hour, timeInfo->tm_min);
+			fflush(stdout);
 			
 			/* simulate scenarios */
 			inst.simulateScenarios(runParam.numTotScen, false, rep);
@@ -307,12 +324,14 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 			status = DAmodel.solve();
 			if (status)	printf("Success (Obj= %.2f).\n", DAmodel.getObjValue());
 			else		printf("Failed.\n");
+			fflush(stdout);
 
 			timeLog << get_wall_time() - begin_t << endl;
 
 			/* Short-term unit commitment */
 			for ( t = 0; t < runParam.ST_numSolves; t++ ) {
 				printf("\tShort-term Unit-Commitment (%02d:%02d): ", timeInfo->tm_hour, timeInfo->tm_min);
+				fflush(stdout);
 				
 //				/* simulate scenarios */
 //				inst.simulateScenarios(runParam.numLSScen, false);
@@ -326,12 +345,14 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 				status = STmodel.solve();
 				if (status)	printf("Success (Obj= %.2f).\n", STmodel.getObjValue());
 				else		printf("Failed.\n");
+				fflush(stdout);
 				
 				timeLog << get_wall_time() - begin_t << endl;
 				
 				/* Economic dispatch */
 				for ( n = 0; n < runParam.ED_numSolves; n++ ) {
 					printf("\t\tEconomic Dispatch (%02d:%02d): ", timeInfo->tm_hour, timeInfo->tm_min);
+					fflush(stdout);
 					
 					int ED_beginPeriod = beginMin/runParam.ED_resolution;
 					
@@ -351,6 +372,7 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 					int stat = integrateSD(inst, DED, "rted", configPath, ED_beginPeriod, SD_objVal);
 					if (stat != 1)	printf("Success (Obj= %.2f).\n", SD_objVal);
 					else			printf("Failed.\n");
+					fflush(stdout);
 					
 					timeLog << get_wall_time() - begin_t << endl;
 					

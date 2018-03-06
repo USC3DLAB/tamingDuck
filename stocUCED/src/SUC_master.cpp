@@ -205,20 +205,21 @@ void SUCmaster::LazySepCallbackI::main()
 	}
 	 */
 	
+	const double AbsOptTol = 1e-6;
+	const double RelOptTol = 1e-4;
+	
     // check if we need to add a cut (feasible and not within optimality tolerances, or infeasible)
     bool addCut = true;
     if (isFeasible) {
 		if (!me.MeanProbFlag) {
 			double diff = me.recourse.getObjValue() - getValue(IloSum(me.eta));
-			if ( diff/(fabs(me.recourse.getObjValue())+1e-14) < me.cplex.getParam(IloCplex::EpGap)
-				|| diff < me.cplex.getParam(IloCplex::EpAGap) ) {
+			if ( diff/(fabs(me.recourse.getObjValue())+1e-14) < RelOptTol || diff < AbsOptTol ) {
 				addCut = false;
 			}
 			me.inst->out() << " RecRelGap= " << diff/(fabs(me.recourse.getObjValue())+1e-14) << " RecAbsGap= " << diff << " " << endl;
 		} else {
 			double diff = me.recourse.objValues[0] - getValue(IloSum(me.eta));
-			if ( diff/(fabs(me.recourse.objValues[0])+1e-14) < me.cplex.getParam(IloCplex::EpGap)
-				|| diff < me.cplex.getParam(IloCplex::EpAGap) ) {
+			if ( diff/(fabs(me.recourse.getObjValue())+1e-14) < RelOptTol || diff < AbsOptTol ) {
 				addCut = false;
 			}
 			me.inst->out() << " RecRelGap= " << diff/(fabs(me.recourse.getScenObjValue(0))+1e-14) << " RecAbsGap= " << diff << " " << endl;
@@ -234,8 +235,7 @@ void SUCmaster::LazySepCallbackI::main()
 		(me.evaluatedSolns[x])[0] = 2;
 		addCut = true;
 		double diff = me.recourse.getObjValue() - getValue(IloSum(me.eta));
-		if ( diff/(fabs(me.recourse.getObjValue())+1e-14) < me.cplex.getParam(IloCplex::EpGap)
-			|| diff < me.cplex.getParam(IloCplex::EpAGap) ) {
+		if ( diff/(fabs(me.recourse.getObjValue())+1e-14) < RelOptTol || diff < AbsOptTol ) {
 			addCut = false;
 		}
 	}
