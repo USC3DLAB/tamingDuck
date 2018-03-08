@@ -527,7 +527,7 @@ void SUCmaster::preprocessing ()
 	/* Spinning Reserve */
 	for (int b=0; b<numBus; b++) {
 		for (int t=0; t<numPeriods; t++) {
-			busLoad[b][t] *= (1+spinReservePerc);
+			busLoad[b][t] *= (1+runParam.spinResPerc);
 		}
 	}
 	

@@ -11,3 +11,4 @@ ED_time_frequency 15 minutes
 numRep 7 scenarios
 numLSScen 100 scenarios
 numTotScen 1000 scenarios
+spinResPerc 0.2

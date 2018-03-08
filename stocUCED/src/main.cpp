@@ -136,46 +136,51 @@ void readRunfile (string inputDir) {
 	runParam.ED_horizon = 60;		runParam.ED_resolution = 15; runParam.ED_frequency = 15;
 	runParam.numRep = 1;
 	
+	runParam.spinResPerc = 0.2;
+	
 	/* Read the run parameters if a run file is included in the default folder */
 	if ( open_file(fptr, (inputDir + "runParameters.txt")) ) {
 		while ( getline(fptr, line) ) {
 			istringstream iss(line);
-			if ( iss >> field1 >> field2 >> field3) {
+			if ( iss >> field1 >> field2) {
+				iss >> field3;
 				/* Convert all numbers into minutes */
-				 if ( field3 == "hours" )
+				if (field3 == "hours")
 					temp = (double) atof(field2.c_str()) * 60.0;
-				 else
+				else
 					temp = (double) atof(field2.c_str());
-
-				 if ( field1 == "horizon" )
-					 runParam.horizon = temp;
-				 else if ( field1 == "DA_time_horizon" )
-					 runParam.DA_horizon = temp;
-				 else if ( field1 == "DA_time_resolution" )
-					 runParam.DA_resolution = temp;
-				 else if ( field1 == "DA_time_frequency" )
-					 runParam.DA_frequency = temp;
-				 else if ( field1 == "ST_time_horizon" )
-					 runParam.ST_horizon = temp;
-				 else if ( field1 == "ST_time_resolution" )
-					 runParam.ST_resolution = temp;
-				 else if ( field1 == "ST_time_frequency" )
-					 runParam.ST_frequency = temp;
-				 else if ( field1 == "ED_time_horizon" )
-					 runParam.ED_horizon = temp;
-				 else if ( field1 == "ED_time_resolution" )
-					 runParam.ED_resolution = temp;
-				 else if ( field1 == "ED_time_frequency" )
-					 runParam.ED_frequency = temp;
-				 else if ( field1 == "numRep" )
-					 runParam.numRep = temp;
-				 else if ( field1 == "numTotScen" )
-					 runParam.numTotScen = temp;
-				 else if ( field1 == "numLSScen" )
-					 runParam.numLSScen = temp;
-				 else {
-					 perror("Warning:: Unidentified run parameter in the file.\n");
-				 }
+				
+				if ( field1 == "horizon" )
+					runParam.horizon = temp;
+				else if ( field1 == "DA_time_horizon" )
+					runParam.DA_horizon = temp;
+				else if ( field1 == "DA_time_resolution" )
+					runParam.DA_resolution = temp;
+				else if ( field1 == "DA_time_frequency" )
+					runParam.DA_frequency = temp;
+				else if ( field1 == "ST_time_horizon" )
+					runParam.ST_horizon = temp;
+				else if ( field1 == "ST_time_resolution" )
+					runParam.ST_resolution = temp;
+				else if ( field1 == "ST_time_frequency" )
+					runParam.ST_frequency = temp;
+				else if ( field1 == "ED_time_horizon" )
+					runParam.ED_horizon = temp;
+				else if ( field1 == "ED_time_resolution" )
+					runParam.ED_resolution = temp;
+				else if ( field1 == "ED_time_frequency" )
+					runParam.ED_frequency = temp;
+				else if ( field1 == "numRep" )
+					runParam.numRep = temp;
+				else if ( field1 == "numTotScen" )
+					runParam.numTotScen = temp;
+				else if ( field1 == "numLSScen" )
+					runParam.numLSScen = temp;
+				else if ( field1 == "spinResPerc" )
+					runParam.spinResPerc = temp;
+				else {
+					perror("Warning:: Unidentified run parameter in the file.\n");
+				}
 			}
 		}
 	}
