@@ -284,7 +284,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 				sysOverGen += overGen[g][t];
 			}
 			sprintf(elemName, "reserve(%d)", t);
-			IloConstraint con ( sysOverGen >= sysLoad[t] * spinReservePerc );
+			IloConstraint con ( sysOverGen >= sysLoad[t] * runParam.spinResPerc );
 			con.setName(elemName); model.add(con);
 			
 			sysOverGen.end();
