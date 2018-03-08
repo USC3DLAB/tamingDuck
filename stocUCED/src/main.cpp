@@ -16,6 +16,7 @@
 
 
 runType runParam;
+vector<Setting> settings = {DETERMINISTIC, DETERMINISTIC, DETERMINISTIC};
 
 void readRunfile (string inputDir);
 void parseCmdLine(int argc, const char *argv[], string &inputDir, string &configPath, string &RScriptsPath, string &sysName, string &setting);
@@ -23,6 +24,7 @@ void parseCmdLine(int argc, const char *argv[], string &inputDir, string &config
 int setup_DUCDED(PowSys &powSys, StocProcess &stocProc, string &RScriptsPath);
 int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, string &RScriptsPath);
 int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, string &RScriptsPath);
+int setup(PowSys &powSys, StocProcess &stocProc, string &configPath, string &RScriptsPath);
 
 int main(int argc, const char * argv[]) {
 	string inputDir, configPath, RScriptsPath, sysName, setting;
@@ -56,6 +58,11 @@ int main(int argc, const char * argv[]) {
 			perror("Failed to complete the SUC-SED run.\n");
 		}
 	}
+	else if ( setting == "custom" ) {
+		if( setup(powSys, stocProc, configPath, RScriptsPath) ) {
+			perror("Failed to complete the run.\n");
+		}
+	}
 	else {
 		perror ("Unknown framework.\n");
 	}
@@ -72,8 +79,30 @@ void parseCmdLine(int argc, const char *argv[], string &inputDir, string &config
 		sysName		= argv[4];
 		setting		= argv[5];
 	}
+	else if (argc == 9 && strcmp(argv[5], "-setting") == 0) {
+		inputDir	= argv[1];
+		configPath	= argv[2];
+		RScriptsPath= argv[3];
+		sysName		= argv[4];
+		setting		= "custom";	// -setting
+		
+		settings.resize(3);
+		for (int i=0; i<3; i++) {
+			if ( strcmp(argv[6+i], "deterministic") == 0 ) {
+				settings[i] = DETERMINISTIC;
+			} else if ( strcmp(argv[6+i], "stochastic") == 0 ) {
+				settings[i] = STOCHASTIC;
+			} else if ( strcmp(argv[6+i], "na") == 0 ) {
+				settings[i] = NA;
+			} else {
+				cout << "Wrong input" << endl;
+				exit(1);
+			}
+		}
+	}
 	else {
 		cout << "Missing inputs. Please provide the following in the given order:\n  (1) input directory path,\n  (2) SD config.sd path,\n  (3) R scripts path,\n  (4) system name,\n  (5) framework setting." << endl;
+		cout << "Instead of (5), you can type ""-setting"" followed by three modeling settings, i.e., ""-setting deterministic na stochastic""" << endl;
 		exit(1);
 	}
 	
