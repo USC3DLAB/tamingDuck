@@ -22,7 +22,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC probName, vect
 	probType **prob = NULL;
 	double	 totalTime;
 	FILE 	*soln;
-	clock_t	tic;
+	struct timeval time;
 	
 	/* open solver */
 	openSolver();
@@ -34,13 +34,15 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC probName, vect
 	if ( setupAlgo(orig, stoc, tim, &prob, &cell) )
 		goto TERMINATE;
 
-	tic = clock();
+	gettimeofday(&time,NULL);	// gets wall-time
+	totalTime = (double)time.tv_sec + (double)time.tv_usec * .000001;
 	/* Use two-stage algorithm to solve the problem */
 	if ( solveCell(stoc, prob, cell, probName) ) {
 		errMsg("algorithm", "algo", "failed to solve the cells using 2SD algorithm", 0);
 		goto TERMINATE;
 	}
-	totalTime = ((double) clock() - tic)/CLOCKS_PER_SEC;
+	gettimeofday(&time,NULL);
+	totalTime = (double)time.tv_sec + (double)time.tv_usec * .000001 - totalTime;
 	
 	/* Write solution statistics for optimization process */
 	fprintf(file, "\n\nLower bound estimate                   : %f\n", cell->incumbEst);
