@@ -170,7 +170,7 @@ void SUCmaster::LazySepCallbackI::main()
 //		cout << mean << "," << scen << endl;
 //	}
 	// solve the subproblems
-	//double time_t = get_wall_time();
+    //double time_t = get_wall_time();
 	bool isFeasible;
 	if (me.MeanProbFlag) {
 		isFeasible = me.recourse.solveMeanProb();
@@ -182,8 +182,6 @@ void SUCmaster::LazySepCallbackI::main()
 	if (me.MeanProbFlag) 	me.inst->out() << " RecObj= " << me.recourse.getScenObjValue(0) << " " << flush;
 	else					me.inst->out() << " RecObj= " << me.recourse.getObjValue() << " " << flush;
 	
-
-	//cout << get_wall_time() - time_t << endl;
 	/*
 	cout << me.recourse.getObjValue() << endl;
 	for (int g=0; g<me.numGen; g++) {
@@ -992,10 +990,9 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
      * }
     /************************************************************************/
 	
-	cplex.use(LazySepCallback(env, *this));
 	cplex.setOut( inst.out() );
 	cplex.setWarning( inst.out() );
-	cplex.setParam(IloCplex::Threads, 1);
+	cplex.setParam(IloCplex::Threads, 4);
 	cplex.setParam(IloCplex::MIPEmphasis, IloCplex::MIPEmphasisBestBound);
 //    cplex.setParam(IloCplex::FPHeur, 2);
 //	cplex.setParam(IloCplex::ImplBd, 2);
@@ -1099,10 +1096,17 @@ bool SUCmaster::solve () {
 		/****** Process the MIP ******/
 		inst->out() << "****** SOLVING THE PROBLEM ******" << endl;
 		cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*7200 + (probType == ShortTerm)*1800);
-		cplex.use(rounding(env, x, *this));
-		if (probType == DayAhead) {
-			cplex.use(IncCallback(env, *this));
-		}
+//		cplex.use(LazySepCallback(env, *this));
+//		cplex.use(rounding(env, x, *this));
+//		if (probType == DayAhead) {
+//			cplex.use(IncCallback(env, *this));
+//		}
+		
+		// create an LShapedCallback
+		LShapedCallback callback (*this);
+		CPXLONG contextMask = 0;
+		contextMask |= IloCplex::Callback::Context::Id::Candidate;
+		cplex.use(&callback, contextMask);
 		
 		status = cplex.solve();
 		

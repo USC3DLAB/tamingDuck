@@ -18,11 +18,10 @@
 #include "instance.hpp"
 #include "config.hpp"
 #include "misc.hpp"
-
-#include "ilconcert/ilothread.h"		// for mutex (must be included below boost libraries to avoid errors)
+#include "LShapedCallback.hpp"
 
 class SUCmaster {
-
+	friend class LShapedCallback;
 public:
 	SUCmaster ();
 	~SUCmaster();

@@ -10,6 +10,7 @@
  */
 
 #include "twoSD.h"
+#include "sys/time.h"
 
 extern stringC outputDir;
 extern configType config;

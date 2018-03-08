@@ -21,6 +21,7 @@
 
 class SUCrecourse {
 	friend class SUCmaster;
+	friend class LShapedCallback;
 public:
 	SUCrecourse ();
 	~SUCrecourse();
