@@ -149,6 +149,23 @@ bool instance::printSolution(string filepath) {
 	timeInfo = localtime( &rawTime );
 	timeInfo->tm_min = 0;	timeInfo->tm_hour = 0; mktime(timeInfo);
 
+	/* summarized statistics */
+	vector<string> fields;
+	fields.push_back("#ofOnGen");
+	fields.push_back("UsedGen");
+	fields.push_back("OverGen");
+	fields.push_back("UsedGenCost");
+	fields.push_back("OverGenCost");
+	fields.push_back("NoLoadCost");
+	fields.push_back("StartUpCost");
+	fields.push_back("LoadShed");
+	fields.push_back("CO2(kg)");
+	fields.push_back("NOX(kg)");
+	fields.push_back("SO2(kg)");
+	fields.push_back("Capacity");
+	fields.push_back("RampUpCap");
+	fields.push_back("RampDownCap");
+
 	/* print solutions */
 	ofstream output;
 	status = open_file(output, filepath + "_commitments.sol");
@@ -169,50 +186,71 @@ bool instance::printSolution(string filepath) {
 	print_matrix(output, solution.g_ED, delimiter, 2);
 	output.close();
 
+	/* print summarized statistics */
 	status = open_file(output, filepath + "_stats.sol");
 	if (!status) goto finalize;
-	output << "Time\t#ofOnGen\tUsedGen\tOverGen\tUsedGenCost\tOverGenCost\tNoLoadCost\tStartUpCost\tLoadShed\tCO2(kg)\tNOX(kg)\tSO2(kg)" << endl;
+	
+	// headers
+	output << "Time";
+	for (int f=0; f<fields.size(); f++) {
+		output << "\t" << fields[f];
+	}
+	output << endl;
+
+	// data
 	for (int t=0; t<runParam.numPeriods; t++) {
 		output << setfill('0') << setw(2) << timeInfo->tm_hour << ":" << setfill('0') << setw(2) << timeInfo->tm_min << "\t";
 		
 		double coef = runParam.ED_resolution/60.0;
 		
-		vector<double> stats (11, 0.0);
+		// reset stats to 0.0
+		map<string, double> stats;
+		for (int f=0; f<fields.size(); f++) {
+			stats.insert(pair<string,double> (fields[f], 0.0));
+		}
+		
 		for (int g=0; g<powSys->numGen; g++) {
 			// open generator count
-			stats[0] += solution.x[g][t];
+			stats["#ofOnGen"] += solution.x[g][t];
+			
+			// capacities
+			stats["Capacity"] += powSys->generators[g].maxCapacity * solution.x[g][t];
+			stats["RampUpCap"] += powSys->generators[g].rampUpLim * solution.x[g][t];
+			stats["RampDownCap"] += powSys->generators[g].rampDownLim * solution.x[g][t];
 			
 			// production amounts
-			stats[1] += solution.usedGen_ED[g][t];
-			stats[2] += solution.overGen_ED[g][t];
+			stats["UsedGen"] += solution.usedGen_ED[g][t];
+			stats["OverGen"] += solution.overGen_ED[g][t];
 			
 			// costs
-			stats[3] += powSys->generators[g].variableCost * coef * solution.usedGen_ED[g][t];
-			stats[4] += powSys->generators[g].variableCost * coef * solution.overGen_ED[g][t];
-			stats[5] += powSys->generators[g].noLoadCost   * coef * solution.x[g][t];
+			stats["UsedGenCost"] += powSys->generators[g].variableCost * coef * solution.usedGen_ED[g][t];
+			stats["OverGenCost"] += powSys->generators[g].variableCost * coef * solution.overGen_ED[g][t];
+			stats["NoLoadCost"] += powSys->generators[g].noLoadCost   * coef * solution.x[g][t];
 			
 			if (t > 0) {
-				stats[6] += powSys->generators[g].startupCost * max(solution.x[g][t]-solution.x[g][t-1], 0.0);
+				stats["StartUpCost"] += powSys->generators[g].startupCost * max(solution.x[g][t]-solution.x[g][t-1], 0.0);
 			}
 			
 			// emissions
-			stats[8] += powSys->generators[g].CO2_emission_base * coef * solution.x[g][t];
-			stats[8] += powSys->generators[g].CO2_emission_var * coef * solution.g_ED[g][t];
-			stats[9] += powSys->generators[g].NOX_emission_base * coef * solution.x[g][t];
-			stats[9] += powSys->generators[g].NOX_emission_var * coef * solution.g_ED[g][t];
-			stats[10] += powSys->generators[g].SO2_emission_base * coef * solution.x[g][t];
-			stats[10] += powSys->generators[g].SO2_emission_var * coef * solution.g_ED[g][t];
+			stats["CO2(kg)"] += powSys->generators[g].CO2_emission_base * coef * solution.x[g][t];
+			stats["CO2(kg)"] += powSys->generators[g].CO2_emission_var * coef * solution.g_ED[g][t];
+			stats["NOX(kg)"] += powSys->generators[g].NOX_emission_base * coef * solution.x[g][t];
+			stats["NOX(kg)"] += powSys->generators[g].NOX_emission_var * coef * solution.g_ED[g][t];
+			stats["SO2(kg)"] += powSys->generators[g].SO2_emission_base * coef * solution.x[g][t];
+			stats["SO2(kg)"] += powSys->generators[g].SO2_emission_var * coef * solution.g_ED[g][t];
 		}
 		
 		// shed demand
 		for (int b = 0; b < powSys->numBus; b++) {
-			stats[7] += solution.loadShed_ED[b][t];
+			stats["LoadShed"] += solution.loadShed_ED[b][t];
 		}
 		
-		for (int i = 0; i < (int) stats.size()-1; i++) {
-			output << stats[i] << "\t";
+		// print
+		for (int f=0; f<fields.size(); f++) {
+			output << stats[fields[f]];
+			if (f != fields.size()-1) output << "\t";
 		}
-		output << stats[ stats.size()-1 ] << endl;
+		output << endl;
 		
 		timeInfo->tm_min += runParam.baseTime;
 		mktime(timeInfo);

@@ -19,9 +19,9 @@ SUCsubprob::SUCsubprob () {
 
 	cplex.setOut(env.getNullStream());
 	cplex.setWarning(env.getNullStream());
-	cplex.setParam(IloCplex::Threads, 1);
+	cplex.setParam(IloCplex::Threads, 2);
 	cplex.setParam(IloCplex::PreInd, 0);
-	cplex.setParam(IloCplex::RootAlg, IloCplex::Dual);	// Important
+	//cplex.setParam(IloCplex::RootAlg, IloCplex::Dual);	// Important
 	
 	solve_t = 0;
 	cut_t	= 0;
@@ -734,7 +734,9 @@ void SUCsubprob::compute_feasibility_cut_coefs(BendersCutCoefs &cutCoefs, int &s
 	
 	// resolve the problem with presolve turned off (oth. basis may not be available)
 	cplex.setParam(IloCplex::PreInd, 0);
+	cplex.setParam(IloCplex::RootAlg, IloCplex::Dual);
 	cplex.solve();
+	cplex.setParam(IloCplex::RootAlg, IloCplex::Auto);
 	cplex.setParam(IloCplex::PreInd, 1);
 	
 	// get the extreme ray (based on the algorithm used to solve the subproblem)

@@ -50,7 +50,7 @@ private:
 	
 	/* Parallelization */
 #ifdef BOOST_PARALLEL_LIBS
-	const int numThreads = boost::thread::hardware_concurrency()-1;
+	const int numThreads = boost::thread::hardware_concurrency()/2;
 	map<boost::thread::id, unsigned short> thread_map;
 	
 	void solveOneSubproblem (int s, BendersCutCoefs &cutCoefs, double &objValue, vector<double> &initGens);

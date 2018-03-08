@@ -31,6 +31,12 @@ enum SettingType {
 	SUC_SED
 };
 
+enum Setting {
+	DETERMINISTIC,
+	STOCHASTIC,
+	NA
+};
+
 struct runType {
 	double 	baseTime;		// in minutes, the highest resolution period length
 	double	horizon;		// Total horizon in minutes
@@ -69,5 +75,7 @@ const char delimiter = ',';
 
 // #define SAMPLE_USING_R
 #define BOOST_PARALLEL_LIBS		// Parallel programming libraries of boost is being used
+
+#define stringify( name ) # name	// prints out enum-types as strings
 
 #endif /* config_h */
