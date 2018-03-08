@@ -996,6 +996,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 	cplex.setOut( inst.out() );
 	cplex.setWarning( inst.out() );
 	cplex.setParam(IloCplex::Threads, 1);
+	cplex.setParam(IloCplex::MIPEmphasis, IloCplex::MIPEmphasisBestBound);
 //    cplex.setParam(IloCplex::FPHeur, 2);
 //	cplex.setParam(IloCplex::ImplBd, 2);
 //	cplex.setParam(IloCplex::FlowPaths, 2);
