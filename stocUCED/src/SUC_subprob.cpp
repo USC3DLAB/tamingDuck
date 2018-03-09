@@ -19,7 +19,7 @@ SUCsubprob::SUCsubprob () {
 
 	cplex.setOut(env.getNullStream());
 	cplex.setWarning(env.getNullStream());
-	cplex.setParam(IloCplex::Threads, 2);
+	cplex.setParam(IloCplex::Threads, LShapedSubprobCPXThreads);
 	cplex.setParam(IloCplex::PreInd, 0);
 	//cplex.setParam(IloCplex::RootAlg, IloCplex::Dual);	// Important
 	

@@ -9,6 +9,10 @@
 #ifndef config_h
 #define config_h
 
+// MACROS
+// #define SAMPLE_USING_R
+#define BOOST_PARALLEL_LIBS		// Parallel programming libraries of boost is being used
+
 enum ProblemType {
 	DayAhead,
 	ShortTerm
@@ -60,8 +64,8 @@ struct runType {
 	SettingType settingType;
 	
 	int		numRep;			// Number of replications
-	int		numTotScen;		// Number of time-serieses generated in total
-	int		numLSScen;		// Number of time-serieses needed to sample for L-Shaped
+	int		numTotScen;		// Number of time-series generated in total
+	int		numLSScen;		// Number of time-series needed to sample for L-Shaped
 	
 	double 	spinResPerc;	// spinning reserve percentage	
 };
@@ -73,9 +77,14 @@ const double EPSzero = 1e-8;
 
 const char delimiter = ',';
 
-// #define SAMPLE_USING_R
-#define BOOST_PARALLEL_LIBS		// Parallel programming libraries of boost is being used
-
-#define stringify( name ) # name	// prints out enum-types as strings
+// Thread management
+const unsigned short LShapedMasterCPXThreads = 1;
+const unsigned short LShapedSubprobCPXThreads = 1;
+#ifdef BOOST_PARALLEL_LIBS
+#include <thread>
+const unsigned short LShapedSubprobThreads = std::thread::hardware_concurrency(); //boost::thread::hardware_concurrency();
+#else
+const unsigned short LShapedSubprobThreads = 1;
+#endif
 
 #endif /* config_h */

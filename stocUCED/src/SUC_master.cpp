@@ -170,7 +170,7 @@ void SUCmaster::LazySepCallbackI::main()
 //		cout << mean << "," << scen << endl;
 //	}
 	// solve the subproblems
-    //double time_t = get_wall_time();
+	double time_t = get_wall_time();
 	bool isFeasible;
 	if (me.MeanProbFlag) {
 		isFeasible = me.recourse.solveMeanProb();
@@ -181,6 +181,8 @@ void SUCmaster::LazySepCallbackI::main()
 	me.inst->out() << "- Sol " << me.evaluatedSolns[x][1] << ": Obj= " << getObjValue() << " eta= " << getValue(me.eta[0]);
 	if (me.MeanProbFlag) 	me.inst->out() << " RecObj= " << me.recourse.getScenObjValue(0) << " " << flush;
 	else					me.inst->out() << " RecObj= " << me.recourse.getObjValue() << " " << flush;
+
+	cout << get_wall_time() - time_t << endl;
 	
 	/*
 	cout << me.recourse.getObjValue() << endl;
@@ -992,14 +994,9 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 	
 	cplex.setOut( inst.out() );
 	cplex.setWarning( inst.out() );
-	cplex.setParam(IloCplex::Threads, 4);
-	cplex.setParam(IloCplex::MIPEmphasis, IloCplex::MIPEmphasisBestBound);
-//    cplex.setParam(IloCplex::FPHeur, 2);
-//	cplex.setParam(IloCplex::ImplBd, 2);
-//	cplex.setParam(IloCplex::FlowPaths, 2);
-//	cplex.setParam(IloCplex::MIRCuts, 2);
-//    cplex.setParam(IloCplex::HeurFreq, 10);
-//    cplex.setParam(IloCplex::LBHeur, 1);    // ??
+	cplex.setParam(IloCplex::Threads, LShapedMasterCPXThreads);
+//	cplex.setParam(IloCplex::ParallelMode, IloCplex::Opportunistic);
+//	cplex.setParam(IloCplex::MIPEmphasis, IloCplex::MIPEmphasisBestBound);
     cplex.setParam(IloCplex::EpGap, 1e-2);
 }
 
