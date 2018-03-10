@@ -10,7 +10,7 @@
 #define BendersCutCoefs_h
 
 #include <vector>
-#include "misc.hpp"
+#include "../misc.hpp"
 
 /* Benders' Cuts */
 struct BendersCutCoefs {

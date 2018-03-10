@@ -11,7 +11,7 @@
 
 #include <iostream>
 #include "SUC_subprob.hpp"
-#include "config.hpp"		// must have this before defining boost libraries
+#include "../config.hpp"		// must have this before defining boost libraries
 
 #ifdef BOOST_PARALLEL_LIBS	// the boost library is added for multi-threading
 #include <boost/thread/thread.hpp>

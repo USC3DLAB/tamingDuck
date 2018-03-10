@@ -15,7 +15,7 @@
 #include <set>
 
 #include "BendersCutCoefs.hpp"
-#include "instance.hpp"
+#include "../instance.hpp"
 
 using namespace std;
 

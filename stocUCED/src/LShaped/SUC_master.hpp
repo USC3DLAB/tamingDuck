@@ -14,10 +14,10 @@
 #include <set>
 
 #include "SUC_recourse.hpp"
-#include "UCmodel.hpp"
-#include "instance.hpp"
-#include "config.hpp"
-#include "misc.hpp"
+#include "../UCmodel.hpp"
+#include "../instance.hpp"
+#include "../config.hpp"
+#include "../misc.hpp"
 #include "LShapedCallback.hpp"
 
 class SUCmaster {
