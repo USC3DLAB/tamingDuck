@@ -27,6 +27,7 @@ public:
 	void formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep);
 	double getObjValue();
 	bool solve ();
+	bool solve (bool saveSolution);
 	
 private:
 	/* cplex objects */
@@ -61,6 +62,8 @@ private:
 	double	getEDGenProd(int genId, int period);				// reads from Solution.gED
 	double 	getUCGenProd(int genId, int period);				// reads from Solution.gUC
 	double	getGenProd(int g, int t);		// reads from Solution.gED, or gUC, and handles the beginning of the planning horizon
+	
+	void 	saveSolution();
 	
 	int	checkShutDownRampDownInconsistency (int g);
 	

@@ -68,6 +68,7 @@ private:
 	
 	vector<int> rndPermutation;
 	
+	vector<double> expInitGen;
 	
 	bool multicut;
 	

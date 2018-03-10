@@ -34,12 +34,7 @@ inline void LShapedCallback::setExpGenAmounts(const IloCplex::Callback::Context 
 		
 		if (context.getCandidateObjective() < context.getIncumbentObjective()) {	// if this solution is improving the incumbent
 			// compute the expected initial generation
-			vector<double> expInitGen = master->recourse.getExpInitGen();
-			
-			// set the generation amounts
-			for (int g=0; g<master->numGen; g++) {
-				master->setUCGenProd(g, 0, expInitGen[g]);
-			}
+			master->expInitGen = master->recourse.getExpInitGen();
 		}
 	}
 }

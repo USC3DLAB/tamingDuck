@@ -69,15 +69,9 @@ IloCplex::Callback IncCallback(IloEnv env, SUCmaster &me) {
 
 void SUCmaster::IncCallbackI::main() {
 	// if the incumbent's objective is improving with the new solution
-	if ( getObjValue() < getIncumbentObjValue() ) {
-		
+	if ( getObjValue() < getIncumbentObjValue() ) {		
 		// request expected initial generation amounts
-		vector<double> expInitGen = me.recourse.getExpInitGen();
-		
-		// set the generation amounts
-		for (int g=0; g<me.numGen; g++) {
-			me.setUCGenProd(g, 0, expInitGen[g]);
-		}
+		me.expInitGen = me.recourse.getExpInitGen();
 	}
 }
 
@@ -973,7 +967,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 	cplex.setWarning( inst.out() );
 	cplex.setParam(IloCplex::Threads, LShapedMasterCPXThreads);
 //	cplex.setParam(IloCplex::ParallelMode, IloCplex::Opportunistic);
-//	cplex.setParam(IloCplex::MIPEmphasis, IloCplex::MIPEmphasisBestBound);
+	cplex.setParam(IloCplex::MIPEmphasis, IloCplex::MIPEmphasisBestBound);
     cplex.setParam(IloCplex::EpGap, 1e-2);
 }
 
@@ -1058,7 +1052,7 @@ bool SUCmaster::solve () {
 		
 		/* warm up */
 		inst->out() << "Executing warm up MIP..." << endl;
-		status = warmUpProb.solve();
+		status = warmUpProb.solve(false);	// Important: Warm-up problem is not supposed to save its solutions!
 		if (status) {
 			setWarmUp();
 			inst->out() << "Warm up model provided " << warmUpProb.cplex.getSolnPoolNsolns() << " solutions (Best Obj= " << warmUpProb.getObjValue() << ")." << endl;
@@ -1101,16 +1095,12 @@ bool SUCmaster::solve () {
 			for (int g=0; g<numGen; g++) {
 				Generator *genPtr = &(inst->powSys->generators[g]);
 				
-				for (int t=0; t<numPeriods; t++) {
-					if ( (probType == DayAhead && genPtr->isDAUCGen) || (probType == ShortTerm && !genPtr->isDAUCGen) ) {
-						setGenState(g,t, cplex.getValue(x[g][t]));
-					}
-					// Note: "Expected" production amounts are recorded in the callback functions. The below code
-					// sets production to 0 when generators are not committed. This is essentially correcting potential
-					// numerical errors.
-					if ( probType == DayAhead || (probType == ShortTerm && beginMin == 0) ) {
-						if (!getGenState(g,t)) setUCGenProd(g, t, 0.0);
-					}
+				if ( (probType == DayAhead && genPtr->isDAUCGen) || (probType == ShortTerm && !genPtr->isDAUCGen) ) {
+					for (int t=0; t<numPeriods; t++) setGenState(g,t, cplex.getValue(x[g][t]));
+				}
+				
+				if ( probType == DayAhead || (probType == ShortTerm && beginMin == 0) ) {
+					setUCGenProd(g, 0, expInitGen[g] * getGenState(g, 0));
 				}
 			}
 		}
