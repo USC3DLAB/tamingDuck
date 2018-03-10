@@ -20,14 +20,14 @@ struct Solution {
     
     void allocateMem (int numGen, int periods, int numBus) {
         resize_matrix(x,	numGen, periods);
-        resize_matrix(g_DAUC, numGen, periods);
+        resize_matrix(g_UC, numGen, periods);
         resize_matrix(g_ED, numGen, periods);
 		resize_matrix(overGen_ED, numGen, periods);
 		resize_matrix(usedGen_ED, numGen, periods);
 		resize_matrix(loadShed_ED, numBus, periods);
     }
     
-    vector< vector<double> > x, g_DAUC, g_ED, overGen_ED, usedGen_ED, loadShed_ED;
+    vector< vector<double> > x, g_UC, g_ED, overGen_ED, usedGen_ED, loadShed_ED;
 };
 
 #endif /* solution_hpp */

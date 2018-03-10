@@ -166,6 +166,7 @@ void readRunfile (string inputDir) {
 	runParam.numRep = 1;
 	
 	runParam.spinResPerc = 0.2;
+	runParam.useGenHistory = false;
 	
 	/* Read the run parameters if a run file is included in the default folder */
 	if ( open_file(fptr, (inputDir + "runParameters.txt")) ) {

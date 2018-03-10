@@ -226,55 +226,39 @@ void SUCsubprob::formulate_production()
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
+		/* t = 0 */
 		int t=0;
-		if (beginMin != 0) {
-			IloRange con (env, -IloInfinity, p[g][t] - getEDGenProd(g, t-1), genPtr->rampUpLim * periodLength);
-			cons.add( con );
+		if (getGenProd(g, t-1) > -INFINITY) {	// prev generation is available
+			IloConstraint c ( p[g][t] - getGenProd(g, t-1) <= genPtr->rampUpLim*periodLength );
+			sprintf(buffer, "RU_%d_%d", g, t);
+			c.setName(buffer);
+			model.add(c);
 		}
+		
+		/* t > 0 */
 		for (t=1; t<numPeriods; t++) {
 			IloRange con (env, -IloInfinity, p[g][t] - p[g][t-1], genPtr->rampUpLim * periodLength);
 			cons.add( con );
 		}
-	}
+	}	
 	
 	// ramp down constraints
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
-		int shutDownPeriod = -9999;
-		if ( probType == ShortTerm && genPtr->isDAUCGen && beginMin != 0 ) {
-			// check if this generator was producing at t-1
-			bool wasProducing = (getEDGenProd(g, -1) > 1e-8);
-			
-			if (wasProducing) {
-				// check if this generator is shutting down at some point in ST-UC planning horizon
-				bool willShutDown = false;
-				int t;
-				for (t=0; t<numPeriods; t++) {
-					if (!getGenState(g, t)) {
-						willShutDown = true;
-						break;
-					}
-				}
-				
-				if (willShutDown) {
-					// check if it can ramp down
-					if ( genPtr->rampDownLim*periodLength*(double)(t+1) < getEDGenProd(g, -1) ) {
-						shutDownPeriod = t;
-					}
-				}
-			}
-		}
-		
+		// input-inconsistency check
+		int shutDownPeriod = checkShutDownRampDownInconsistency(g);
+
+		double rampDownRate;
 		int t=0;
-		if (beginMin != 0) {
-			double rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
+		if (getGenProd(g, t-1) > -INFINITY) {
+			rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
 			
-			IloRange con (env, -IloInfinity, getEDGenProd(g, t-1) - p[g][t], rampDownRate);
-			cons.add(con);
+			IloConstraint c ( getGenProd(g, t-1) - p[g][t] <= rampDownRate );
+			sprintf(buffer, "RD_%d_%d", g, t); c.setName(buffer); model.add(c);
 		}
 		for (t=1; t<numPeriods; t++) {
-			double rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
+			rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
 			
 			IloRange con (env, -IloInfinity, p[g][t-1] - p[g][t], rampDownRate);
 			cons.add(con);
@@ -502,7 +486,7 @@ bool SUCsubprob::solve(int mappedScen, BendersCutCoefs &cutCoefs, double &objVal
 		compute_optimality_cut_coefs(cutCoefs, mappedScen);
 		objValue = cplex.getObjValue();
 		
-		if (probType==DayAhead)	getInitGen(initGen);
+		if (probType==DayAhead || (probType==ShortTerm && beginMin==0))	getInitGen(initGen);
 	}
 	
 	// infeasibility
@@ -614,7 +598,6 @@ void SUCsubprob::compute_optimality_cut_coefs(BendersCutCoefs &cutCoefs, int &s)
 			}
 		}
 	}
-
 	
 	// minimum generation requirements
 	// skipped, as all necessary coefs are 0
@@ -624,8 +607,8 @@ void SUCsubprob::compute_optimality_cut_coefs(BendersCutCoefs &cutCoefs, int &s)
 		Generator *genPtr = &(inst->powSys->generators[g]);
 
 		int t=0;
-		if (beginMin != 0) {
-			cutCoefs.pi_b += duals[c] * (genPtr->rampUpLim*periodLength + getEDGenProd(g, t-1));
+		if (getGenProd(g, t-1) > -INFINITY) {	// prev generation is available
+			cutCoefs.pi_b += duals[c] * (genPtr->rampUpLim*periodLength + getGenProd(g, t-1));
 			c++;
 		}
 		for (t=1; t<numPeriods; t++, c++) {
@@ -637,44 +620,22 @@ void SUCsubprob::compute_optimality_cut_coefs(BendersCutCoefs &cutCoefs, int &s)
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
-		int shutDownPeriod = -9999;
-		if ( probType == ShortTerm && genPtr->isDAUCGen && beginMin != 0 ) {
-			// check if this generator was producing at t-1
-			bool wasProducing = (getEDGenProd(g, -1) > 1e-8);
-			
-			if (wasProducing) {
-				// check if this generator is shutting down at some point in ST-UC planning horizon
-				bool willShutDown = false;
-				int t;
-				for (t=0; t<numPeriods; t++) {
-					if (!getGenState(g, t)) {
-						willShutDown = true;
-						break;
-					}
-				}
-				
-				if (willShutDown) {
-					// check if it can ramp down
-					if ( genPtr->rampDownLim*periodLength*(double)(t+1) < getEDGenProd(g, -1) ) {
-						shutDownPeriod = t;
-					}
-				}
-			}
-		}
+		// input-inconsistency check
+		int shutDownPeriod = checkShutDownRampDownInconsistency(g);
 		
+		double rampDownRate;
 		int t=0;
-		if (beginMin != 0) {
-			double rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
+		if (getGenProd(g, t-1) > -INFINITY) {
+			rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
 			
-			cutCoefs.pi_b += duals[c] * (rampDownRate - getEDGenProd(g,t-1));
+			cutCoefs.pi_b += duals[c] * (rampDownRate - getGenProd(g,t-1));
 			c++;
 		}
 		for (t=1; t<numPeriods; t++, c++) {
-			double rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
+			rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
 
 			cutCoefs.pi_b += duals[c] * rampDownRate;
 		}
-
 	}
 	
 	// model-specific constraints
@@ -797,15 +758,14 @@ void SUCsubprob::compute_feasibility_cut_coefs(BendersCutCoefs &cutCoefs, int &s
 			}
 		}
 	}
-
 	
 	// ramp up constraints
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
 		int t=0;
-		if (beginMin != 0) {
-			cutCoefs.pi_b += farkasMap[ cons[c].getId() ] * (genPtr->rampUpLim*periodLength + getEDGenProd(g, t-1));
+		if (getGenProd(g, t-1) > -INFINITY) {	// prev generation is available
+			cutCoefs.pi_b += farkasMap[ cons[c].getId() ] * (genPtr->rampUpLim*periodLength + getGenProd(g, t-1));
 			c++;
 		}
 		for (t=1; t<numPeriods; t++, c++) {
@@ -817,45 +777,24 @@ void SUCsubprob::compute_feasibility_cut_coefs(BendersCutCoefs &cutCoefs, int &s
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
-		int shutDownPeriod = -9999;
-		if ( probType == ShortTerm && genPtr->isDAUCGen && beginMin != 0 ) {
-			// check if this generator was producing at t-1
-			bool wasProducing = (getEDGenProd(g, -1) > 1e-8);
-			
-			if (wasProducing) {
-				// check if this generator is shutting down at some point in ST-UC planning horizon
-				bool willShutDown = false;
-				int t;
-				for (t=0; t<numPeriods; t++) {
-					if (!getGenState(g, t)) {
-						willShutDown = true;
-						break;
-					}
-				}
-				
-				if (willShutDown) {
-					// check if it can ramp down
-					if ( genPtr->rampDownLim*periodLength*(double)(t+1) < getEDGenProd(g, -1) ) {
-						shutDownPeriod = t;
-					}
-				}
-			}
-		}
-
+		// input-inconsistency check
+		int shutDownPeriod = checkShutDownRampDownInconsistency(g);
+		
+		double rampDownRate;
 		int t=0;
-		if (beginMin != 0) {
-			double rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
+		if (getGenProd(g, t-1) > -INFINITY) {
+			rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
 			
-			cutCoefs.pi_b += farkasMap[ cons[c].getId() ] * (rampDownRate - getEDGenProd(g,t-1));
+			cutCoefs.pi_b += farkasMap[ cons[c].getId() ] * (rampDownRate - getGenProd(g,t-1));
 			c++;
 		}
 		for (t=1; t<numPeriods; t++, c++) {
-			double rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
+			rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
 			
-			cutCoefs.pi_b += farkasMap[ cons[c].getId() ] * rampDownRate;
+			cutCoefs.pi_b += farkasMap[ cons[c].getId() ]  * rampDownRate;
 		}
 	}
-		
+
 	// model-specific constraints
 	if (modelType == System) {
 		// aggregated demand constraints
@@ -942,5 +881,94 @@ bool SUCsubprob::getGenState(int genId, int period) {
 	}
 	else {														// asking what's beyond the planning horizon, we return the last solution
 		return (inst->solution.x[genId][ inst->solution.x[genId].size()-1 ] > EPSzero);
+	}
+}
+
+/****************************************************************************
+ * getGenProd
+ * - If period != the beginning of the planning horizon, returns getEDGenProd
+ * - If period is the beginning of the planning horizon:
+ * 		- Use generator histories from the previous run:
+ *		- Don't use generator histories
+ *			- DA-UC: returns -infinity due to lack of info
+ *			- ST-UC: returns 1st-period generation amount from the DA solve,
+ * 			if the gen is DA, -infinity if it is ST.
+ ****************************************************************************/
+double SUCsubprob::getGenProd(int g, int t) {
+	if (t < 0 && beginMin == 0) {
+		if ( runParam.useGenHistory ) {
+			cout << "Not implemented yet" << endl;
+		}
+		else {
+			Generator *genPtr = &(inst->powSys->generators[g]);
+			if (probType == ShortTerm && genPtr->isDAUCGen) {
+				return getUCGenProd(g, 0);
+			}
+		}
+	} else {
+		return getEDGenProd(g, t);
+	}
+	return -INFINITY;
+}
+
+/****************************************************************************
+ * checkShutDownRampDownInconsistency
+ * This function assures the consistency of the model inputs with the model's
+ * feasible set. It checks if generator g is not be able to shut down within
+ * the time horizon of the model, due to a high starting-generation-amount
+ * and tight ramping-down restrictions.
+ * - If an inconsistency is detected, the shut down period is returned so
+ * that ramping restrictions are relaxed at the time of the shut down.
+ * - The function returns -1 if it cannot detect an inconsistency.
+ 
+ ****************************************************************************/
+int SUCsubprob::checkShutDownRampDownInconsistency (int g) {
+	// This is a problem pertaining only to DA generators in the ST-UC problem
+	if (probType==DayAhead || !inst->powSys->generators[g].isDAUCGen) return -1;
+	
+	// Was g producing at period -1?
+	if ( getGenProd(g, -1) <= EPSzero )	return -1;
+	
+	// Will g shutdown during the problem's planning horizon?
+	bool answer = false;
+	int t;
+	for (t=0; t<numPeriods; t++) {
+		if (!getGenState(g, t)) {
+			answer = true;
+			break;
+		}
+	}
+	if (!answer) return -1;
+	
+	// Can the generator ramp down?
+	if ( inst->powSys->generators[g].rampDownLim * periodLength * (double)(t+1) < getGenProd(g, -1) ) {
+		inst->out() << "Warning: Generator " << g << " (" << inst->powSys->generators[g].name << ") cannot ramp down to 0 in the ST-UC problem" << endl;
+		return t;
+	}
+	else {
+		return -1;
+	}
+}
+
+/****************************************************************************
+ * getUCGenProd
+ * - Converts the model period, into the desired component of the Solution
+ * object. Returns the recorded generation of the generator by the DA model.
+ ****************************************************************************/
+double SUCsubprob::getUCGenProd(int genId, int period) {
+	// which Solution component is requested?
+	int reqSolnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
+	
+	// return the requested generator state
+	if (reqSolnComp < 0) {										// all generators are assumed to be online, for a long time, at t=0.
+		cout << "Error: Initial production levels are not available" << endl;
+		exit(1);
+	}
+	else if (reqSolnComp < (int) inst->solution.x[genId].size()) {	// return the corresponding solution
+		return inst->solution.g_UC[genId][reqSolnComp];
+	}
+	else {														// asking what's beyond the planning horizon, we return the last solution
+		cout << "Error: Production levels beyond the planning horizon are not available" << endl;
+		exit(1);
 	}
 }

@@ -30,9 +30,6 @@ public:
 	
 	bool solve (int mappedScen, BendersCutCoefs &cutCoefs, double &objValue, vector<double> &initGen);
 	
-	double getEDGenProd	(int genId, int period);				// reads from inst->Solution.gED
-	bool getGenState	(int genId, int period);				// reads from inst->Solution.x
-        
 	void setMasterSoln ();
 
 private:	
@@ -52,6 +49,13 @@ private:
 	void formulate_nodebased_system ();
 	void formulate_production ();
 	
+	double 	getEDGenProd (int genId, int period);				// reads from inst->Solution.gED
+	bool 	getGenState	 (int genId, int period);				// reads from inst->Solution.x
+	double	getUCGenProd (int genId, int period);				// reads from Solution.gUC
+	double	getGenProd   (int g, int t); 	// reads from Solution.gED, or gUC, and handles the beginning of the planning horizon
+	
+	int	checkShutDownRampDownInconsistency (int g);	
+
 	void	setup_subproblem (int &s);
 	double	getRandomCoef (int &s, int &t, int &loc);
 	

@@ -242,7 +242,11 @@ void EDmodel::formulate(instance &inst, int t0) {
 				
 				// determine previous generation level
 				if ( t0 == 0 ) {
-					prevGen = inst.solution.g_DAUC[g][t0] * 1.0;	// all generators are assumed to be operational
+					if (runParam.useGenHistory) {
+						cout << "Not implemented yet" << endl;
+					} else {
+						prevGen = inst.solution.g_UC[g][t0] * 1.0;	// all generators are assumed to be operational
+					}
 				} else {
 					prevGen = inst.solution.g_ED[g][t0-1] * round(inst.solution.x[g][t0-1]);	// the latter is to prevent numerical errors
 				}

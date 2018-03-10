@@ -57,8 +57,12 @@ private:
 
 	bool	getGenState(int genId, int period);					// reads from Solution.x
 	void	setGenState(int genId, int period, double value);	// writes to Solution.x
-	void	setDAGenProd(int genId, int period, double value);	// writes to Solution.gDAUC
+	void	setUCGenProd(int genId, int period, double value);	// writes to Solution.gUC
 	double	getEDGenProd(int genId, int period);				// reads from Solution.gED
+	double 	getUCGenProd(int genId, int period);				// reads from Solution.gUC
+	double	getGenProd(int g, int t);		// reads from Solution.gED, or gUC, and handles the beginning of the planning horizon
+	
+	int	checkShutDownRampDownInconsistency (int g);
 	
 	vector<double>	minGenerationReq;	// minimum production requirements (obeying assumptions)
 	vector<int>		minUpTimePeriods;	// minimum uptime in periods (obeying assumptions)
