@@ -51,7 +51,7 @@ private:
 	
 	// tolerances
 	const double AbsOptTol = 1e-6;
-	const double RelOptTol = 1e-4;
+	const double RelOptTol = 0;
 	
 	// parallel thread management
 	IloFastMutex mutex;
