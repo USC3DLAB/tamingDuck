@@ -13,6 +13,7 @@
 #include <vector>
 #include <stdio.h>
 #include <ilcplex/ilocplex.h>
+#include "config.hpp"
 #include "ilconcert/ilothread.h"		// for mutex (must be included below boost libraries to avoid errors)
 
 using namespace std;
@@ -48,10 +49,6 @@ private:
 	
 	// pointer to the master problem
 	SUCmaster *master;
-	
-	// tolerances
-	const double AbsOptTol = 1e-6;
-	const double RelOptTol = 0;
 	
 	// parallel thread management
 	IloFastMutex mutex;
