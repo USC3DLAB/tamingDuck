@@ -246,7 +246,10 @@ void SUCsubprob::formulate_production()
 		
 		// input-inconsistency check
 		int shutDownPeriod = checkShutDownRampDownInconsistency(g);
-
+		if (shutDownPeriod >= 0) {
+			inst->out() << "Warning: Generator " << g << " (" << inst->powSys->generators[g].name << ") cannot ramp down to 0 in the ST-UC problem" << endl;
+		}
+		
 		double rampDownRate;
 		int t=0;
 		if (getGenProd(g, t-1) > -INFINITY) {
@@ -554,6 +557,12 @@ void SUCsubprob::setup_subproblem(int &s) {
 	}
 }
 
+//void displayIncrepancy(double val1, double val2) {
+//	if ( fabs(val1 - val2) > 1e-8 ) {
+//		cout << val1 << "\t" << val2 << endl;
+//	}
+//}
+
 void SUCsubprob::compute_optimality_cut_coefs(BendersCutCoefs &cutCoefs, int &s)
 {
 	// get dual multipliers
@@ -607,10 +616,12 @@ void SUCsubprob::compute_optimality_cut_coefs(BendersCutCoefs &cutCoefs, int &s)
 		int t=0;
 		if (getGenProd(g, t-1) > -INFINITY) {	// prev generation is available
 			cutCoefs.pi_b += duals[c] * (genPtr->rampUpLim*periodLength + getGenProd(g, t-1));
+			//displayIncrepancy(cons[c].getUB(), genPtr->rampUpLim*periodLength + getGenProd(g, t-1));
 			c++;
 		}
 		for (t=1; t<numPeriods; t++, c++) {
 			cutCoefs.pi_b += duals[c] * genPtr->rampUpLim * periodLength;
+			//displayIncrepancy(cons[c].getUB(), genPtr->rampUpLim*periodLength);
 		}
 	}
 	
@@ -625,13 +636,13 @@ void SUCsubprob::compute_optimality_cut_coefs(BendersCutCoefs &cutCoefs, int &s)
 		int t=0;
 		if (getGenProd(g, t-1) > -INFINITY) {
 			rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
-            
 			cutCoefs.pi_b += duals[c] * (rampDownRate - getGenProd(g,t-1));
+			//displayIncrepancy(cons[c].getUB(), rampDownRate - getGenProd(g,t-1));
 			c++;
 		}
 		for (t=1; t<numPeriods; t++, c++) {
 			rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
-
+			//displayIncrepancy(cons[c].getUB(), rampDownRate);
 			cutCoefs.pi_b += duals[c] * rampDownRate;
 		}
 	}
@@ -940,7 +951,6 @@ int SUCsubprob::checkShutDownRampDownInconsistency (int g) {
 	
 	// Can the generator ramp down?
 	if ( inst->powSys->generators[g].rampDownLim * periodLength * (double)(t+1) < getGenProd(g, -1) ) {
-		inst->out() << "Warning: Generator " << g << " (" << inst->powSys->generators[g].name << ") cannot ramp down to 0 in the ST-UC problem" << endl;
 		return t;
 	}
 	else {

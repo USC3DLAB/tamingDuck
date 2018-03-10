@@ -557,49 +557,51 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	cplex.setWarning(inst.out());
 }
 
+void UCmodel::saveSolution() {
+	for (int g=0; g<numGen; g++) {
+		Generator *genPtr = &(inst->powSys->generators[g]);
+		
+		for (int t=0; t<numPeriods; t++) {
+			if ( (probType == DayAhead && genPtr->isDAUCGen) || (probType == ShortTerm && !genPtr->isDAUCGen) ) {
+				setGenState(g,t, cplex.getValue(x[g][t]));
+			}
+			// Note: Production = 0 when generator is not operational. Below line prevents numerical errors
+			// where there is >0 production but =0 commitment.
+			setUCGenProd(g, t, cplex.getValue(p[g][t]) * getGenState(g, t));
+		}
+	}
+	
+	double totLoadShed = 0;
+	for (int b=0; b<numBus; b++) {
+		for (int t=0; t<numPeriods; t++) {
+			if ( cplex.getValue(L[b][t]) > 1e-6 ) {
+				totLoadShed += cplex.getValue(L[b][t]);
+			}
+		}
+	}
+	if (totLoadShed > 0) {
+		cout << "[LS! " << setprecision(1) << totLoadShed << " MWs] ";
+	}
+}
+
 /****************************************************************************
  * solve
- * - Solves the model and records the solution into inst->solution.
+ * - Solves the model and saves the solution into inst->solution depending
+ * on the flag.
  ****************************************************************************/
-bool UCmodel::solve() {
-	
+bool UCmodel::solve(bool saveSol) {
 	bool status;
 	try {
 		status = cplex.solve();
 		
 		// record the solution
-		if (status) {			
-			for (int g=0; g<numGen; g++) {
-				Generator *genPtr = &(inst->powSys->generators[g]);
-				
-				for (int t=0; t<numPeriods; t++) {
-					if ( (probType == DayAhead && genPtr->isDAUCGen) || (probType == ShortTerm && !genPtr->isDAUCGen) ) {
-						setGenState(g,t, cplex.getValue(x[g][t]));
-					}
-					// Note: Production = 0 when generator is not operational. Below line prevents numerical errors
-					// where there is >0 production but =0 commitment.
-					setUCGenProd(g, t, cplex.getValue(p[g][t]) * getGenState(g, t));
-				}
-			}
+		if (status && saveSol) {
+			saveSolution();
 		}
 		
 		if (!status) {
 			cplex.exportModel("infeasible_UC.lp");
 			exit(5);
-		}
-		
-		if (status) {
-			double totLoadShed = 0;
-			for (int b=0; b<numBus; b++) {
-				for (int t=0; t<numPeriods; t++) {
-					if ( cplex.getValue(L[b][t]) > 1e-6 ) {
-						totLoadShed += cplex.getValue(L[b][t]);
-					}
-				}
-			}
-			if (totLoadShed > 0) {
-				cout << "[LS!] ";
-			}
 		}
 	}
 	catch (IloException &e) {
@@ -607,6 +609,14 @@ bool UCmodel::solve() {
 	}
 	
 	return status;
+}
+
+/****************************************************************************
+ * solve
+ * - Solves the model and saves the solution into inst->solution.
+ ****************************************************************************/
+bool UCmodel::solve() {
+	return solve(true);
 }
 
 /****************************************************************************
