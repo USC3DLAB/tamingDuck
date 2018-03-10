@@ -18,10 +18,30 @@ void LShapedCallback::invoke(const IloCplex::Callback::Context &context) {
 	
 	// invoke when a feasible solution is obtained
 	if ( context.inCandidate() ) {
-		addLShapedCuts (context);
+		bool cutAdded = addLShapedCuts (context);
+		
+		// if no cut is added, this master-solution's recourse obj value is accurately evaluated.
+		if (!cutAdded) setExpGenAmounts(context);
 	}
 	
 	mutex.unlock();	// unlock, so that a new thread may process above
+}
+
+inline void LShapedCallback::setExpGenAmounts(const IloCplex::Callback::Context &context) {
+	/* record the new solution's expected initial generation amounts (to be fed to the ED problem) */
+	if (master->probType == DayAhead || (master->probType == ShortTerm && master->beginMin == 0) ) {
+		// initial generation amounts are only recorded in the DA-UC, and ST-UC at the planning horizon
+		
+		if (context.getCandidateObjective() < context.getIncumbentObjective()) {	// if this solution is improving the incumbent
+			// compute the expected initial generation
+			vector<double> expInitGen = master->recourse.getExpInitGen();
+			
+			// set the generation amounts
+			for (int g=0; g<master->numGen; g++) {
+				master->setUCGenProd(g, 0, expInitGen[g]);
+			}
+		}
+	}
 }
 
 inline map<vector<bool>, double>::iterator LShapedCallback::findSolution(const IloCplex::Callback::Context &context) {
@@ -46,7 +66,7 @@ inline map<vector<bool>, double>::iterator LShapedCallback::findSolution(const I
 	return it;
 }
 
-inline void LShapedCallback::addLShapedCuts(const IloCplex::Callback::Context &context) {
+inline bool LShapedCallback::addLShapedCuts(const IloCplex::Callback::Context &context) {
 	
 	/* query and record the solution */
 	for (int g=0; g<master->numGen; g++) {
@@ -64,7 +84,7 @@ inline void LShapedCallback::addLShapedCuts(const IloCplex::Callback::Context &c
 	// confirm if the expectation is within relative and absolute optimality tolerances
 	double objDiff = solItr->second - context.getCandidatePoint(master->eta[0]);
 	if ( objDiff/(fabs(solItr->second)+1e-14) <= RelOptTol || objDiff <= AbsOptTol ) {
-		return;
+		return false;
 	}
 	
 	/* set the master-problem solution in the subproblems */
@@ -173,14 +193,8 @@ inline void LShapedCallback::addLShapedCuts(const IloCplex::Callback::Context &c
 		}
 	}
 	else {
-		/* record the new solution's expected initial generation amounts (to be fed to ED problem) */
-		if (context.getCandidateObjective() < context.getIncumbentObjective()) {	// if this solution is improving the incumbent
-			vector<double> expInitGen = master->recourse.getExpInitGen();
-			// set the generation amounts
-			for (int g=0; g<master->numGen; g++) {
-				master->setDAGenProd(g, 0, expInitGen[g]);
-			}
-		}
 		master->inst->out() << " (no cut)" << endl;
 	}
+	
+	return addCut;
 }

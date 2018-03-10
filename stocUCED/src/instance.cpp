@@ -165,6 +165,7 @@ bool instance::printSolution(string filepath) {
 	fields.push_back("Capacity");
 	fields.push_back("RampUpCap");
 	fields.push_back("RampDownCap");
+	fields.push_back("MinGenReq");
 
 	/* print solutions */
 	ofstream output;
@@ -174,16 +175,34 @@ bool instance::printSolution(string filepath) {
 	print_matrix(output, solution.x, delimiter, 0);
 	output.close();
 
-	status = open_file(output, filepath + "_genDAUC.sol");
+	status = open_file(output, filepath + "_genSTUC.sol");
 	if (!status) goto finalize;
 
-	print_matrix(output, solution.g_DAUC, delimiter, 2);
+	print_matrix(output, solution.g_UC, delimiter, 2);
 	output.close();
 
 	status = open_file(output, filepath + "_genED.sol");
 	if (!status) goto finalize;
 
 	print_matrix(output, solution.g_ED, delimiter, 2);
+	output.close();
+
+	status = open_file(output, filepath + "_loadShedED.sol");
+	if (!status) goto finalize;
+	
+	print_matrix(output, solution.loadShed_ED, delimiter, 2);
+	output.close();
+	
+	status = open_file(output, filepath + "_usedGenED.sol");
+	if (!status) goto finalize;
+	
+	print_matrix(output, solution.usedGen_ED, delimiter, 2);
+	output.close();
+
+	status = open_file(output, filepath + "_overGenED.sol");
+	if (!status) goto finalize;
+	
+	print_matrix(output, solution.overGen_ED, delimiter, 2);
 	output.close();
 
 	/* print summarized statistics */
@@ -217,6 +236,7 @@ bool instance::printSolution(string filepath) {
 			stats["Capacity"] += powSys->generators[g].maxCapacity * solution.x[g][t];
 			stats["RampUpCap"] += powSys->generators[g].rampUpLim * solution.x[g][t];
 			stats["RampDownCap"] += powSys->generators[g].rampDownLim * solution.x[g][t];
+			stats["MinGenReq"] += powSys->generators[g].minGenerationReq * solution.x[g][t];
 			
 			// production amounts
 			stats["UsedGen"] += solution.usedGen_ED[g][t];

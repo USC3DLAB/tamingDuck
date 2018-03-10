@@ -31,7 +31,10 @@ public:
 	virtual void invoke (const IloCplex::Callback::Context &context);
 	
 	// L-shaped cut generator
-	inline void addLShapedCuts (const IloCplex::Callback::Context &context);
+	inline bool addLShapedCuts (const IloCplex::Callback::Context &context);
+	
+	// set expected generation amounts
+	inline void setExpGenAmounts (const IloCplex::Callback::Context &context);
 	
 	// searches solutions in the solution list
 	inline map<vector<bool>, double>::iterator findSolution(const IloCplex::Callback::Context &context);
