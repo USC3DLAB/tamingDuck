@@ -51,7 +51,7 @@ inline map<vector<bool>, double>::iterator LShapedCallback::findSolution(const I
 	// search for the solution
 	map<vector<bool>, double>::iterator it = solMap.find(x);
 	
-	// if not found, add its recourse obj value as infinity (so, it will be deemed as not accurately computed)
+	// if not found, set its recourse obj value as infinity
 	if (it == solMap.end())	{
 		solMap.insert( pair<vector<bool>, double> (x, INFINITY) );
 		it = solMap.find(x);
@@ -77,9 +77,12 @@ inline bool LShapedCallback::addLShapedCuts(const IloCplex::Callback::Context &c
 	 */
 	auto solItr = findSolution(context);
 	// confirm if the expectation is within relative and absolute optimality tolerances
-	double objDiff = solItr->second - context.getCandidatePoint(master->eta[0]);
-	if ( objDiff/(fabs(solItr->second)+1e-14) <= RelOptTol || objDiff <= AbsOptTol ) {
-		return false;
+	if (solItr->second < INFINITY) {
+		double objDiff = solItr->second - context.getCandidatePoint(master->eta[0]);
+		if ( objDiff/(fabs(solItr->second)+1e-14) <= RelLShapedCutOptTol || objDiff <= AbsLShapedCutOptTol ) {
+			master->inst->out() << "- Solution is accepted" << endl;
+			return false;
+		}
 	}
 	
 	/* set the master-problem solution in the subproblems */
@@ -88,19 +91,34 @@ inline bool LShapedCallback::addLShapedCuts(const IloCplex::Callback::Context &c
 	/* solve the recourse problem */
 	bool isFeasible = master->recourse.solve();
 
+	/* check if the previously-recorded objective value is improved */
+	if (isFeasible && solItr->second < INFINITY) {
+		/* Note: The recourse-objective may not always be accurately evaluated. The reasons are:
+		 * (1) master solutions are rounded to the nearest-integer and rounded-values are fed to
+		 * the subproblems,
+		 * (2) numerical tolerances of the subproblems.
+		 * If the objective is not improving, then there is no point of adding another cut. In
+		 * fact, if you add a cut, the L-Shaped algorithm will be stuck on the same solution. */
+		double objDiff = master->recourse.getObjValue() - solItr->second;
+		if ( fabs(objDiff)/(fabs(solItr->second)+1e-14) <= 1e-4 || fabs(objDiff) <= 1e-6) {
+			master->inst->out() << "- Cannot compute the recourse more accurately. Solution is accepted" << endl;
+			return false;
+		}
+	}
+	
 	/* record its objective value (for future checks) */
 	if (isFeasible) {
 		solItr->second = master->recourse.getObjValue();
 	}
 
 	/* check if the cut should be appended */
-	objDiff = -1;
+	double objDiff = -1;
 	bool addCut;
 	if (isFeasible) {
 		 objDiff = master->recourse.getObjValue() - context.getCandidatePoint(master->eta[0]);
 		
 		// confirm if within relative and absolute optimality tolerances
-		if ( objDiff/(fabs(master->recourse.getObjValue())+1e-14) > RelOptTol && objDiff > AbsOptTol ) {
+		if ( objDiff/(fabs(master->recourse.getObjValue())+1e-14) > RelLShapedCutOptTol && objDiff > AbsLShapedCutOptTol ) {
 			addCut = true;
 		} else {
 			addCut = false;
