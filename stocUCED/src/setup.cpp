@@ -14,7 +14,7 @@
 #include "instance.hpp"
 #include "UCmodel.hpp"
 #include "EDmodel.hpp"
-#include "SUC_master.hpp"
+#include "./LShaped/SUC_master.hpp"
 #include "solution.hpp"
 #include "integrateSD.hpp"
 
