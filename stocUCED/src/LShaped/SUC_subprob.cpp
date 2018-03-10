@@ -229,16 +229,14 @@ void SUCsubprob::formulate_production()
 		/* t = 0 */
 		int t=0;
 		if (getGenProd(g, t-1) > -INFINITY) {	// prev generation is available
-			IloConstraint c ( p[g][t] - getGenProd(g, t-1) <= genPtr->rampUpLim*periodLength );
-			sprintf(buffer, "RU_%d_%d", g, t);
-			c.setName(buffer);
-			model.add(c);
+			IloRange con (env, -IloInfinity, p[g][t] - getGenProd(g, t-1), genPtr->rampUpLim * periodLength);
+			cons.add(con);
 		}
 		
 		/* t > 0 */
 		for (t=1; t<numPeriods; t++) {
 			IloRange con (env, -IloInfinity, p[g][t] - p[g][t-1], genPtr->rampUpLim * periodLength);
-			cons.add( con );
+			cons.add(con);
 		}
 	}	
 	
@@ -254,8 +252,8 @@ void SUCsubprob::formulate_production()
 		if (getGenProd(g, t-1) > -INFINITY) {
 			rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
 			
-			IloConstraint c ( getGenProd(g, t-1) - p[g][t] <= rampDownRate );
-			sprintf(buffer, "RD_%d_%d", g, t); c.setName(buffer); model.add(c);
+			IloRange con (env, -IloInfinity, getGenProd(g, t-1) - p[g][t], rampDownRate);
+			cons.add(con);
 		}
 		for (t=1; t<numPeriods; t++) {
 			rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
@@ -627,7 +625,7 @@ void SUCsubprob::compute_optimality_cut_coefs(BendersCutCoefs &cutCoefs, int &s)
 		int t=0;
 		if (getGenProd(g, t-1) > -INFINITY) {
 			rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
-			
+            
 			cutCoefs.pi_b += duals[c] * (rampDownRate - getGenProd(g,t-1));
 			c++;
 		}
