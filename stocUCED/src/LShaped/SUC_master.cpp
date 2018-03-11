@@ -967,6 +967,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 	cplex.setWarning( inst.out() );
 	cplex.setParam(IloCplex::Threads, LShapedMasterCPXThreads);
 //	cplex.setParam(IloCplex::ParallelMode, IloCplex::Opportunistic);
+	cplex.setParam(IloCplex::FPHeur, 1);
 	cplex.setParam(IloCplex::MIPEmphasis, IloCplex::MIPEmphasisBestBound);
     cplex.setParam(IloCplex::EpGap, 1e-2);
 }
@@ -1074,6 +1075,7 @@ bool SUCmaster::solve () {
 		LShapedCallback callback (*this);
 		CPXLONG contextMask = 0;
 		contextMask |= IloCplex::Callback::Context::Id::Candidate;
+//		contextMask |= IloCplex::Callback::Context::Id::Relaxation;
 		cplex.use(&callback, contextMask);
 		
 		status = cplex.solve();

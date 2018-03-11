@@ -244,6 +244,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 				if ( t0 == 0 ) {
 					if (runParam.useGenHistory) {
 						cout << "Not implemented yet" << endl;
+						prevGen = -INFINITY;
 					} else {
 						prevGen = inst.solution.g_UC[g][t0] * 1.0;	// all generators are assumed to be operational
 					}
