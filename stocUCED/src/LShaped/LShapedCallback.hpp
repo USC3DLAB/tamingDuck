@@ -13,7 +13,7 @@
 #include <vector>
 #include <stdio.h>
 #include <ilcplex/ilocplex.h>
-#include "config.hpp"
+#include "../config.hpp"
 #include "ilconcert/ilothread.h"		// for mutex (must be included below boost libraries to avoid errors)
 
 using namespace std;
