@@ -15,17 +15,73 @@ LShapedCallback::LShapedCallback (SUCmaster &master) {
 
 void LShapedCallback::invoke(const IloCplex::Callback::Context &context) {
 	mutex.lock();	// prevent multiple threads to be below this line
+
+//	/* Randomized Rounding Heuristic */
+//	if ( context.inRelaxation() ) {
+//		randomizedRounding(context);
+//	}
 	
-	// invoke when a feasible solution is obtained
+	/* Benders' Algorithm */
 	if ( context.inCandidate() ) {
+
 		bool cutAdded = addLShapedCuts (context);
-		
+			
 		// if no cut is added, this master-solution's recourse obj value is accurately evaluated.
 		if (!cutAdded) setExpGenAmounts(context);
 	}
-	
 	mutex.unlock();	// unlock, so that a new thread may process above
 }
+
+/* Something is wrong with this function
+inline void LShapedCallback::randomizedRounding(const IloCplex::Callback::Context &context) {
+	/* Heuristic frequency: Every 100 nodes, after node 10 *
+//	if (context.getLongInfo(IloCplex::Callback::Context::Info::NodeCount) < 10
+//		|| context.getLongInfo(IloCplex::Callback::Context::Info::NodeCount) % 100 != 0){
+//		return;
+//	}
+
+	/* Construct a Solution *
+	IloNumVarArray	vars (context.getEnv());
+	IloNumArray		vals (context.getEnv());
+	vector<bool> 	vals_bool;
+
+	for (int g=0; g<master->x.getSize(); g++) {
+		vars.add( master->x[g] );
+
+		IloNumArray temp (context.getEnv());
+		try {
+			context.getRelaxationPoint(master->x[g], temp);
+		}
+		catch (IloException &e) {
+			cout << e << endl;
+		}
+		for (int t=0; t<temp.getSize(); t++) {
+			//temp[t] = round(temp[t]);
+			temp[t] = (double(rand())/double(RAND_MAX) < temp[t])*1.0;
+			vals_bool.push_back( round(temp[t]) );
+		}
+		vals.add(temp);
+		temp.end();
+	}
+
+	/* Evaluate the Solution *
+	try {
+		// Important: Check if the produced solution is evaluated before. If it is, don't evaluate!
+		// It is important that you don't visit the same solution multiple times, especially
+		// if you're not evaluating them in the lazy-constraint callback
+		auto it = master->evaluatedSolns.find(vals_bool);
+		if (it == master->evaluatedSolns.end()) {
+			master->inst->out() << "Heuristic is evaluating a new solution" << endl;
+			context.postHeuristicSolution(vars, vals, 0, IloCplex::Callback::Context::SolutionStrategy::Propagate);
+		} else {
+			master->inst->out() << "Heuristic has re-created an observed solution" << endl;
+		}
+	}
+	catch (IloException &e) {
+		cout << e << endl;
+	}
+}
+ */
 
 inline void LShapedCallback::setExpGenAmounts(const IloCplex::Callback::Context &context) {
 	/* record the new solution's expected initial generation amounts (to be fed to the ED problem) */

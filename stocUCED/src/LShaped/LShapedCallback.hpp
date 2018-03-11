@@ -37,6 +37,9 @@ public:
 	// set expected generation amounts
 	inline void setExpGenAmounts (const IloCplex::Callback::Context &context);
 	
+//	// randomized-rounding heuristic
+//	inline void randomizedRounding (const IloCplex::Callback::Context &context);
+	
 	// searches solutions in the solution list
 	inline map<vector<bool>, double>::iterator findSolution(const IloCplex::Callback::Context &context);
 	

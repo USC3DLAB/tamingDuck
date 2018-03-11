@@ -78,6 +78,10 @@ const double EPSzero = 1e-8;
 
 const char delimiter = ',';
 
+// Tolerances
+const double AbsLShapedCutOptTol = 1;
+const double RelLShapedCutOptTol = 1e-5;
+
 // Thread management
 const unsigned short LShapedMasterCPXThreads = 1;
 const unsigned short LShapedSubprobCPXThreads = 1;
