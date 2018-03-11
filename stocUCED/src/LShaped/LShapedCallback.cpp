@@ -148,16 +148,17 @@ inline bool LShapedCallback::addLShapedCuts(const IloCplex::Callback::Context &c
 	bool isFeasible = master->recourse.solve();
 
 	/* check if the previously-recorded objective value is improved */
-	if (isFeasible && solItr->second < INFINITY) {
+	if (isFeasible && solItr->second < INFINITY && fabs(master->recourse.getObjValue() - solItr->second) < 1e-4) {
 		/* Note: The recourse-objective may not always be accurately evaluated. The reasons are:
 		 * (1) master solutions are rounded to the nearest-integer and rounded-values are fed to
 		 * the subproblems,
 		 * (2) numerical tolerances of the subproblems.
 		 * If the objective is not improving, then there is no point of adding another cut. In
 		 * fact, if you add a cut, the L-Shaped algorithm will be stuck on the same solution. */
-		double objDiff = master->recourse.getObjValue() - solItr->second;
-		if ( fabs(objDiff)/(fabs(solItr->second)+1e-14) <= 1e-4 || fabs(objDiff) <= 1e-6) {
-			master->inst->out() << "- Cannot compute the recourse more accurately [RecObj= " << master->recourse.getObjValue() << ", PrevObj= " << solItr->second << "]. Solution is accepted" << endl;
+		master->inst->out() << "- I've seen this solution before" << endl;
+		double objDiff = master->recourse.getObjValue() - context.getCandidatePoint(master->eta[0]);
+		if (fabs(objDiff)/(fabs(solItr->second)+1e-14) <= 1e-4 || fabs(objDiff) <= 1e-4) {
+			master->inst->out() << "- Cannot compute the recourse more accurately [RecObj= " << master->recourse.getObjValue() << ", PrevObj= " << solItr->second << ", Diff= " << objDiff << ", eta= " << context.getCandidatePoint(master->eta[0]) << "]. Solution is accepted." << endl;
 			return false;
 		}
 	}
