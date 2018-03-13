@@ -208,6 +208,10 @@ void readRunfile (string inputDir) {
 					runParam.numLSScen = temp;
 				else if ( field1 == "spinResPerc" )
 					runParam.spinResPerc = temp;
+				else if ( field1 == "useGenHistory" )
+					runParam.useGenHistory = temp;
+				else if ( field1 == "renewableMultiplier" )
+					runParam.renewableMultiplier = temp;
 				else {
 					perror("Warning:: Unidentified run parameter in the file.\n");
 				}
@@ -215,7 +219,7 @@ void readRunfile (string inputDir) {
 		}
 	}
 	else
-		perror("Failed to read the run parametres, using the default parameters.\n");
+		perror("Failed to read the run parameters, using the default parameters.\n");
 
 	/* Make sure that the time parameters make sense */
 	if ( fmod(runParam.DA_horizon, runParam.DA_resolution) != 0 || fmod(runParam.DA_frequency, runParam.DA_resolution) != 0)
@@ -238,7 +242,17 @@ void readRunfile (string inputDir) {
 	runParam.baseTime = runParam.ED_resolution;
 	
 	runParam.numPeriods = (int)round(runParam.horizon/runParam.baseTime);
-
 	fptr.close();
+	
+	/* Print configuration summary */
+	cout << "------------------------------------------------------------------" << endl;
+	cout << "Problem    Horizon   Resolution       Frequency" << endl;
+	cout << "DA-UC     " << fixed << setprecision(0) << setw(4) << runParam.DA_horizon/60 << setw(4) << " hr" << setw(9) << runParam.DA_resolution << " min    " << "every " << setw(2) << runParam.DA_frequency/60 << setw(4) << " hr" << endl;
+	cout << "ST-UC     " << fixed << setprecision(0) << setw(4) << runParam.ST_horizon/60 << setw(4) << " hr" << setw(9) << runParam.ST_resolution << " min    " << "every " << setw(2) << runParam.ST_frequency/60 << setw(4) << " hr" << endl;
+	cout << "ED        " << fixed << setprecision(0) << setw(4) << runParam.ED_horizon << " min " << setw(8) << runParam.ED_resolution << " min    " << "every " << setw(2) << runParam.ED_frequency << setw(4) << " min" << endl;
+	cout << endl << "Spinning reserve percentage = " << runParam.spinResPerc*100 << "%" << endl;
+	cout << "Renewable-boost multiplier = " << runParam.renewableMultiplier << endl;
+	if (runParam.useGenHistory) cout << "Using generator histories from earlier days." << endl;
+	cout << "------------------------------------------------------------------" << endl;
 
 }//END readConfig()

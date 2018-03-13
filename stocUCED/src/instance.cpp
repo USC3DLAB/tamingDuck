@@ -47,18 +47,21 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, string RScriptsPath
 														createScenarioList(stoc, stocIndices, numSimLengthInDays, runParam.numPeriods/(60.0/runParam.baseTime), runParam.numRep, dataPeriodLengthInMins)));
 		observations[fileNames[f]].name = fileNames[f] + "_observations";
 		
+		/* post-processing */
+		boostRenewableSupply(observations[fileNames[f]]);
+		correctSupplyExceedingCapacity(observations[fileNames[f]]);
+		
+		// print out summary
 		cout << observations[fileNames[f]].name << ":" << endl;
 		int i=0;
-		for (auto it=observations[fileNames[f]].mapVarNamesToIndex.begin(); it!=observations[fileNames[f]].mapVarNamesToIndex.end(); ++it) {
-			cout << setw(4) << left << ++i << setw(30) << it->first << "\t[OK]" << endl;
+		for (auto it=observations[fileNames[f]].mapVarNamesToIndex.begin(); it!=observations[fileNames[f]].mapVarNamesToIndex.end(); ++it, ++i) {
+			cout << setw(4) << left << i << setw(30) << it->first << " (" << setprecision(2) << runParam.renewableMultiplier << "x)\t[OK]" << endl;
 		}
-		
-		correctSupplyExceedingCapacity(observations[fileNames[f]]);
 	}
 	
-	/* simulate scenarios */
-	simulateScenarios(1, true, 0);			// no sampling, but only model fitting in here. 1 is set to avoid bugs.
-	
+//	/* simulate scenarios */
+//	simulateScenarios(1, true, 0);			// no sampling, but only model fitting in here. 1 is set to avoid bugs.
+//
 
 	summary();
 
@@ -107,9 +110,9 @@ void instance::simulateScenarios(int numScen, bool fitModel, int rep) {
 	simulations = createScenarioList(simulationsFolder, stocElems, numSimLengthInDays, numScen, rep);
 #endif
 	
-	
 	simulations.name = "ForecastData_simulations";
 	
+	boostRenewableSupply(simulations);
 	correctSupplyExceedingCapacity(simulations);
 }
 
@@ -132,6 +135,23 @@ void instance::correctSupplyExceedingCapacity(ScenarioType &scenarioType) {
 					// for all scenarios and time periods, make sure the capacity is not exceeded
 					if ( scenarioType.vals[s][t][it->second] > (*genItr).maxCapacity ) {
 						scenarioType.vals[s][t][it->second] = (*genItr).maxCapacity;
+					}
+				}
+			}
+		}
+	}
+}
+
+void instance::boostRenewableSupply(ScenarioType &scenarioType) {
+	// renewable-supply boost
+	if ( fabs(runParam.renewableMultiplier-1) > EPSzero ) {
+		for (auto it = powSys->generators.begin(); it != powSys->generators.end(); ++it) {
+			if (it->type == Generator::SOLAR || it->type == Generator::WIND) {
+				int genidx = scenarioType.mapVarNamesToIndex[it->name];	// get generator idx
+				
+				for (int r=0; r<scenarioType.vals.size(); r++) {			// increase the production in every scenario
+					for (int t=0; t<scenarioType.vals[0].size(); t++) {
+						scenarioType.vals[r][t][genidx] *= runParam.renewableMultiplier;
 					}
 				}
 			}
@@ -324,4 +344,12 @@ bool instance::openLogFile(string filename) {
  ****************************************************************************/
 void instance::closeLogFile() {
 	log_stream.close();
+}
+
+/****************************************************************************
+ * addCurrentSolToSolList
+ ****************************************************************************/
+void instance::addCurrentSolToSolList() {
+	solList.push_back(solution);
+	out() << "Decisions are saved." << endl;
 }

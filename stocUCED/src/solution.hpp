@@ -27,7 +27,7 @@ struct Solution {
 		resize_matrix(loadShed_ED, numBus, periods);
     }
     
-    vector< vector<double> > x, g_UC, g_ED, overGen_ED, usedGen_ED, loadShed_ED;
+    vector< vector<double> > x, g_UC, g_ED, overGen_ED, usedGen_ED, loadShed_ED;	
 };
 
 #endif /* solution_hpp */

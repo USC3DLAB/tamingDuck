@@ -14,6 +14,8 @@
 #include "solution.hpp"
 #include "misc.hpp"
 
+#include <list>
+
 using namespace std;
 
 class instance {
@@ -28,6 +30,9 @@ public:
 	PowSys		*powSys;
 	StocProcess	*stoc;
 	Solution	solution;
+	
+	list<Solution> solList;
+	void addCurrentSolToSolList ();
 	
 	vector<string> elems;			// list of all processes
 	vector<string> detElems;		// list of deterministic elements in the model
@@ -57,6 +62,7 @@ private:
 	string RScriptsPath;
 	
 	void correctSupplyExceedingCapacity(ScenarioType &scenarioType);
+	void boostRenewableSupply(ScenarioType &scenarioType);
 };
 
 #endif

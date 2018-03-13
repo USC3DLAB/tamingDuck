@@ -1144,20 +1144,42 @@ void SUCmaster::setWarmUp ()
  * getGenState
  * - Converts the model period, into the desired component of the Solution
  * object. Returns the recorded status of the generator.
+ * - If available, the function returns info prior to planning horizon. If
+ * info is not available, the function quits.
  ****************************************************************************/
 bool SUCmaster::getGenState(int genId, int period) {
 	// which Solution component is requested?
 	int reqSolnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
 	
 	// return the requested generator state
-	if (reqSolnComp < 0) {										// all generators are assumed to be online, for a long time, at t=0.
-		return true;
+	if (reqSolnComp < 0) {
+		if (runParam.useGenHistory) {
+			// find the requested day's solution
+			list<Solution>::reverse_iterator rit = inst->solList.rbegin();
+			while (rit != inst->solList.rend()) {
+				reqSolnComp += runParam.numPeriods;
+				if (reqSolnComp >= 0) break;
+				
+				++rit;
+			}
+			
+			// if found, return, otherwise return true.
+			if (rit != inst->solList.rend()) {
+				return rit->x[genId][reqSolnComp];
+			}
+			else {
+				return true;	// if not found, assume that the generator has been operational for a long time
+			}
+		}
+		else {
+			return true;	// assume the generator has been operational for a long time
+		}
 	}
 	else if (reqSolnComp < (int) inst->solution.x[genId].size()) {	// return the corresponding solution
-		return (inst->solution.x[genId][reqSolnComp] > EPSzero);
+		return ( inst->solution.x[genId][reqSolnComp] > EPSzero );
 	}
 	else {														// asking what's beyond the planning horizon, we return the last solution
-		return (inst->solution.x[genId][ inst->solution.x[genId].size()-1 ] > EPSzero);
+		return ( inst->solution.x[genId][ inst->solution.x[genId].size()-1 ] > EPSzero );
 	}
 }
 
@@ -1195,6 +1217,8 @@ double SUCmaster::getObjValue() {
  * getEDGenProd
  * - Converts the model period, into the desired component of the Solution
  * object. Returns the recorded generation of the generator by the ED model.
+ * - If past info is requested, it will return the final ED generation of the
+ * previous day.
  ****************************************************************************/
 double SUCmaster::getEDGenProd(int genId, int period) {
 	// which Solution component is requested?
@@ -1202,8 +1226,13 @@ double SUCmaster::getEDGenProd(int genId, int period) {
 	
 	// return the requested generator state
 	if (reqSolnComp < 0) {										// all generators are assumed to be online, for a long time, at t=0.
-		cout << "Error: Initial production levels are not available" << endl;
-		exit(1);
+		if (inst->solList.size() > 0) {
+			return inst->solList.back().g_ED[genId][runParam.numPeriods-1];
+		}
+		else {
+			cout << "Error: Initial production levels are not available" << endl;
+			exit(1);
+		}
 	}
 	else if (reqSolnComp < (int) inst->solution.x[genId].size()) {	// return the corresponding solution
 		return inst->solution.g_ED[genId][reqSolnComp];
@@ -1213,7 +1242,6 @@ double SUCmaster::getEDGenProd(int genId, int period) {
 		exit(1);
 	}
 }
-
 /****************************************************************************
  * setUCGenProd
  * - Fills the (genId, correspondingComponent) of the Solution.g_UC object.
@@ -1238,24 +1266,20 @@ void SUCmaster::setUCGenProd(int genId, int period, double value) {
 
 /****************************************************************************
  * getGenProd
- * - If period != the beginning of the planning horizon, returns getEDGenProd
- * - If period is the beginning of the planning horizon:
- * 		- Use generator histories from the previous run:
- *		- Don't use generator histories
- *			- DA-UC: returns -infinity due to lack of info
- *			- ST-UC: returns 1st-period generation amount from the DA solve,
- * 			if the gen is DA, -infinity if it is ST.
+ * - If past info is requested, we will return past ED generation info if it
+ * is available AND we are allowed to use it (due to configurations).
+ * - If past info is requested, but either we don't have it or not allowed
+ * to use it, we use the 1st-period DA-UC generations of DA generators as
+ * history in the ST-UC problem.
+ * - In all other times, we return ED production levels.
  ****************************************************************************/
 double SUCmaster::getGenProd(int g, int t) {
-	if (t < 0 && beginMin == 0) {
-		if ( runParam.useGenHistory ) {
-			cout << "Not implemented yet" << endl;
+	if (t < 0 && beginMin == 0) {									// info requested is prior to the planning horizon
+		if ( runParam.useGenHistory && inst->solList.size() > 0 ) {	// use history
+			return getEDGenProd(g, -1);	// this will return the final ED gen levels from the prev day sol
 		}
-		else {
-			Generator *genPtr = &(inst->powSys->generators[g]);
-			if (probType == ShortTerm && genPtr->isDAUCGen) {
-				return getUCGenProd(g, 0);
-			}
+		else if (probType == ShortTerm && inst->powSys->generators[g].isDAUCGen){
+			return getUCGenProd(g, 0);
 		}
 	} else {
 		return getEDGenProd(g, t);

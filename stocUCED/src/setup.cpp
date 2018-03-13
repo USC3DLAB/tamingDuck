@@ -571,6 +571,8 @@ int setup (PowSys &powSys, StocProcess &stocProc, string &configPath, string &RS
 			}
 		}
 		inst.printSolution( ("./Day" + num2str(rep+1)) );
+		inst.addCurrentSolToSolList();
+		
 		timeLog << "------------------------------------------------------------------" << endl;
 		
 		inst.closeLogFile();
@@ -578,6 +580,5 @@ int setup (PowSys &powSys, StocProcess &stocProc, string &configPath, string &RS
 	cout << "------------------------------------------------------------------" << endl;
 	
 	timeLog.close();
-	
 	return 0;
 }

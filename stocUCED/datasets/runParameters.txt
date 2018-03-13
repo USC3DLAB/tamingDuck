@@ -12,3 +12,5 @@ numRep 7 scenarios
 numLSScen 100 scenarios
 numTotScen 1000 scenarios
 spinResPerc 0.2
+useGenHistory 1
+renewableMultiplier 1

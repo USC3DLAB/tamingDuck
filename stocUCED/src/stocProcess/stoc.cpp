@@ -136,7 +136,6 @@ ScenarioType createScenarioList(StocProcess *stoc, vector<int> S_indices, int le
 		int offset = rep*stepSize;
 		
 		for (int h=offset; h<offset+lenT; h++) {
-			// Important: I'm assuming hourly data in here
 			for (int subhour = 0; subhour<numSubHours; subhour++) {
 				vector<double> vec;
 				for (unsigned int n=0; n<S_indices.size(); n++) {

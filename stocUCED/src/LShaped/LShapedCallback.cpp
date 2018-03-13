@@ -157,7 +157,7 @@ inline bool LShapedCallback::addLShapedCuts(const IloCplex::Callback::Context &c
 		 * fact, if you add a cut, the L-Shaped algorithm will be stuck on the same solution. */
 		master->inst->out() << "- I've seen this solution before" << endl;
 		double objDiff = master->recourse.getObjValue() - context.getCandidatePoint(master->eta[0]);
-		if (fabs(objDiff)/(fabs(solItr->second)+1e-14) <= 1e-4 || fabs(objDiff) <= 1e-4) {
+		if (fabs(objDiff)/(fabs(solItr->second)+1e-14) <= 1e-4 || fabs(objDiff) <= 1e-4) {	// relaxed tolerances
 			master->inst->out() << "- Cannot compute the recourse more accurately [RecObj= " << master->recourse.getObjValue() << ", PrevObj= " << solItr->second << ", Diff= " << objDiff << ", eta= " << context.getCandidatePoint(master->eta[0]) << "]. Solution is accepted." << endl;
 			return false;
 		}

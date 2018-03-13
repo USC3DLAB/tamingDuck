@@ -242,9 +242,8 @@ void EDmodel::formulate(instance &inst, int t0) {
 				
 				// determine previous generation level
 				if ( t0 == 0 ) {
-					if (runParam.useGenHistory) {
-						cout << "Not implemented yet" << endl;
-						prevGen = -INFINITY;
+					if (runParam.useGenHistory && inst.solList.size() > 0) {
+						prevGen = inst.solList.back().g_ED[g][runParam.numPeriods-1];
 					} else {
 						prevGen = inst.solution.g_UC[g][t0] * 1.0;	// all generators are assumed to be operational
 					}
