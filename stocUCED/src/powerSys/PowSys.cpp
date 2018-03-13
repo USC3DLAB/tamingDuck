@@ -8,6 +8,8 @@
 
 #include "PowSys.hpp"
 
+extern runType runParam;
+
 PowSys::PowSys () {}
 
 bool PowSys::readData(string inputDir, string sysName) {
@@ -256,6 +258,7 @@ bool PowSys::readLineData(string inputPath) {
  * postprocessing
  * Sets the connectedBus field of each generator
  * Sets the connectedGenerators field of each bus
+ * Boosts solar/wind generator outputs
  ****************************************************************************/
 void PowSys::postprocessing() {
 
@@ -271,5 +274,10 @@ void PowSys::postprocessing() {
 
 		// add the generator to the list of connected generators of the bus
 		bus_ptr->connectedGenerators.push_back( gen_ptr );
+		
+		// boost solar/wind generator outputs
+		if (gen_ptr->type == Generator::SOLAR || gen_ptr->type == Generator::WIND) {
+			gen_ptr->maxCapacity *= runParam.renewableMultiplier;
+		}
 	}
 }
