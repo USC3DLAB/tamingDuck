@@ -23,12 +23,12 @@ CONCERTDIR = /opt/ibm/ILOG/CPLEX_Studio128/concert
 # Compiler Selection (CC is for c)
 #------------------------------------------------------------
 CC  = gcc -O3
-CCC = g++ -O0
+CCC = g++ -O2
 # ---------------------------------------------------------------------
 # Compiler options
 # ---------------------------------------------------------------------
 COPT  = -m64 -fPIC -fno-strict-aliasing 
-CCOPT = -m64 -O -fPIC -fno-strict-aliasing -fexceptions -DNDEBUG -DIL_STD
+CCOPT = -m64 -fPIC -fno-strict-aliasing -fexceptions -DNDEBUG -DIL_STD
 # ---------------------------------------------------------------------
 # Link options and libraries
 # ---------------------------------------------------------------------
