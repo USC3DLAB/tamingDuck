@@ -172,7 +172,7 @@ void openSolver(){
 		goto TERMINATE;
 	}
 
-	status = setIntParam(CPX_PARAM_THREADS, 4);
+	status = setIntParam(CPX_PARAM_THREADS, 1);
 	if ( status ) {
 		errMsg("solver", "open_solver", "parallel threads", 0);
 		goto TERMINATE;
