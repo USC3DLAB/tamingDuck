@@ -14,7 +14,6 @@
 #include "./stocProcess/stoc.hpp"
 #include <sstream>
 
-
 runType runParam;
 vector<Setting> settings = {DETERMINISTIC, DETERMINISTIC, DETERMINISTIC};
 

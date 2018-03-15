@@ -346,6 +346,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 		/* Generation cost */
 		for ( int g = 0; g < numGen; g++ ) {
 			realTimeCost += (inst.powSys->generators[g].variableCost*runParam.ED_resolution/60.0)*(genUsed[g][t] + overGen[g][t]);
+			realTimeCost += overGenPenaltyCoef*overGen[g][t];
 		}
 
 		/* Load shedding penalty */
