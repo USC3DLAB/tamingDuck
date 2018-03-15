@@ -59,10 +59,6 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, string RScriptsPath
 		}
 	}
 	
-//	/* simulate scenarios */
-//	simulateScenarios(1, true, 0);			// no sampling, but only model fitting in here. 1 is set to avoid bugs.
-//
-
 	summary();
 
 	return true;
@@ -353,3 +349,4 @@ void instance::addCurrentSolToSolList() {
 	solList.push_back(solution);
 	out() << "Decisions are saved." << endl;
 }
+
