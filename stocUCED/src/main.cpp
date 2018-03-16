@@ -36,7 +36,10 @@ int main(int argc, const char * argv[]) {
 
     /* Read the power system */
 	PowSys powSys;
-    powSys.readData(inputDir, sysName);
+    bool status = powSys.readData(inputDir, sysName);
+	if (!status) {
+		exit(1);
+	}
 
 	/* checking scenario reader */
     StocProcess stocProc(inputDir, sysName);
