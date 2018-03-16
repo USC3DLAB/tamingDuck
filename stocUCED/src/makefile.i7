@@ -72,10 +72,10 @@ OBJECTS = main.o setup.o UCmodel.o  EDmodel.o instance.o integrateSD.o misc.o SU
 
 $(EXECUTABLE) : $(OBJECTS)
 	$(CCC) $(OBJECTS) -o $(EXECUTABLE) $(CCFLAGS) $(CCLNFLAGS)
+	rm *.o
 
 $(OBJECTS) : $(HEADERS)
 	$(CCC) -c $(SOURCES) $(CCFLAGS)
-	rm *.o
-
+	
 clean :
 	rm *.o
