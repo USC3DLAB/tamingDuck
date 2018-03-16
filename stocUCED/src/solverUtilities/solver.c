@@ -42,17 +42,39 @@ RESOLVE:
 			return (*status);
 		}
 		else if ( (type == PROB_LP || type == PROB_QP) && (*status) == 6 ){
-			changeSolverType(ALG_DUAL);			// Semih: When Barrier fails, dual-optimizer usually returns an optimal solution (Mar 15, 2018).
-			(*status) = CPXdualopt(env, lp);
+			/* Semih is trying to workaround numerical problems (Mar 15, 2018) */
 			
-			// do SCAIND only if you fail the above procedure.
-			if ( (*status) != STAT_OPTIMAL ) {
-				setIntParam(PARAM_SCAIND, 1);
-				aggres++;
-				if(aggres == 1)
-					goto solveagain;
-				else
-					goto skip;
+			FILE *file;
+			file = fopen("sdwarnings.log", "a");
+			fprintf(file, "- Numerical issues during optimization...\n");
+
+			// Do barrier optimization with numerical emphasis on.
+			setIntParam(CPX_PARAM_NUMERICALEMPHASIS, CPX_ON);
+			(*status) = CPXbaropt(env, lp);
+			if ( (*status) == STAT_OPTIMAL ) {
+				setIntParam(CPX_PARAM_NUMERICALEMPHASIS, CPX_OFF); 	// turn num-emhpasis off if successful
+				fclose(file);
+			}
+			else {
+				fprintf(file, " - Barrier wt numerical emphasis has failed. Trying dual simplex...\n");
+				// If barrier optimization fails again, try dual-simplex optimizer
+				changeSolverType(ALG_DUAL);
+				(*status) = CPXdualopt(env, lp);
+
+				// If that doesn't work either, repeat the whole process with alternative scaling
+				if ( (*status) != STAT_OPTIMAL ) {
+					fprintf(file, "  - Dual optimizer failed as well. Repeating the whole process with SCAIND on.\n");
+					fclose(file);
+					
+					setIntParam(PARAM_SCAIND, 1);
+					aggres++;
+					if(aggres == 1)
+						goto solveagain;
+					else
+						goto skip;
+				} else {
+					fclose(file);
+				}
 			}
         } else if ( (type == PROB_QP) && (*status) == 2 ) {
             changeSolverType(ALG_PRIMAL);
