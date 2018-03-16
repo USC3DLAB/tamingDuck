@@ -76,6 +76,7 @@ $(EXECUTABLE) : $(OBJECTS)
 
 $(OBJECTS) : $(HEADERS)
 	$(CCC) -c $(SOURCES) $(CCFLAGS)
+	rm *.o
 
 clean :
 	rm *.o
