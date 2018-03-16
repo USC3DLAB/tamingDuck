@@ -43,6 +43,7 @@ RESOLVE:
 		}
 		else if ( (type == PROB_LP || type == PROB_QP) && (*status) == 6 ){
 			setIntParam(PARAM_SCAIND, 1);
+			changeSolverType(ALG_DUAL);		// Semih: When Barrier fails, dual-optimizer usually returns an optimal solution (Mar 15, 2018).
 			aggres++;
 			if(aggres == 1)
 				goto solveagain;
@@ -172,7 +173,7 @@ void openSolver(){
 		goto TERMINATE;
 	}
 
-	status = setIntParam(CPX_PARAM_THREADS, 1);
+	status = setIntParam(CPX_PARAM_THREADS, 4);	// Semih: Thread count is increased (Mar 15, 2018).
 	if ( status ) {
 		errMsg("solver", "open_solver", "parallel threads", 0);
 		goto TERMINATE;
