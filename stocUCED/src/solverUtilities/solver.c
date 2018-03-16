@@ -42,13 +42,18 @@ RESOLVE:
 			return (*status);
 		}
 		else if ( (type == PROB_LP || type == PROB_QP) && (*status) == 6 ){
-			setIntParam(PARAM_SCAIND, 1);
-			changeSolverType(ALG_DUAL);		// Semih: When Barrier fails, dual-optimizer usually returns an optimal solution (Mar 15, 2018).
-			aggres++;
-			if(aggres == 1)
-				goto solveagain;
-			else
-				goto skip;
+			changeSolverType(ALG_DUAL);			// Semih: When Barrier fails, dual-optimizer usually returns an optimal solution (Mar 15, 2018).
+			(*status) = CPXdualopt(env, lp);
+			
+			// do SCAIND only if you fail the above procedure.
+			if ( (*status) != STAT_OPTIMAL ) {
+				setIntParam(PARAM_SCAIND, 1);
+				aggres++;
+				if(aggres == 1)
+					goto solveagain;
+				else
+					goto skip;
+			}
         } else if ( (type == PROB_QP) && (*status) == 2 ) {
             changeSolverType(ALG_PRIMAL);
             (*status) = CPXlpopt(env, lp);
