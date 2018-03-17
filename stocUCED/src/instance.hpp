@@ -42,7 +42,8 @@ public:
 	map<string, ScenarioType> meanForecast;	// DA mean-forecast, RT mean-forecast (updated according to past actual-realizations)
 	ScenarioType actuals;					// actual realizations
 	
-	void updateForecasts(int beginMin, int endMin, int rep);
+	void updateForecasts(double futureInfoWeight, int rep, int beginMin, int endMin);
+	void updateForecasts(vector<double> &futureInfoWeights, int rep, int beginMin, int endMin);
 	
 //	ScenarioType simulations;
 //	map< string, ScenarioType > observations;

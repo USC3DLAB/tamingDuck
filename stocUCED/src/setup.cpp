@@ -411,6 +411,9 @@ int setup (PowSys &powSys, StocProcess &stocProc, string &configPath, string &RS
 	instance inst;
 	inst.initialize(&powSys, &stocProc, RScriptsPath);	
 	
+	/* Future Info Weights */ //TODO: Generalize
+	vector<double> futureInfoWeights = {0.75, 0.70, 0.65, 0.60, 0.55, 0.50, 0.45, 0.40, 0.35, 0.30, 0.25, 0.20};
+	
 	/* Main Body */
 	switch (settings[0]) {
 		case DETERMINISTIC:
@@ -507,6 +510,11 @@ int setup (PowSys &powSys, StocProcess &stocProc, string &configPath, string &RS
 				printf("\tShort-term Unit-Commitment (%02d:%02d): ", timeInfo->tm_hour, timeInfo->tm_min);
 				fflush(stdout);
 				
+				/* Update forecasts */
+				if (runParam.updateForecasts) {
+					inst.updateForecasts(futureInfoWeights, rep, beginMin, beginMin + runParam.ST_horizon);
+				}
+				
 				/* solve the problem */
 				if (settings[1] == DETERMINISTIC) {
 					UCmodel STmodel;
@@ -536,6 +544,11 @@ int setup (PowSys &powSys, StocProcess &stocProc, string &configPath, string &RS
 				for (int n = 0; n < runParam.ED_numSolves; n++ ) {
 					printf("\t\tEconomic Dispatch (%02d:%02d): ", timeInfo->tm_hour, timeInfo->tm_min);
 					fflush(stdout);
+					
+					/* Update forecasts */
+					if (runParam.updateForecasts) {
+						inst.updateForecasts(futureInfoWeights, rep, beginMin, beginMin + runParam.ED_horizon);
+					}
 					
 					int ED_beginPeriod = beginMin/runParam.ED_resolution;
 					

@@ -96,14 +96,6 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, string RScriptsPath
 		meanForecast[filename].name = filename + "_forecasts";
 	}
 
-//	for (int h=1; h<24; h = h+3) {
-//		updateForecasts(h*60, (h+3)*60 - 15, 0);
-//	}
-//	
-//	for (int t=0; t<=40; t++) {
-//		updateForecasts(75+t*60, 75+60+t*60-15, 0);
-//	}
-	
 	summary();
 
 	return true;
@@ -166,40 +158,76 @@ void instance::simulateScenarios(int numScen, bool fitModel, int rep) {
 	}
 }
 
-void instance::updateForecasts(int beginMin, int endMin, int rep) {
+void instance::updateForecasts(vector<double> &futureInfoWeights, int rep, int beginMin, int endMin) {
 	ScenarioType* DAForecasts = &meanForecast["DA"];
 	ScenarioType* RTForecasts = &meanForecast["RT"];
+	
+	ScenarioType* DASimulations = simulations.size() > 0 ? &simulations["DA"] : NULL;
+	ScenarioType* RTSimulations = simulations.size() > 0 ? &simulations["RT"] : NULL;
 	
 	int beg = beginMin/runParam.baseTime;	// current period
 	int end = endMin/runParam.baseTime;		// period until updates will be done
 	
-	double actualValueWeight = 0.5;
-	double actualTrendWeight = 0.5;
-	
-	double latestValue, latestAvgTrend, DAForecast, DATrend = 0.0;
-	
-	for (auto genItr = powSys->generators.begin(); genItr != powSys->generators.end(); ++genItr) {	// iterate (only) over solar.wind generators, exc. loads
-		if (genItr->type != Generator::SOLAR && genItr->type != Generator::WIND) continue;
+	int DAIdx, RTIdx;
+	for (auto it = actuals.mapVarNamesToIndex.begin(); it != actuals.mapVarNamesToIndex.end(); ++it) {
+		// get the correct indices
+		DAIdx = DAForecasts->mapVarNamesToIndex[ it->first ];
+		RTIdx = RTForecasts->mapVarNamesToIndex[ it->first ];
 		
-		// get the latest available actual data, and a 3-period averaged trend.
-		latestValue = actuals.vals[rep][beg-1][ actuals.mapVarNamesToIndex[genItr->name] ];
-		latestAvgTrend = (latestValue - actuals.vals[rep][beg-4][ actuals.mapVarNamesToIndex[genItr->name] ])/3.0;
+		// update point-forecasts
+		for (int t=beg; t<=end; t++) {
+			RTForecasts->vals[rep][t][RTIdx] = actuals.vals[rep][t][it->second] * futureInfoWeights[t-beg] + DAForecasts->vals[rep][t][DAIdx] * (1-futureInfoWeights[t-beg]);
+		}
 		
-		ofstream output;
-		output.open("plot.txt", ios::app);
-		for (int t=beg; t<=end; t++) {	// iterate over forecasting horizon
-			// get the desired period's forecast and trend
-			DAForecast = DAForecasts->vals[rep][t][ DAForecasts->mapVarNamesToIndex[genItr->name] ];
-			DATrend = DATrend*0.25 + (DAForecast - DAForecasts->vals[rep][t-1][DAForecasts->mapVarNamesToIndex[genItr->name]])*0.75;
-
-			// compute the forecast
-			meanForecast["RT"].vals[rep][t][ meanForecast["RT"].mapVarNamesToIndex[genItr->name] ] = max(0.0, latestValue*actualValueWeight + DAForecast*(1-actualValueWeight) + latestAvgTrend*actualTrendWeight + DATrend*(1-actualTrendWeight) );
-			if ( genItr->name.compare("Solar-bus015") == 0 ) {
-				output << meanForecast["RT"].vals[rep][t][ meanForecast["RT"].mapVarNamesToIndex[genItr->name] ] << endl;
+		// update simulations
+		if (simulations.size() > 0) {
+			// get the correct indices
+			DAIdx = DASimulations->mapVarNamesToIndex[ it->first ];
+			RTIdx = RTSimulations->mapVarNamesToIndex[ it->first ];
+			
+			// update the simulations
+			for (int s=0; s<runParam.numTotScen; s++) {
+				for (int t=beg; t<=end; t++) {
+					RTSimulations->vals[s][t][RTIdx] = actuals.vals[rep][t][it->second] * futureInfoWeights[t-beg] + DASimulations->vals[s][t][DAIdx] * (1-futureInfoWeights[t-beg]);
+				}
 			}
 		}
-		output.close();
 	}
+	
+	//	double actualValueWeight = 0.5;
+	//	double actualTrendWeight = 0.5;
+	//
+	//	double latestValue, latestAvgTrend, DAForecast, DATrend = 0.0;
+	//
+	//	for (auto genItr = powSys->generators.begin(); genItr != powSys->generators.end(); ++genItr) {	// iterate (only) over solar.wind generators, exc. loads
+	//		if (genItr->type != Generator::SOLAR && genItr->type != Generator::WIND) continue;
+	//
+	//		// get the latest available actual data, and a 3-period averaged trend.
+	//		latestValue = actuals.vals[rep][beg-1][ actuals.mapVarNamesToIndex[genItr->name] ];
+	//		latestAvgTrend = (latestValue - actuals.vals[rep][beg-4][ actuals.mapVarNamesToIndex[genItr->name] ])/3.0;
+	//
+	//		ofstream output;
+	//		output.open("plot.txt", ios::app);
+	//		for (int t=beg; t<=end; t++) {	// iterate over forecasting horizon
+	//			// get the desired period's forecast and trend
+	//			DAForecast = DAForecasts->vals[rep][t][ DAForecasts->mapVarNamesToIndex[genItr->name] ];
+	//			DATrend = DATrend*0.25 + (DAForecast - DAForecasts->vals[rep][t-1][DAForecasts->mapVarNamesToIndex[genItr->name]])*0.75;
+	//
+	//			// compute the forecast
+	//			meanForecast["RT"].vals[rep][t][ meanForecast["RT"].mapVarNamesToIndex[genItr->name] ] = max(0.0, latestValue*actualValueWeight + DAForecast*(1-actualValueWeight) + latestAvgTrend*actualTrendWeight + DATrend*(1-actualTrendWeight) );
+	//			if ( genItr->name.compare("Solar-bus015") == 0 ) {
+	//				output << meanForecast["RT"].vals[rep][t][ meanForecast["RT"].mapVarNamesToIndex[genItr->name] ] << endl;
+	//			}
+	//		}
+	//		output.close();
+	//	}
+}
+
+
+void instance::updateForecasts(double futureInfoWeight, int rep, int beginMin, int endMin) {
+	int nbPeriods = (endMin - beginMin)/runParam.baseTime + 1;
+	vector<double> weights (nbPeriods, futureInfoWeight);
+	updateForecasts(weights, rep, beginMin, endMin);
 }
 
 
