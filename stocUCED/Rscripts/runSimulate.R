@@ -3,7 +3,7 @@
 
 ### Forecasts ###
 wPaths = windSimulate(wModel = wModel, simLength = simLength, lookahead = lookahead, numScenarios = numScenarios)
-sPaths = solarSimulate(sModel = sModel, simLength = simLength, lookahead = lookahead, numScenarios = numScenarios, clearSky = TRUE)
+sPaths = solarSimulate(sModel = sModel, simLength = simLength, lookahead = lookahead, numScenarios = numScenarios, clearSky = FALSE)
 
 print("Simulation is completed")
 

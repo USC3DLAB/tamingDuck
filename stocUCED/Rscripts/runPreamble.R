@@ -5,7 +5,7 @@
 #rm(list=ls(all=TRUE))
 #set.seed(0)
 RScriptsPath = "/Users/semihatakan/Documents/Coding Projects/Power Systems/tamingDuck/tamingDuck/stocUCED/Rscripts"
-dataSetPath = "/Users/semihatakan/Documents/Coding Projects/Power Systems/tamingDuck/tamingDuck/stocUCED/datasets/3d-nrel118/stocProcesses"
+dataSetPath = "/Users/semihatakan/Documents/Coding Projects/Power Systems/tamingDuck/tamingDuck/stocUCED/datasets/3d-nrel118-jan/stocProcesses"
 simLength = 24 #days
 lookahead = 3 #hours
 
