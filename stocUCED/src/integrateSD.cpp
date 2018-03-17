@@ -10,6 +10,7 @@
  */
 
 #include "integrateSD.hpp"
+extern runType runParam;
 
 long long	MEM_USED = 0;	/* Amount of memory allocated each iteration */
 stringC	outputDir;			/* output directory */
@@ -21,6 +22,9 @@ int integrateSD(instance &inst, EDmodel &rtED, string probName, string &configPa
 	stocType *stoc = NULL;
 	vectorC edSols;
 
+	// pick the correct type of simulations according to the run parameters
+	ScenarioType *simulations = runParam.updateForecasts ? &inst.simulations["RT"] : &inst.simulations["DA"];
+	
 	int j=0;
 	
 	/* TODO: Create a common output directory: Setup outputDir */
@@ -50,7 +54,7 @@ int integrateSD(instance &inst, EDmodel &rtED, string probName, string &configPa
 	}
 
 	/* Build the stocType structure */
-	if ( (stoc = buildStocType(rtED.model, rtED.stocRows, inst.simulations, t0)) == NULL) {
+	if ( (stoc = buildStocType(rtED.model, rtED.stocRows, simulations, t0)) == NULL) {
 		perror("Failed to build the stocType structure for 2SD.\n");
 		goto TERMINATE;
 	}
@@ -390,7 +394,7 @@ timeType *buildTimeType(IloModel &model, vector<string> rowNames, vector<string>
 	return tim;
 }//END buildTimeType()
 
-stocType *buildStocType(IloModel &model, vector<string> stocRows, ScenarioType &stocObserv, int t0) {
+stocType *buildStocType(IloModel &model, vector<string> stocRows, ScenarioType *stocObserv, int t0) {
 	stocType *stoc = NULL;
 
 	int maxOmegas = stocRows.size();
@@ -442,7 +446,7 @@ stocType *buildStocType(IloModel &model, vector<string> stocRows, ScenarioType &
 	}
 
 	/* Number of blocks and their probabilities are stored in index-0 */
-	stoc->numVals[0] = stocObserv.cnt;
+	stoc->numVals[0] = stocObserv->cnt;
 	stoc->probs[0] = (vectorC) calloc(stoc->numVals[0], sizeof(double));
 	for (int cnt = 0; cnt < stoc->numVals[0]; cnt++ ) {
 		stoc->probs[0][cnt] = (double) 1/ (double) stoc->numVals[0];
@@ -459,9 +463,9 @@ stocType *buildStocType(IloModel &model, vector<string> stocRows, ScenarioType &
 
 		stoc->vals[m] = (vectorC) calloc(stoc->numVals[0], sizeof(double));
 		for ( int cnt = 0; cnt < stoc->numVals[0]; cnt++ ) {
-			int t = m/stocObserv.numVars;
-			int n = m % stocObserv.numVars;
-			stoc->vals[m][cnt] = stocObserv.vals[cnt][t0+1+t][n]; //TODO: Verify
+			int t = m/stocObserv->numVars;
+			int n = m % stocObserv->numVars;
+			stoc->vals[m][cnt] = stocObserv->vals[cnt][t0+1+t][n]; //TODO: Verify
 		}
 	}
 

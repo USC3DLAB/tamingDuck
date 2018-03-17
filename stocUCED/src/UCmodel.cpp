@@ -84,23 +84,30 @@ void UCmodel::preprocessing ()
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 
-		auto it = inst->observations["RT"].mapVarNamesToIndex.find(genPtr->name);
-		
-		bool stocSupply = (it != inst->observations["RT"].mapVarNamesToIndex.end()) ? true : false;
-		
-		if (stocSupply) {
-			/* stochastic supply */
+		auto it = inst->actuals.mapVarNamesToIndex.find(genPtr->name);
+		if ( it != inst->actuals.mapVarNamesToIndex.end() ) {
+			/* supply info found within the time series */
+			
 			int period;
 			for (int t=0; t<numPeriods; t++) {
 				period = (beginMin/periodLength)+(t*numBaseTimePerPeriod);
-				
-				if ( t==0 && probType==ShortTerm ) {
-					it = inst->observations["RT"].mapVarNamesToIndex.find(genPtr->name);
-					capacity[g][t] = min( inst->observations["RT"].vals[rep][period][it->second], genPtr->maxCapacity );
+
+				if (t == 0 && probType == ShortTerm) {
+					// use actual values for the 1st-period of the ST-UC problem
+					it = inst->actuals.mapVarNamesToIndex.find(genPtr->name);
+					capacity[g][t] = min(inst->actuals.vals[rep][period][it->second], genPtr->maxCapacity);
 				}
 				else {
-					it = inst->observations["DA"].mapVarNamesToIndex.find(genPtr->name);
-					capacity[g][t] = min( inst->observations["DA"].vals[rep][period][it->second], genPtr->maxCapacity );
+					if (runParam.updateForecasts && probType != DayAhead) {
+						// use updated forecasts (only) for the ST-UC problem
+						it = inst->meanForecast["RT"].mapVarNamesToIndex.find(genPtr->name);
+						capacity[g][t] = min(inst->meanForecast["RT"].vals[rep][period][it->second], genPtr->maxCapacity);
+					}
+					else {
+						// use DA forecasts if no updates are made, or for the DA-UC problem
+						it = inst->meanForecast["DA"].mapVarNamesToIndex.find(genPtr->name);
+						capacity[g][t] = min(inst->meanForecast["DA"].vals[rep][period][it->second], genPtr->maxCapacity);
+					}
 				}
 			}
 		}
@@ -126,17 +133,21 @@ void UCmodel::preprocessing ()
 	for (int b=0; b<numBus; b++) {
 		Bus *busPtr = &(inst->powSys->buses[b]);
 		
-		auto it = inst->observations["RT"].mapVarNamesToIndex.find( num2str(busPtr->regionId) );
+		auto it = inst->actuals.mapVarNamesToIndex.find( num2str(busPtr->regionId) );
 		
 		int period;
 		for (int t=0; t<numPeriods; t++) {
 			period = (beginMin/periodLength)+(t*numBaseTimePerPeriod);
 			
 			if ( probType == DayAhead ) {
-				busLoad[b][t] = inst->observations["DA"].vals[rep][period][it->second] * busPtr->loadPercentage;
+				// use DA forecast of the load in the DA-UC problem
+				it = inst->meanForecast["DA"].mapVarNamesToIndex.find( num2str(busPtr->regionId) );
+				busLoad[b][t] = inst->meanForecast["DA"].vals[rep][period][it->second] * busPtr->loadPercentage;
 			}
 			else {
-				busLoad[b][t] = inst->observations["RT"].vals[rep][period][it->second] * busPtr->loadPercentage;
+				// use actual values of the load in the ST-UC problems (assuming the forecasts are accurate, which is quite true)
+				it = inst->actuals.mapVarNamesToIndex.find( num2str(busPtr->regionId) );
+				busLoad[b][t] = inst->actuals.vals[rep][period][it->second] * busPtr->loadPercentage;
 			}
 		}
 	}

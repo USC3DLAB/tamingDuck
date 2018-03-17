@@ -29,35 +29,80 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, string RScriptsPath
 	/* Chop off the Provided Time Series */
 	int maxLookAhead = max(runParam.ED_numPeriods-1, runParam.ST_numPeriods-1);
 	int numSimLengthInDays = ceil( (double)(runParam.numPeriods+maxLookAhead)/(60.0/runParam.baseTime) );
-
-	vector<string> fileNames = {"DA", "RT"};
-	for (int f = 0; f < (int) fileNames.size(); f++) {
-		vector<int> stocIndices;
-		for (auto it=stoc->mapTypeToIndex[fileNames[f]].begin(); it != stoc->mapTypeToIndex[fileNames[f]].end(); ++it) {
-			if (find(elems.begin(), elems.end(), stoc->sp[*it].name) != elems.end()) {	// find the stoc process, and push its index to the list
-				stocIndices.push_back(*it);
-			}
-		}
-		
-		//TODO: Generalize
-		//int dataPeriodLengthInMins = fileNames[f] == "DA" ? 60 : 15;
-		int dataPeriodLengthInMins = 15;
-		
-		observations.insert(pair<string, ScenarioType> (fileNames[f],
-														createScenarioList(stoc, stocIndices, numSimLengthInDays, runParam.numPeriods/(60.0/runParam.baseTime), runParam.numRep, dataPeriodLengthInMins)));
-		observations[fileNames[f]].name = fileNames[f] + "_observations";
-		
-		/* post-processing */
-		boostRenewableSupply(observations[fileNames[f]]);
-		correctSupplyExceedingCapacity(observations[fileNames[f]]);
-		
-		// print out summary
-		cout << observations[fileNames[f]].name << ":" << endl;
-		int i=0;
-		for (auto it=observations[fileNames[f]].mapVarNamesToIndex.begin(); it!=observations[fileNames[f]].mapVarNamesToIndex.end(); ++it, ++i) {
-			cout << setw(4) << left << i << setw(30) << it->first << " (" << setprecision(2) << runParam.renewableMultiplier << "x)\t[OK]" << endl;
+	int dataPeriodLengthInMins = runParam.baseTime;
+	
+	vector<int> idx;
+	string filename;
+	
+	/* actual observations */
+	filename = "RT";
+	idx.clear();
+	
+	// find the indices
+	for (auto it=stoc->mapTypeToIndex[filename].begin(); it != stoc->mapTypeToIndex[filename].end(); ++it) {
+		if (find(elems.begin(), elems.end(), stoc->sp[*it].name) != elems.end()) {	// find the stoc process, and push its index to the list
+			idx.push_back(*it);
 		}
 	}
+	
+	// initialize the data structures
+	actuals = createScenarioList(stoc, idx, numSimLengthInDays, runParam.numPeriods/(60.0/runParam.baseTime), runParam.numRep, dataPeriodLengthInMins);
+	actuals.name = filename + "_obs";
+	
+	// post-processing
+	boostRenewableSupply(actuals);
+	correctSupplyExceedingCapacity(actuals);
+	
+	// print out summary
+	cout << actuals.name << ":" << endl;
+	int i=0;
+	for (auto it=actuals.mapVarNamesToIndex.begin(); it!=actuals.mapVarNamesToIndex.end(); ++it, ++i) {
+		cout << setw(4) << left << i << setw(30) << it->first << " (" << setprecision(2) << runParam.renewableMultiplier << "x)\t[OK]" << endl;
+	}
+	cout << endl;
+
+	/* mean forecasts */
+	filename = "DA";
+	idx.clear();
+	
+	// find the indices
+	for (auto it=stoc->mapTypeToIndex[filename].begin(); it != stoc->mapTypeToIndex[filename].end(); ++it) {
+		if (find(elems.begin(), elems.end(), stoc->sp[*it].name) != elems.end()) {	// find the stoc process, and push its index to the list
+			idx.push_back(*it);
+		}
+	}
+	
+	// initialize the data structures
+	meanForecast.insert( pair<string, ScenarioType> (filename,
+													 createScenarioList(stoc, idx, numSimLengthInDays, runParam.numPeriods/(60.0/runParam.baseTime), runParam.numRep, dataPeriodLengthInMins)) );
+	meanForecast[filename].name = filename + "_forecasts";
+	
+	// post-processing
+	boostRenewableSupply(meanForecast[filename]);
+	correctSupplyExceedingCapacity(meanForecast[filename]);
+	
+	// print out summary
+	cout << meanForecast[filename].name << ":" << endl;
+	i=0;
+	for (auto it=meanForecast[filename].mapVarNamesToIndex.begin(); it!=meanForecast[filename].mapVarNamesToIndex.end(); ++it, ++i) {
+		cout << setw(4) << left << i << setw(30) << it->first << " (" << setprecision(2) << runParam.renewableMultiplier << "x)\t[OK]" << endl;
+	}
+	cout << endl;
+
+	// if updated forecasts are requested, initialize its structure
+	if (runParam.updateForecasts) {
+		filename = "RT";
+		meanForecast.insert( pair<string, ScenarioType> (filename, meanForecast["DA"]) );
+		meanForecast[filename].name = filename + "_forecasts";
+	}
+
+//	for (int h=1; h<24; h = h+3) {
+//		updateForecasts(h*60, (h+3)*60 - 15, 0);
+//	}
+//	
+//	for (int t=0; t<=40; t++) {
+//		updateForecasts(75+t*60, 75+60+t*60-15, 0);
+//	}
 	
 	summary();
 
@@ -100,17 +145,63 @@ void instance::simulateScenarios(int numScen, bool fitModel, int rep) {
 	int numSimLengthInDays = ceil( (double)(runParam.numPeriods+maxLookAhead)/(60.0/runParam.baseTime) );
 	
 #ifdef SAMPLE_USING_R
-	simulations = createScenarioList(R, fitModel, powSys->path, stocElems, numSimLengthInDays, numScen, rep);
+	simulations.insert( pair<string, ScenarioType> ("DA",
+													createScenarioList(R, fitModel, powSys->path, stocElems, numSimLengthInDays, numScen, rep)) );
 #else
 	string simulationsFolder = "./Simulations/";
-	simulations = createScenarioList(simulationsFolder, stocElems, numSimLengthInDays, numScen, rep);
+	simulations.insert( pair<string, ScenarioType> ("DA",
+													createScenarioList(simulationsFolder, stocElems, numSimLengthInDays, numScen, rep)) );
 #endif
+	simulations["DA"].name = "DA_simulations";
 	
-	simulations.name = "ForecastData_simulations";
+	// post processing
+	boostRenewableSupply(simulations["DA"]);
+	correctSupplyExceedingCapacity(simulations["DA"]);
 	
-	boostRenewableSupply(simulations);
-	correctSupplyExceedingCapacity(simulations);
+	// updated forecasts
+	if (runParam.updateForecasts) {
+		simulations.insert( pair<string, ScenarioType> ("RT",
+														simulations["DA"]) );
+		simulations["RT"].name = "RT_simulations";
+	}
 }
+
+void instance::updateForecasts(int beginMin, int endMin, int rep) {
+	ScenarioType* DAForecasts = &meanForecast["DA"];
+	ScenarioType* RTForecasts = &meanForecast["RT"];
+	
+	int beg = beginMin/runParam.baseTime;	// current period
+	int end = endMin/runParam.baseTime;		// period until updates will be done
+	
+	double actualValueWeight = 0.5;
+	double actualTrendWeight = 0.5;
+	
+	double latestValue, latestAvgTrend, DAForecast, DATrend = 0.0;
+	
+	for (auto genItr = powSys->generators.begin(); genItr != powSys->generators.end(); ++genItr) {	// iterate (only) over solar.wind generators, exc. loads
+		if (genItr->type != Generator::SOLAR && genItr->type != Generator::WIND) continue;
+		
+		// get the latest available actual data, and a 3-period averaged trend.
+		latestValue = actuals.vals[rep][beg-1][ actuals.mapVarNamesToIndex[genItr->name] ];
+		latestAvgTrend = (latestValue - actuals.vals[rep][beg-4][ actuals.mapVarNamesToIndex[genItr->name] ])/3.0;
+		
+		ofstream output;
+		output.open("plot.txt", ios::app);
+		for (int t=beg; t<=end; t++) {	// iterate over forecasting horizon
+			// get the desired period's forecast and trend
+			DAForecast = DAForecasts->vals[rep][t][ DAForecasts->mapVarNamesToIndex[genItr->name] ];
+			DATrend = DATrend*0.25 + (DAForecast - DAForecasts->vals[rep][t-1][DAForecasts->mapVarNamesToIndex[genItr->name]])*0.75;
+
+			// compute the forecast
+			meanForecast["RT"].vals[rep][t][ meanForecast["RT"].mapVarNamesToIndex[genItr->name] ] = max(0.0, latestValue*actualValueWeight + DAForecast*(1-actualValueWeight) + latestAvgTrend*actualTrendWeight + DATrend*(1-actualTrendWeight) );
+			if ( genItr->name.compare("Solar-bus015") == 0 ) {
+				output << meanForecast["RT"].vals[rep][t][ meanForecast["RT"].mapVarNamesToIndex[genItr->name] ] << endl;
+			}
+		}
+		output.close();
+	}
+}
+
 
 /****************************************************************************
  * correctSupplyExceedingCapacity
