@@ -169,6 +169,7 @@ void readRunfile (string inputDir) {
 	
 	runParam.spinResPerc = 0.2;
 	runParam.useGenHistory = false;
+	runParam.updateForecasts = false;
 	
 	/* Read the run parameters if a run file is included in the default folder */
 	if ( open_file(fptr, (inputDir + "runParameters.txt")) ) {
@@ -214,6 +215,8 @@ void readRunfile (string inputDir) {
 					runParam.useGenHistory = temp;
 				else if ( field1 == "renewableMultiplier" )
 					runParam.renewableMultiplier = temp;
+				else if ( field1 == "updateForecasts" )
+					runParam.updateForecasts = temp;
 				else {
 					perror("Warning:: Unidentified run parameter in the file.\n");
 				}

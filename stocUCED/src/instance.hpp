@@ -38,11 +38,15 @@ public:
 	vector<string> detElems;		// list of deterministic elements in the model
 	vector<string> stocElems;		// list of stochastic elements in the model
 	
-	ScenarioType simulations;
+	map<string, ScenarioType> simulations;	// DA simulations, RT simulations (updated according to past actual-realizations)
+	map<string, ScenarioType> meanForecast;	// DA mean-forecast, RT mean-forecast (updated according to past actual-realizations)
+	ScenarioType actuals;					// actual realizations
 	
-	map< string, ScenarioType > observations;
+	void updateForecasts(int beginMin, int endMin, int rep);
 	
-	
+//	ScenarioType simulations;
+//	map< string, ScenarioType > observations;
+
 	/* log keeping */
 	ofstream&	out ();
 	string		getLogStreamName ();

@@ -98,20 +98,25 @@ void SUCsubprob::preprocessing ()
 	for (int b=0; b<numBus; b++) {
 		Bus *busPtr = &(inst->powSys->buses[b]);
 		
-		auto it = inst->observations["RT"].mapVarNamesToIndex.find( num2str(busPtr->regionId) );
+		auto it = inst->actuals.mapVarNamesToIndex.find( num2str(busPtr->regionId) );
 		
 		int period;
 		for (int t=0; t<numPeriods; t++) {
 			period = (beginMin/periodLength)+(t*numBaseTimePerPeriod);
 			
 			if ( probType == DayAhead ) {
-				busLoad[b][t] = inst->observations["DA"].vals[rep][period][it->second] * busPtr->loadPercentage;
+				// use DA forecast of the load in the DA-UC problem
+				it = inst->meanForecast["DA"].mapVarNamesToIndex.find( num2str(busPtr->regionId) );
+				busLoad[b][t] = inst->meanForecast["DA"].vals[rep][period][it->second] * busPtr->loadPercentage;
 			}
 			else {
-				busLoad[b][t] = inst->observations["RT"].vals[rep][period][it->second] * busPtr->loadPercentage;
+				// use actual values of the load in the ST-UC problems (assuming the forecasts are accurate, which is quite true)
+				it = inst->actuals.mapVarNamesToIndex.find( num2str(busPtr->regionId) );
+				busLoad[b][t] = inst->actuals.vals[rep][period][it->second] * busPtr->loadPercentage;
 			}
 		}
 	}
+
 	
 	/* Spinning Reserve */
 	for (int b=0; b<numBus; b++) {
@@ -131,13 +136,17 @@ void SUCsubprob::preprocessing ()
 
 double SUCsubprob::getRandomCoef (int &s, int &t, int &loc) {
 	if (t == 0 && probType == ShortTerm) {
-		return inst->observations["RT"].vals[rep][(beginMin/periodLength)+(t*numBaseTimePerPeriod)][loc];
+		return inst->actuals.vals[rep][(beginMin/periodLength)+(t*numBaseTimePerPeriod)][loc];
 	}
 	else {
 		if (s == -1) {
 			return (*expCapacity)[loc][t];
 		} else {
-			return inst->simulations.vals[s][(beginMin/periodLength)+(t*numBaseTimePerPeriod)][loc];
+			if (runParam.updateForecasts) {
+				return inst->simulations["RT"].vals[s][(beginMin/periodLength)+(t*numBaseTimePerPeriod)][loc];
+			} else {
+				return inst->simulations["DA"].vals[s][(beginMin/periodLength)+(t*numBaseTimePerPeriod)][loc];
+			}
 		}
 	}
 }
@@ -513,9 +522,9 @@ void SUCsubprob::setup_subproblem(int &s) {
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
-		auto it = inst->simulations.mapVarNamesToIndex.find(genPtr->name);
+		auto it = inst->simulations["DA"].mapVarNamesToIndex.find(genPtr->name);
 		
-		if ( it != inst->simulations.mapVarNamesToIndex.end() ) {	// if random supply generator
+		if ( it != inst->simulations["DA"].mapVarNamesToIndex.end() ) {	// if random supply generator
 			for (int t=0; t<numPeriods; t++, c++) {					// Note: c is iterated in the secondary-loops
 				// Variant 1: Modifying random coefficient matrices
 //				if (s==-1)	{ supply = min(getRandomCoef(s, t, g), genPtr->maxCapacity); }
@@ -590,9 +599,9 @@ void SUCsubprob::compute_optimality_cut_coefs(BendersCutCoefs &cutCoefs, int &s)
 		
 		double supply;
 		
-		auto it = inst->simulations.mapVarNamesToIndex.find(genPtr->name);
+		auto it = inst->simulations["DA"].mapVarNamesToIndex.find(genPtr->name);
 		
-		if ( it != inst->simulations.mapVarNamesToIndex.end() ) {	// if random supply generator
+		if ( it != inst->simulations["DA"].mapVarNamesToIndex.end() ) {	// if random supply generator
 			for (int t=0; t<numPeriods; t++, c++) {					// Note: c is iterated in the secondary-loops
 				if (s==-1)	{ supply = min(getRandomCoef(s, t, g), genPtr->maxCapacity); }
 				else 		{ supply = min(getRandomCoef(s, t, it->second), genPtr->maxCapacity); }
@@ -752,9 +761,9 @@ void SUCsubprob::compute_feasibility_cut_coefs(BendersCutCoefs &cutCoefs, int &s
 		
 		double supply;
 		
-		auto it = inst->simulations.mapVarNamesToIndex.find(genPtr->name);
+		auto it = inst->simulations["DA"].mapVarNamesToIndex.find(genPtr->name);
 		
-		if ( it != inst->simulations.mapVarNamesToIndex.end() ) {	// if random supply generator
+		if ( it != inst->simulations["DA"].mapVarNamesToIndex.end() ) {	// if random supply generator
 			for (int t=0; t<numPeriods; t++, c++) {					// Note: c is iterated in the secondary-loops
 				if (s==-1)	{ supply = min(getRandomCoef(s, t, g), genPtr->maxCapacity); }
 				else 		{ supply = min(getRandomCoef(s, t, it->second), genPtr->maxCapacity); }

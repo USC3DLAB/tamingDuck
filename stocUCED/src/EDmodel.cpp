@@ -45,10 +45,11 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 	for (int b=0; b<numBus; b++) {
 		Bus *busPtr = &(inst.powSys->buses[b]);
 		
-		auto it = inst.observations["RT"].mapVarNamesToIndex.find( num2str(busPtr->regionId) );
+		// use actual values of the load (assuming that load-forecasts are perfect)
+		auto it = inst.actuals.mapVarNamesToIndex.find( num2str(busPtr->regionId) );
 		
 		for (int t=0; t<numPeriods; t++) {
-			busLoad[b][t] = inst.observations["RT"].vals[rep][t0+t][it->second] * busPtr->loadPercentage;
+			busLoad[b][t] = inst.actuals.vals[rep][t0+t][it->second] * busPtr->loadPercentage;
 			sysLoad[t] += busLoad[b][t];
 		}
 	}
@@ -89,17 +90,23 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 			}
 			
 			/* Stochastic generation set to what is available */
-			auto it = inst.observations["RT"].mapVarNamesToIndex.find(genPtr.name);
-			bool stocSupply = (it != inst.observations["RT"].mapVarNamesToIndex.end()) ? true : false;
-			
-			if (stocSupply) {
+			auto it = inst.actuals.mapVarNamesToIndex.find(genPtr.name);
+			if ( it != inst.actuals.mapVarNamesToIndex.end() ) {
+				/* supply info found within the time series */
+				
 				if ( t==0 ) {
-					it = inst.observations["RT"].mapVarNamesToIndex.find(genPtr.name);
-					genAvail[g][t] = min( inst.observations["RT"].vals[rep][t0+t][it->second], genMax[g][t] );
+					it = inst.actuals.mapVarNamesToIndex.find(genPtr.name);
+					genAvail[g][t] = min( inst.actuals.vals[rep][t0+t][it->second], genMax[g][t] );
 				}
 				else {
-					it = inst.observations["DA"].mapVarNamesToIndex.find(genPtr.name);
-					genAvail[g][t] = min( inst.observations["DA"].vals[rep][t0+t][it->second], genMax[g][t] );
+					if (runParam.updateForecasts) {
+						it = inst.meanForecast["RT"].mapVarNamesToIndex.find(genPtr.name);
+						genAvail[g][t] = min(inst.meanForecast["RT"].vals[rep][t0+t][it->second], genMax[g][t]);
+					}
+					else {
+						it = inst.meanForecast["DA"].mapVarNamesToIndex.find(genPtr.name);
+						genAvail[g][t] = min(inst.meanForecast["DA"].vals[rep][t0+t][it->second], genMax[g][t]);
+					}
 				}
 			}
 			
@@ -299,8 +306,8 @@ void EDmodel::formulate(instance &inst, int t0) {
 			Generator genPtr = inst.powSys->generators[g];
 
 			/* Stochastic generation set to what is available */
-			auto it = inst.observations["RT"].mapVarNamesToIndex.find(genPtr.name);
-			bool stocSupply = (it != inst.observations["RT"].mapVarNamesToIndex.end()) ? true : false;
+			auto it = inst.actuals.mapVarNamesToIndex.find(genPtr.name);
+			bool stocSupply = (it != inst.actuals.mapVarNamesToIndex.end()) ? true : false;
 			
 			if ( !stocSupply ) {
 				/* Deterministic-supply generator */

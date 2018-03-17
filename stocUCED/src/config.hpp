@@ -67,9 +67,10 @@ struct runType {
 	int		numTotScen;		// Number of time-series generated in total
 	int		numLSScen;		// Number of time-series needed to sample for L-Shaped
 	
-	bool 	useGenHistory;	// true if generator histories from the previous run is being used, false oth.
-	double 	spinResPerc;	// spinning reserve percentage
+	bool 	useGenHistory;			// true if generator histories from the previous run is being used, false oth.
+	double 	spinResPerc;			// spinning reserve percentage
 	double	renewableMultiplier;	// renewable-supply will be multiplied with this factor
+	bool	updateForecasts;		// real-time forecast updates
 };
 
 const double pi = 3.1451;

@@ -3,8 +3,9 @@ rm(list=ls(all=TRUE))
 set.seed(0)
 numScenarios = 1000
 nRep = 7
-today = 15  # we will plan, starting with this day...  
-forecastWindow = 14 # we will look 14 days of history for fitting the models...
+today = 25  # Jan 25, we will plan, starting with this day...  
+#today = 197 # Jul 15"
+forecastWindow = 21 # we will look 21 days of history for fitting the models...
 
 source("runPreamble.R")
 
@@ -95,8 +96,8 @@ meanDailyWTrend <- abind::abind(meanDailyWTrend, meanDailyWTrendtmp, along = 1)
 meanDailySTrend <- abind::abind(meanDailySTrend, meanDailySTrendtmp, along = 1)
 
 # print mean forecasts
-write.csv(meanDailyWTrend, "DA_wind.csv")
-write.csv(meanDailySTrend, "DA_solar.csv")
+write.csv(meanDailyWTrend, "DA_Wind.csv")
+write.csv(meanDailySTrend, "DA_Solar.csv")
 
 print("Scenario generation is completed.")
 
