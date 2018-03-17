@@ -7,6 +7,6 @@ wModel = windVARModel(tsData, lag.max = 5, infocrit = "SC")
 
 ### Solar Model ###
 tsData = prepareTSData(dataset = dataset, srcType = "Solar", prepType = "extract", forecastType = "DA", today = today, forecastWindow = forecastWindow)
-sModel = solarVARModel(tsData, lag.max = 5, infocrit = "SC", clearSky = TRUE)
+sModel = solarVARModel(tsData, lag.max = 5, infocrit = "SC", clearSky = FALSE)
 
 print("Modeling is completed")
