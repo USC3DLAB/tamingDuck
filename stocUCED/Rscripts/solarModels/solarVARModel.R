@@ -57,6 +57,6 @@ solarVARModel <- function(tsData, freq, lag.max = 3, infocrit = 'SC', clearSky =
     }
   }
   
-  return(list(ts = ts, numLoc = numLoc, freq = freq,
+  return(list(ts = ts, numLoc = numLoc, freq = freq, todayTS = tsData$todayts,
               model = list(clearSky = clearSkyGeneration, avgSky = avgSkyGeneration, capacity = cap, dayTime = dayTime, est = varsimest)))
 }

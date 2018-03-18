@@ -1,7 +1,7 @@
 prepareTSData <- function(dataset, srcType, prepType = "extract", forecastType = "DA",
                           today = 15, forecastWindow = 14,
                           decomposeBy = 'monthly', identifier = 'January', 
-                          ts = NULL, cap = NULL) {
+                          ts = NULL, cap = NULL, todayts = NULL) {
   # Input: 
   #   - dataset: the whole dataset
   #   - srcType: which source are we preparing for model-fitting? ("Solar", "Wind", ...)
@@ -18,11 +18,17 @@ prepareTSData <- function(dataset, srcType, prepType = "extract", forecastType =
         ts <- abind::abind(ts, extractTSData(inputTS = dataset[[d]]$ts[[forecastType]], 
                                              freq = dataset[[d]]$freq[[forecastType]],
                                              today = today, forecastWindow = forecastWindow), along = 3);
+        todayts <- abind::abind(todayts, extractTSData(inputTS = dataset[[d]]$ts[[forecastType]], 
+                                                     freq = dataset[[d]]$freq[[forecastType]],
+                                                     today = today+1, forecastWindow = 1), along = 3);
       }
       else if (prepType == "decompose") {
         ts <- abind::abind(ts, decomposeTSData(inputTS = dataset[[d]]$ts[[forecastType]], 
                                                freq = dataset[[d]]$freq[[forecastType]], 
                                                decomposeBy = decomposeBy, identifier = identifier), along = 3)
+        todayts <- abind::abind(todayts, extractTSData(inputTS = dataset[[d]]$ts[[forecastType]], 
+                                                     freq = dataset[[d]]$freq[[forecastType]],
+                                                     today = today+1, forecastWindow = 1), along = 3);
       }
       else {
         print("Error: Unknown prepType in prepareTSData.R")
@@ -32,6 +38,7 @@ prepareTSData <- function(dataset, srcType, prepType = "extract", forecastType =
     }
   }
   ts <- aperm(ts, c(2,3,1))
+  todayts <- aperm(todayts, c(2,3,1))
   
-  return(list(ts = ts, cap = cap, freq = freq))
+  return(list(ts = ts, cap = cap, freq = freq, todayts = todayts))
 }

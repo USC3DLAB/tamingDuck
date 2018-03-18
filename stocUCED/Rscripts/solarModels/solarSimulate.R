@@ -39,7 +39,8 @@ solarSimulate <- function(sModel, simLength = 24, lookahead = 3, numScenarios = 
       samplePaths <- abind::abind(samplePaths, tempTS, along = 1)
     }
     else {
-      tempTS <- replicate(n = numScenarios, expr = sModel$model$avgSky);
+      #tempTS <- replicate(n = numScenarios, expr = sModel$model$avgSky);
+      tempTS <- replicate(n = numScenarios, expr = sModel$todayTS[,,1]);
       tempTS[sModel$model$dayTime,,] <- simPaths[((d-1)*nDayHours+1):(d*nDayHours),,] +  tempTS[sModel$model$dayTime,,]
       tempTS[ tempTS < 0 ] <- 0
       samplePaths <- abind::abind(samplePaths, tempTS, along = 1)
