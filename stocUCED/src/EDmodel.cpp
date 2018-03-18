@@ -319,9 +319,11 @@ void EDmodel::formulate(instance &inst, int t0) {
 	//			IloConstraint c1b( genUsed[g][t] + overGen[g][t] <= genPtr.maxCapacity);
 	//			c1b.setName(elemName); model.add(c1b);
 
-				sprintf(elemName, "minGen(%d)(%d)", g, t);
-				IloConstraint c2( genUsed[g][t] >= genMin[g][t]);
-				c2.setName(elemName); model.add(c2);
+				if (genMin[g][t] >= EPSzero) {	// if no min-generation requirement, skip the constraint 
+					sprintf(elemName, "minGen(%d)(%d)", g, t);
+					IloConstraint c2( genUsed[g][t] >= genMin[g][t]);
+					c2.setName(elemName); model.add(c2);
+				}
 			}
 			else {
 				/* Stochastic-supply generator */
