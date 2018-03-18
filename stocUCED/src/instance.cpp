@@ -133,6 +133,9 @@ void instance::summary() {
  * Uses R scripts to simulate multiple time series
  ****************************************************************************/
 void instance::simulateScenarios(int numScen, bool fitModel, int rep) {
+	// clear the previous info, if there is any
+	simulations.clear();
+	
 	int maxLookAhead = max(runParam.ED_numPeriods-1, runParam.ST_numPeriods-1);
 	int numSimLengthInDays = ceil( (double)(runParam.numPeriods+maxLookAhead)/(60.0/runParam.baseTime) );
 	

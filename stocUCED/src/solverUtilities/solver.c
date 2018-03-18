@@ -200,7 +200,7 @@ void openSolver(){
 		goto TERMINATE;
 	}
 
-	status = setIntParam(CPX_PARAM_THREADS, 4);	// Semih: Thread count is increased (Mar 15, 2018).
+	status = setIntParam(CPX_PARAM_THREADS, 1);
 	if ( status ) {
 		errMsg("solver", "open_solver", "parallel threads", 0);
 		goto TERMINATE;
