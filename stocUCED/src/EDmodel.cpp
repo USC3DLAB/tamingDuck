@@ -384,25 +384,17 @@ bool EDmodel::solve(instance &inst, int t0) {
 		if (status) {
 			double totLoadShed = 0;
 			for (int b=0; b<numBus; b++) {
-				for (int t=0; t<numPeriods; t++) {
+				for (int t=0; t<1; t++) {
 					try {
 						if ( cplex.getValue(demShed[b][t]) > 1e-6 ) {
-							/*
-							if (totLoadShed == 0)	// first time
-							{
-								cout << endl << "~Load Shed~" << endl;
-							}
-							*/
 							totLoadShed += cplex.getValue(demShed[b][t]);
-							//cout << cplex.getValue(demShed[b][t]) << " (" << b << "," << t << "), ";
 						}
 					}
 					catch (IloException &e) { }
 				}
 			}
 			if (totLoadShed > 0) {
-				cout << " [LS!] ";
-				//cout << "Total Load Shed= " << totLoadShed << ", Penalty= " << totLoadShed*loadShedPenaltyCoef << endl << endl;
+				cout << "[LS! " << totLoadShed << " MWs] ";
 			}
 		}
 		
