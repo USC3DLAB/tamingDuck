@@ -74,7 +74,7 @@ struct runType {
 };
 
 const double pi = 3.1451;
-const double loadShedPenaltyCoef = 1e5;
+const double loadShedPenaltyCoef = 5000;
 const double overGenPenaltyCoef = 25.0;
 const double EPSzero = 1e-8;
 
