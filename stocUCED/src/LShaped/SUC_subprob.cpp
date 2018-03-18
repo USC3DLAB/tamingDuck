@@ -143,6 +143,7 @@ double SUCsubprob::getRandomCoef (int &s, int &t, int &loc) {
 			return (*expCapacity)[loc][t];
 		} else {
 			if (runParam.updateForecasts && probType != DayAhead) {
+				//TODO: Careful. "loc" is coming from simulations["DA"]! The orders must be the same (currently they are).
 				return inst->simulations["RT"].vals[s][(beginMin/periodLength)+(t*numBaseTimePerPeriod)][loc];
 			} else {
 				return inst->simulations["DA"].vals[s][(beginMin/periodLength)+(t*numBaseTimePerPeriod)][loc];
