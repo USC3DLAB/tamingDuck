@@ -26,6 +26,7 @@ int integrateSD(instance &inst, EDmodel &rtED, string probName, string &configPa
 	ScenarioType *simulations = runParam.updateForecasts ? &inst.simulations["RT"] : &inst.simulations["DA"];
 	
 	int j=0;
+	double totalLoadShed = 0.0;
 	
 	/* TODO: Create a common output directory: Setup outputDir */
 	outputDir = (stringC) malloc(2*BLOCKSIZE*sizeof(char));
@@ -75,10 +76,13 @@ int integrateSD(instance &inst, EDmodel &rtED, string probName, string &configPa
 		inst.solution.g_ED[g][t0] = max(0.0, inst.solution.g_ED[g][t0]);	// correcting numerical errors
 	}
 	
+	totalLoadShed = 0.0;
 	for (int b=0; j<inst.powSys->numGen*2+inst.powSys->numBus*3; b++, j=j+3) {
 		inst.solution.loadShed_ED[b][t0] = edSols[j+1];
+		if (inst.solution.loadShed_ED[b][t0] > EPSzero)	totalLoadShed += inst.solution.loadShed_ED[b][t0];
 	}
-
+	if (totalLoadShed > EPSzero)	printf("[LS! %.1f MWs] ", totalLoadShed);
+	
 	/* free memory */
 	mem_free(edSols);
 	freeOneProblem(orig);
