@@ -447,7 +447,7 @@ void SUCmaster::preprocessing ()
 	/* Select a random permutation of scenarios from the sample space */
 	rndPermutation.resize(runParam.numLSScen);
 	for (int s=0; s<runParam.numLSScen; s++) {
-		rndPermutation[s] = rand() % inst->simulations["DA"].vals.size();
+		rndPermutation[s] = rand() % runParam.numTotScen;
 //		rndPermutation[s] = s;
 	}
 	

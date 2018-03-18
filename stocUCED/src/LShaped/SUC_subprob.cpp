@@ -142,7 +142,7 @@ double SUCsubprob::getRandomCoef (int &s, int &t, int &loc) {
 		if (s == -1) {
 			return (*expCapacity)[loc][t];
 		} else {
-			if (runParam.updateForecasts) {
+			if (runParam.updateForecasts && probType != DayAhead) {
 				return inst->simulations["RT"].vals[s][(beginMin/periodLength)+(t*numBaseTimePerPeriod)][loc];
 			} else {
 				return inst->simulations["DA"].vals[s][(beginMin/periodLength)+(t*numBaseTimePerPeriod)][loc];

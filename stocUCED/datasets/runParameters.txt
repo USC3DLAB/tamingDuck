@@ -9,9 +9,10 @@ DA_time_frequency 24 hours
 ST_time_frequency 1 hours
 ED_time_frequency 15 minutes
 numRep 7 scenarios
+startRep 1
 numLSScen 100 scenarios
 numTotScen 1000 scenarios
-spinResPerc 0.1
+spinResPerc 0.05
 useGenHistory 0
 renewableMultiplier 1
 updateForecasts 0

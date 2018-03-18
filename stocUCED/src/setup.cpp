@@ -455,7 +455,7 @@ int setup (PowSys &powSys, StocProcess &stocProc, string &configPath, string &RS
 			break;
 	}
 	cout << "------------------------------------------------------------------" << endl;
-	for (int rep = 0; rep < runParam.numRep; rep++) {
+	for (int rep = runParam.startRep-1; rep < runParam.numRep; rep++) {
 		cout << "Day: " << rep+1 << endl;
 		
 		/* random sampling */

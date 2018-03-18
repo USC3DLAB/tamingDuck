@@ -217,6 +217,8 @@ void readRunfile (string inputDir) {
 					runParam.renewableMultiplier = temp;
 				else if ( field1 == "updateForecasts" )
 					runParam.updateForecasts = temp;
+				else if ( field1 == "startRep" )
+					runParam.startRep = temp;
 				else {
 					perror("Warning:: Unidentified run parameter in the file.\n");
 				}
@@ -237,7 +239,10 @@ void readRunfile (string inputDir) {
 		perror("The short-term and economic dispatch time parameters are not compatible");
 	if ( fmod(runParam.ED_horizon, runParam.ED_resolution) != 0 || fmod(runParam.ED_frequency, runParam.ED_resolution) != 0)
 		perror("The economic dispatch time parameters are not consistent.\n");
-
+	if ( runParam.startRep < 1 ) {
+		perror("Starting replication cannot be < 1.\n");
+	}
+	
 	/* Compute the remaining run parameters */
 	runParam.DA_numPeriods = runParam.DA_horizon/runParam.DA_resolution; runParam.DA_numSolves = runParam.horizon/runParam.DA_frequency;
 	runParam.ST_numPeriods = runParam.ST_horizon/runParam.ST_resolution; runParam.ST_numSolves = runParam.DA_frequency/runParam.ST_frequency;
