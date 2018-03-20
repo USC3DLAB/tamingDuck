@@ -311,18 +311,21 @@ void EDmodel::formulate(instance &inst, int t0) {
 			
 			if ( !stocSupply ) {
 				/* Deterministic-supply generator */
-				sprintf(elemName, "maxGen(%d)(%d)", g, t);
-				IloConstraint c1a( genUsed[g][t] + overGen[g][t] <= genMax[g][t]);
-				c1a.setName(elemName); model.add(c1a);
-
-	//			sprintf(elemName, "maxGenB(%d)(%d)", g, t);
-	//			IloConstraint c1b( genUsed[g][t] + overGen[g][t] <= genPtr.maxCapacity);
-	//			c1b.setName(elemName); model.add(c1b);
-
-				if (genMin[g][t] >= EPSzero) {	// if no min-generation requirement, skip the constraint 
-					sprintf(elemName, "minGen(%d)(%d)", g, t);
-					IloConstraint c2( genUsed[g][t] >= genMin[g][t]);
-					c2.setName(elemName); model.add(c2);
+				if (genPtr.isMustUse) {
+					sprintf(elemName, "detAvail(%d)(%d)", g, t);
+					IloConstraint c (genUsed[g][t] == genMax[g][t]); c.setName(elemName); model.add(c);
+					overGen[g][t].setUB(0);
+				}
+				else {
+					sprintf(elemName, "maxGen(%d)(%d)", g, t);
+					IloConstraint c1( genUsed[g][t] + overGen[g][t] <= genMax[g][t]);
+					c1.setName(elemName); model.add(c1);
+					
+					if (genMin[g][t] >= EPSzero) {	// if no min-generation requirement, skip the constraint
+						sprintf(elemName, "minGen(%d)(%d)", g, t);
+						IloConstraint c2( genUsed[g][t] >= genMin[g][t]);
+						c2.setName(elemName); model.add(c2);
+					}
 				}
 			}
 			else {
@@ -332,7 +335,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 					IloConstraint c (genUsed[g][t] == genAvail[g][t]); c.setName(elemName); model.add(c);
 					overGen[g][t].setUB(0);
 				} else {
-					IloConstraint c (genUsed[g][t] + overGen[g][t] == genAvail[g][t]); c.setName(elemName); model.add(c);
+					IloConstraint c (genUsed[g][t] + overGen[g][t] <= genAvail[g][t]); c.setName(elemName); model.add(c);
 				}
 
 				if ( t != 0 )
