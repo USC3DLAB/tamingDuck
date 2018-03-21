@@ -22,7 +22,7 @@ int solveProblem(LPptr lp, stringC pname, int type, int *status) {
 		break;
 	case PROB_QP:
         changeSolverType(ALG_CONCURRENT);
-		(*status) = CPXbaropt(env, lp);
+		(*status) = CPXqpopt(env, lp);
 		break;
 	case PROB_MILP:
 		(*status) = CPXmipopt(env, lp);
