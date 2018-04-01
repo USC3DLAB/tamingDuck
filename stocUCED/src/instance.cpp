@@ -57,7 +57,7 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, string RScriptsPath
 	cout << actuals.name << ":" << endl;
 	int i=0;
 	for (auto it=actuals.mapVarNamesToIndex.begin(); it!=actuals.mapVarNamesToIndex.end(); ++it, ++i) {
-        cout << setw(4) << left << i << setw(30) << it->first << " (" << setprecision(2) << runParam.renewableMultiplier << "x)\t[OK]" << endl;
+		cout << setw(4) << left << i << setw(30) << it->first << " (" << setprecision(2) << runParam.renewableCoef << "x)\t[OK]" << endl;
 	}
 	cout << endl;
 
