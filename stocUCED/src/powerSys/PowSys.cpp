@@ -277,7 +277,13 @@ void PowSys::postprocessing() {
 		
 		// boost solar/wind generator outputs
 		if (gen_ptr->type == Generator::SOLAR || gen_ptr->type == Generator::WIND) {
-			gen_ptr->maxCapacity *= runParam.renewableMultiplier;
+			gen_ptr->maxCapacity *= runParam.renewableCoef;
+		}
+		
+		// adjust ramping coefficients
+		if (gen_ptr->type != Generator::SOLAR && gen_ptr->type != Generator::WIND) {
+			gen_ptr->rampUpLim *= runParam.rampingCoef;
+			gen_ptr->rampDownLim *= runParam.rampingCoef;
 		}
 	}
 }

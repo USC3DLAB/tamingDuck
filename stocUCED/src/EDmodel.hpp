@@ -50,7 +50,7 @@ public:
 private:
 	IloArray <IloNumVarArray> genUsed, overGen, demMet, demShed, flow, theta;
 
-	int numGen, numBus, numLine, numLoad, numPeriods;
+	int numGen, numBus, numLine, numLoad, numPeriods, rep;
 	vector<vector<double>> busLoad, genMin, genMax, genRampUp, genRampDown, genAvail;
 	vector<double> sysLoad;
 };

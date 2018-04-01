@@ -171,6 +171,9 @@ void readRunfile (string inputDir) {
 	runParam.useGenHistory = false;
 	runParam.updateForecasts = false;
 	
+	runParam.rampingCoef = 1.0;
+	runParam.renewableCoef = 1.0;
+	
 	/* Read the run parameters if a run file is included in the default folder */
 	if ( open_file(fptr, (inputDir + "runParameters.txt")) ) {
 		while ( getline(fptr, line) ) {
@@ -213,8 +216,10 @@ void readRunfile (string inputDir) {
 					runParam.spinResPerc = temp;
 				else if ( field1 == "useGenHistory" )
 					runParam.useGenHistory = temp;
-				else if ( field1 == "renewableMultiplier" )
-					runParam.renewableMultiplier = temp;
+				else if ( field1 == "renewableCoef" )
+					runParam.renewableCoef = temp;
+				else if ( field1 == "rampingCoef" )
+					runParam.rampingCoef = temp;
 				else if ( field1 == "updateForecasts" )
 					runParam.updateForecasts = temp;
 				else if ( field1 == "startRep" )
@@ -261,7 +266,8 @@ void readRunfile (string inputDir) {
 	cout << "ST-UC     " << fixed << setprecision(0) << setw(4) << runParam.ST_horizon/60 << setw(4) << " hr" << setw(9) << runParam.ST_resolution << " min    " << "every " << setw(2) << runParam.ST_frequency/60 << setw(4) << " hr" << endl;
 	cout << "ED        " << fixed << setprecision(0) << setw(4) << runParam.ED_horizon << " min " << setw(8) << runParam.ED_resolution << " min    " << "every " << setw(2) << runParam.ED_frequency << setw(4) << " min" << endl;
 	cout << endl << "Spinning reserve percentage = " << runParam.spinResPerc*100 << "%" << endl;
-	cout << "Renewable-boost multiplier = " << runParam.renewableMultiplier << endl;
+	cout << "Renewable coefficient = " << runParam.renewableCoef << endl;
+	cout << "Ramping rate coefficient = " << runParam.rampingCoef << endl;
 	if (runParam.useGenHistory) cout << "Using generator histories from earlier days." << endl;
 	cout << "------------------------------------------------------------------" << endl;
 

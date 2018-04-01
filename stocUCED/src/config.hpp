@@ -71,13 +71,15 @@ struct runType {
 	
 	bool 	useGenHistory;			// true if generator histories from the previous run is being used, false oth.
 	double 	spinResPerc;			// spinning reserve percentage
-	double	renewableMultiplier;	// renewable-supply will be multiplied with this factor
+	double	renewableCoef;			// renewable-supply will be multiplied with this factor
+	double	rampingCoef;			// ramping rates will be multiplied with this factor
 	bool	updateForecasts;		// real-time forecast updates
 };
 
 const double pi = 3.1451;
 const double loadShedPenaltyCoef = 5000;
 const double overGenPenaltyCoef = 25.0;
+const double renCurtailPenaltyCoef = 25.0;
 const double EPSzero = 1e-8;
 
 const char delimiter = ',';

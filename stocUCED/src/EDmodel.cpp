@@ -29,7 +29,7 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 	numBus = numLoad = inst.powSys->numBus;
 	numGen = inst.powSys->numGen;
 	numLine = inst.powSys->numLine;
-
+	this->rep = rep;
 	numPeriods = runParam.ED_numPeriods;
 
 	resize_matrix(busLoad, numBus, numPeriods);
@@ -287,7 +287,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 			}
 		}
 		
-		/* spinning-reserve constraints */
+		/* system-wide spinning-reserve constraints *
 		if (t != 0) {
 			IloExpr sysOverGen (env);
 			
@@ -301,7 +301,86 @@ void EDmodel::formulate(instance &inst, int t0) {
 			sysOverGen.end();
 		}
 		/*	*/
+		
+//		// Stay within the ballpark of UC generation levels
+//		for (int g=0; g<numGen; g++) {
+//			Generator *genPtr = &(inst.powSys->generators[g]);
+//			if (genPtr->type != Generator::SOLAR && genPtr->type != Generator::WIND) {
+//				for (int t=0; t<numPeriods; t++) {
+//					const double percentage = 0.1;
+//
+//					model.add( genUsed[g][t] + overGen[g][t] <= inst.solution.g_UC[g][t0+t] * (1+percentage) );
+//					model.add( genUsed[g][t] + overGen[g][t] >= inst.solution.g_UC[g][t0+t] * (1-percentage) );
+//				}
+//			}
+//		}
 
+		/* system-wide ramping capability *
+		if (t==0) {
+			for (int t_future=t0+1; t_future<runParam.numPeriods; t_future++) {	// for every future period in the "whole" planning horizon
+				double sysRampUpCap = 0, predRenGen = 0, currentRenGen = 0;
+				int nbPeriodsOpen = 0;
+				for (int g=0; g<numGen; g++) {
+					Generator *genPtr = &(inst.powSys->generators[g]);
+					if ( genPtr->type == Generator::SOLAR || genPtr->type == Generator::WIND ) {
+						// solar and wind generators
+						
+						// get the actuals for the current time period
+						auto it = inst.actuals.mapVarNamesToIndex.find(genPtr->name);
+						currentRenGen += min(inst.actuals.vals[rep][t0][it->second], genMax[g][t]);
+						
+						// get the amount of predicted-supply at t_future
+						if (runParam.updateForecasts) {
+							auto it = inst.meanForecast["RT"].mapVarNamesToIndex.find(genPtr->name);
+							predRenGen += min(inst.meanForecast["RT"].vals[rep][t_future][it->second], genMax[g][t]);
+						}
+						else {
+							auto it = inst.meanForecast["DA"].mapVarNamesToIndex.find(genPtr->name);
+							predRenGen += min(inst.meanForecast["DA"].vals[rep][t_future][it->second], genMax[g][t]);
+						}
+					}
+					else {
+						// conventional generators
+						// count the # of periods generator can ramp up till t_future
+						nbPeriodsOpen = 0;
+						for (int l=t_future; l >= t0+1; l--) {
+							if ( inst.solution.x[g][l] <= EPSzero ) break;
+							
+							nbPeriodsOpen++;
+						}
+						
+						// calculate the ramping capability of the generator till t_future
+						sysRampUpCap += nbPeriodsOpen * inst.powSys->generators[g].rampUpLim * runParam.ED_resolution;
+					}
+				}
+				
+				// get the system load at time t_future
+				double futureSysLoad = 0, currentSysLoad = 0;
+				for (int r=0; r<3; r++)	{	// assuming 3 regions in here. TODO: generalize this
+					auto it = inst.actuals.mapVarNamesToIndex.find( num2str(r+1) );
+					futureSysLoad += inst.actuals.vals[rep][t_future][it->second];
+					currentSysLoad += inst.actuals.vals[rep][t0][it->second];
+				}
+				
+				// add the constraint
+				if (futureSysLoad-currentSysLoad > 0) {
+					cout << endl << "t=" << t0 << ", tf=" << t_future << ", Sys-RampUpReq = " << (futureSysLoad-predRenGen)-(currentSysLoad-currentRenGen) << ", " << "Sys-RampUpCap = " << sysRampUpCap + (predRenGen-currentRenGen);
+				}
+				if (futureSysLoad-currentSysLoad > sysRampUpCap + (predRenGen-currentRenGen)) {
+					IloExpr sysOverGen (env);
+					for (int g=0; g<numGen; g++) {
+						Generator *genPtr = &(inst.powSys->generators[g]);
+						if ( genPtr->type == Generator::SOLAR || genPtr->type == Generator::WIND )	continue;
+						
+						if (inst.solution.x[g][t_future] >= 1-EPSzero)	sysOverGen += overGen[g][t];
+					}
+					model.add( sysOverGen >= futureSysLoad-currentSysLoad - sysRampUpCap - (predRenGen-currentRenGen) );
+				}
+			}
+		}
+		/*  */
+		
+		
 		for ( int g = 0; g < numGen; g++ ) {
 			Generator genPtr = inst.powSys->generators[g];
 
@@ -335,7 +414,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 					IloConstraint c (genUsed[g][t] == genAvail[g][t]); c.setName(elemName); model.add(c);
 					overGen[g][t].setUB(0);
 				} else {
-					IloConstraint c (genUsed[g][t] + overGen[g][t] <= genAvail[g][t]); c.setName(elemName); model.add(c);
+					IloConstraint c (genUsed[g][t] + overGen[g][t] == genAvail[g][t]); c.setName(elemName); model.add(c);
 				}
 
 				if ( t != 0 )
@@ -346,7 +425,12 @@ void EDmodel::formulate(instance &inst, int t0) {
 		/* Demand consistency */
 		for ( int d = 0; d < numBus; d++ ) {
 			sprintf(elemName, "demConsist(%d)(%d)", d, t);
-			IloConstraint c(demMet[d][t] + demShed[d][t] == busLoad[d][t]); c.setName(elemName); model.add(c);
+			if (t==0) {
+				IloConstraint c(demMet[d][t] + demShed[d][t] == busLoad[d][t]); c.setName(elemName); model.add(c);
+			} else {
+				/* Node-wise spinning reserves */
+				IloConstraint c(demMet[d][t] + demShed[d][t] == busLoad[d][t]*(1+runParam.spinResPerc)); c.setName(elemName); model.add(c);
+			}
 		}
 	}
 
@@ -358,7 +442,12 @@ void EDmodel::formulate(instance &inst, int t0) {
 		/* Generation cost */
 		for ( int g = 0; g < numGen; g++ ) {
 			realTimeCost += (inst.powSys->generators[g].variableCost*runParam.ED_resolution/60.0)*(genUsed[g][t] + overGen[g][t]);
-			realTimeCost += overGenPenaltyCoef*overGen[g][t];
+			if ( inst.powSys->generators[g].type == Generator::SOLAR || inst.powSys->generators[g].type == Generator::WIND ) {
+				realTimeCost += renCurtailPenaltyCoef * overGen[g][t];
+			}
+			else {
+				realTimeCost += overGenPenaltyCoef*overGen[g][t];
+			}
 		}
 
 		/* Load shedding penalty */
