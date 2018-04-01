@@ -14,5 +14,6 @@ numLSScen 100 scenarios
 numTotScen 1000 scenarios
 spinResPerc 0.05
 useGenHistory 0
-renewableMultiplier 1
+renewableCoef 2.5
+rampingCoef 0.75
 updateForecasts 0
