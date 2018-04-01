@@ -57,7 +57,7 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, string RScriptsPath
 	cout << actuals.name << ":" << endl;
 	int i=0;
 	for (auto it=actuals.mapVarNamesToIndex.begin(); it!=actuals.mapVarNamesToIndex.end(); ++it, ++i) {
-		cout << setw(4) << left << i << setw(30) << it->first << " (" << setprecision(2) << runParam.renewableMultiplier << "x)\t[OK]" << endl;
+        cout << setw(4) << left << i << setw(30) << it->first << " (" << setprecision(2) << runParam.renewableMultiplier << "x)\t[OK]" << endl;
 	}
 	cout << endl;
 
@@ -85,7 +85,7 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, string RScriptsPath
 	cout << meanForecast[filename].name << ":" << endl;
 	i=0;
 	for (auto it=meanForecast[filename].mapVarNamesToIndex.begin(); it!=meanForecast[filename].mapVarNamesToIndex.end(); ++it, ++i) {
-		cout << setw(4) << left << i << setw(30) << it->first << " (" << setprecision(2) << runParam.renewableMultiplier << "x)\t[OK]" << endl;
+		cout << setw(4) << left << i << setw(30) << it->first << " (" << setprecision(2) << runParam.renewableCoef << "x)\t[OK]" << endl;
 	}
 	cout << endl;
 
@@ -262,14 +262,14 @@ void instance::correctSupplyExceedingCapacity(ScenarioType &scenarioType) {
 
 void instance::boostRenewableSupply(ScenarioType &scenarioType) {
 	// renewable-supply boost
-	if ( fabs(runParam.renewableMultiplier-1) > EPSzero ) {
+	if ( fabs(runParam.renewableCoef-1) > EPSzero ) {
 		for (auto it = powSys->generators.begin(); it != powSys->generators.end(); ++it) {
 			if (it->type == Generator::SOLAR || it->type == Generator::WIND) {
 				int genidx = scenarioType.mapVarNamesToIndex[it->name];	// get generator idx
 				
 				for (int r=0; r<scenarioType.vals.size(); r++) {			// increase the production in every scenario
 					for (int t=0; t<scenarioType.vals[0].size(); t++) {
-						scenarioType.vals[r][t][genidx] *= runParam.renewableMultiplier;
+						scenarioType.vals[r][t][genidx] *= runParam.renewableCoef;
 					}
 				}
 			}
