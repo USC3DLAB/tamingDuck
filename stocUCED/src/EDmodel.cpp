@@ -402,7 +402,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 					
 					if (genMin[g][t] >= EPSzero) {	// if no min-generation requirement, skip the constraint
 						sprintf(elemName, "minGen(%d)(%d)", g, t);
-						IloConstraint c2( genUsed[g][t] >= genMin[g][t]);
+						IloConstraint c2( genUsed[g][t] + overGen[g][t] >= genMin[g][t]);
 						c2.setName(elemName); model.add(c2);
 					}
 				}
