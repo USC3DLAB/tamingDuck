@@ -10,7 +10,6 @@
 
 extern runType runParam;
 
-
 UCmodel::UCmodel () {
 	model = IloModel(env);
 	cplex = IloCplex(env);
@@ -92,22 +91,22 @@ void UCmodel::preprocessing ()
 			for (int t=0; t<numPeriods; t++) {
 				period = (beginMin/periodLength)+(t*numBaseTimePerPeriod);
 
-				if (t == 0 && probType == ShortTerm) {
-					// use actual values for the 1st-period of the ST-UC problem
-					it = inst->actuals.mapVarNamesToIndex.find(genPtr->name);
-					capacity[g][t] = min(inst->actuals.vals[rep][period][it->second], genPtr->maxCapacity);
+				if (probType == DayAhead) {	// use DA forecasts for the DA-UC problem
+					it = inst->meanForecast["DA"].mapVarNamesToIndex.find(genPtr->name);
+					capacity[g][t] = min(inst->meanForecast["DA"].vals[rep][period][it->second], genPtr->maxCapacity);
+				}
+				else if (probType == ShortTerm) { // use 4HA forecasts for the ST-UC problem
+					it = inst->meanForecast["4HA"].mapVarNamesToIndex.find(genPtr->name);
+					capacity[g][t] = min(inst->meanForecast["4HA"].vals[rep][period][it->second], genPtr->maxCapacity);
+					
+					// TODO: Should you use the real-time values for the first period of ST-UC?
 				}
 				else {
-					if (runParam.updateForecasts && probType != DayAhead) {
-						// use updated forecasts (only) for the ST-UC problem
-						it = inst->meanForecast["RT"].mapVarNamesToIndex.find(genPtr->name);
-						capacity[g][t] = min(inst->meanForecast["RT"].vals[rep][period][it->second], genPtr->maxCapacity);
-					}
-					else {
-						// use DA forecasts if no updates are made, or for the DA-UC problem
-						it = inst->meanForecast["DA"].mapVarNamesToIndex.find(genPtr->name);
-						capacity[g][t] = min(inst->meanForecast["DA"].vals[rep][period][it->second], genPtr->maxCapacity);
-					}
+					cout << "Error" << endl;
+				}
+				
+				if (runParam.updateForecasts) {
+					cout << "Updating the forecasts currently has no effect on the UC models" << endl;
 				}
 			}
 		}
@@ -144,10 +143,13 @@ void UCmodel::preprocessing ()
 				it = inst->meanForecast["DA"].mapVarNamesToIndex.find( num2str(busPtr->regionId) );
 				busLoad[b][t] = inst->meanForecast["DA"].vals[rep][period][it->second] * busPtr->loadPercentage;
 			}
-			else {
-				// use actual values of the load in the ST-UC problems (assuming the forecasts are accurate, which is quite true)
+			else if ( probType == ShortTerm ) {
+				// use actual values of the load in the ST-UC problems (assuming the forecasts are accurate, which is, in general, true)
 				it = inst->actuals.mapVarNamesToIndex.find( num2str(busPtr->regionId) );
 				busLoad[b][t] = inst->actuals.vals[rep][period][it->second] * busPtr->loadPercentage;
+			}
+			else {
+				cout << "Error" << endl;
 			}
 		}
 	}
@@ -155,7 +157,12 @@ void UCmodel::preprocessing ()
 	/* Spinning Reserve */
 	for (int b=0; b<numBus; b++) {
 		for (int t=0; t<numPeriods; t++) {
-			busLoad[b][t] *= (1+runParam.spinResPerc);
+//			if (probType == DayAhead) {
+//				busLoad[b][t] *= (1+0.15);
+//			}
+//			else {
+				busLoad[b][t] *= (1+0.1);
+//			}
 		}
 	}
 	
@@ -194,6 +201,8 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	z	  = IloArray<IloNumVarArray> (env, numGen);	// shut down vars
 	p	  = IloArray<IloNumVarArray> (env, numGen);	// production amounts
 	p_var = IloArray<IloNumVarArray> (env, numGen);	// variable-production amounts
+	IloArray<IloNumVarArray> delta_pos (env, numGen);	// positive deviations from settled DA-UC generation amounts
+	IloArray<IloNumVarArray> delta_neg (env, numGen);	// negative deviations from settled DA-UC generation amounts
 	
 	for (int g=0; g<numGen; g++) {
 		s[g] = IloNumVarArray(env, numPeriods, 0, 1, ILOBOOL);
@@ -202,6 +211,9 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	
 		p[g]	 = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
 		p_var[g] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+		
+		delta_pos[g] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+		delta_neg[g] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
 		
 		sprintf(buffer, "s_%d", g);
 		s[g].setNames(buffer);
@@ -283,7 +295,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 		}
 	}
 	
-	// must-run units must be committed
+	// must-commit units must be committed
 	for (int g=0; g<numGen; g++) {
 		if ( inst.powSys->generators[g].isMustRun ) {
 			for (int t=0; t<numPeriods; t++) {
@@ -342,6 +354,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	// ramp up constraints
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst.powSys->generators[g]);
+		if (probType == DayAhead && !genPtr->isDAUCGen) continue;	// if this is DA-UC, ignore the ramp constraints for ST-UC generators
 		
 		/* t = 0 */
 		int t = 0;
@@ -364,6 +377,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	// ramp down constraints
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst.powSys->generators[g]);
+		if (probType == DayAhead && !genPtr->isDAUCGen) continue;	// if this is DA-UC, ignore the ramp constraints for ST-UC generators
 		
 		// input-inconsistency check
 		int shutDownPeriod = checkShutDownRampDownInconsistency(g);
@@ -388,15 +402,11 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 //	if (probType == ShortTerm) {
 //		for (int g=0; g<numGen; g++) {
 //			Generator *genPtr = &(inst.powSys->generators[g]);
-//			
-//			if ( (genPtr->isDAUCGen || beginMin != 0) &&
+//
+//			if (genPtr->isDAUCGen &&
 //				genPtr->type != Generator::SOLAR && genPtr->type != Generator::WIND) {
-//				for (int t=0; t<numPeriods; t += runParam.DA_resolution/runParam.ST_resolution) {
-//					const double percentage = 0.1;
-//					
-//					double lb = max(0.0, getUCGenProd(g, t)*(1-percentage));
-//					double ub = min(getUCGenProd(g, t)*(1+percentage), genPtr->maxCapacity);
-//					p[g][t].setBounds(lb, ub);
+//				for (int t=0; t<numPeriods; t++) {
+//					model.add( p[g][t] + delta_pos[g][t] - delta_neg[g][t] == getDAUCGenProd(g, t) );
 //				}
 //			}
 //		}
@@ -436,6 +446,31 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	}
 	/****** Symmetry Breaking ******/
 
+	/* Ramp-ability to the DA-UC production levels */
+	if (probType == ShortTerm) {
+		for (int g=0; g<numGen; g++) {
+			Generator *genPtr = &(inst.powSys->generators[g]);
+			
+			if (genPtr->type != Generator::SOLAR && genPtr->type != Generator::WIND && genPtr->isDAUCGen) {
+				int t = numPeriods-1;
+				
+				int target_idx = 0;
+				if (beginMin / runParam.ED_resolution + numPeriods * numBaseTimePerPeriod >= runParam.numPeriods ) {
+					target_idx = numPeriods-1;
+				} else {
+					target_idx = numPeriods;
+				}
+			
+				double target = getDAUCGenProd(g, target_idx);
+
+				/* ramp-up */
+//				model.add( target - p[g][t] - delta_pos[g][t] <= genPtr->rampUpLim * runParam.DA_resolution );
+				
+				/* ramp-down */
+//				model.add( p[g][t] - target - delta_neg[g][t] <= genPtr->rampDownLim * runParam.DA_resolution );
+			}
+		}
+	}
 	
 	/** Objective Function **/
 	IloExpr obj (env);
@@ -451,6 +486,15 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 			obj += minGenerationReq[g] * varCostPerPeriod * x[g][t];	// cost of producing minimum generation requirements
 			obj += varCostPerPeriod * p_var[g][t];						// variable cost
 			obj += noloadCostPerPeriod * x[g][t];						// no-load cost
+
+//			if (probType == DayAhead) {
+//				obj += minGenerationReq[g] * varCostPerPeriod * x[g][t];	// cost of producing minimum generation requirements
+//				obj += varCostPerPeriod * p_var[g][t];						// variable cost
+//				obj += noloadCostPerPeriod * x[g][t];						// no-load cost
+//			}
+//			if (probType == ShortTerm && genPtr->type != Generator::SOLAR && genPtr->type != Generator::WIND) {
+//				obj += varCostPerPeriod * (delta_neg[g][t] + delta_pos[g][t]);	// deviation cost
+//			}
 		}
 	}	
 	
@@ -745,7 +789,7 @@ double UCmodel::getGenProd(int g, int t) {
 			return getEDGenProd(g, -1);	// this will return the final ED gen levels from the prev day sol
 		}
 		else if (probType == ShortTerm && inst->powSys->generators[g].isDAUCGen){
-			return getUCGenProd(g, 0);
+			return getDAUCGenProd(g, 0);
 		}
 	} else {
 		return getEDGenProd(g, t);
@@ -758,7 +802,7 @@ double UCmodel::getGenProd(int g, int t) {
  * - Converts the model period, into the desired component of the Solution
  * object. Returns the recorded generation of the generator by the DA model.
  ****************************************************************************/
-double UCmodel::getUCGenProd(int genId, int period) {
+double UCmodel::getDAUCGenProd(int genId, int period) {
 	// which Solution component is requested?
 	int reqSolnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
 	
@@ -768,7 +812,7 @@ double UCmodel::getUCGenProd(int genId, int period) {
 		exit(1);
 	}
 	else if (reqSolnComp < (int) inst->solution.x[genId].size()) {	// return the corresponding solution
-		return inst->solution.g_UC[genId][reqSolnComp];
+		return inst->solution.g_DAUC[genId][reqSolnComp];
 	}
 	else {														// asking what's beyond the planning horizon, we return the last solution
 		cout << "Error: Production levels beyond the planning horizon are not available" << endl;
@@ -833,16 +877,17 @@ void UCmodel::setGenState(int genId, int period, double value) {
  * - Fills the (genId, correspondingComponent) of the Solution.g object.
  ****************************************************************************/
 void UCmodel::setUCGenProd(int genId, int period, double value) {
-	// which Solution component is being set?
+	// which vector component is being set?
 	int solnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
 	
 	// correct potential numerical errors
 	value = max(0.0, value);
 	
 	// set the solution
-	if (solnComp >= 0 && solnComp < (int) inst->solution.g_UC[genId].size()) {
+	if (solnComp >= 0 && solnComp < (int) inst->solution.g_DAUC[genId].size()) {
 		for (int t=solnComp; t<solnComp+numBaseTimePerPeriod; t++) {
-			inst->solution.g_UC[genId][t] = value;
+			if (probType == DayAhead) 	inst->solution.g_DAUC[genId][t] = value;
+			else						inst->solution.g_STUC[genId][t] = value;
 		}
 	}
 	else {

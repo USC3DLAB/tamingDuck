@@ -57,9 +57,9 @@ private:
 
 	bool	getGenState(int genId, int period);					// reads from Solution.x
 	void	setGenState(int genId, int period, double value);	// writes to Solution.x
-	void	setUCGenProd(int genId, int period, double value);	// writes to Solution.gUC
-	double	getEDGenProd(int genId, int period);				// reads from Solution.gED
-	double 	getUCGenProd(int genId, int period);				// reads from Solution.gUC
+	void	setUCGenProd(int genId, int period, double value);	// writes to Solution.g_STUC or Solution.g_DAUC, depending on the problem type
+	double	getEDGenProd(int genId, int period);				// reads from Solution.g_ED
+	double 	getDAUCGenProd(int genId, int period);				// reads from Solution.g_DAUC
 	double	getGenProd(int g, int t);		// reads from Solution.gED, or gUC, and handles the beginning of the planning horizon
 	
 	void 	saveSolution();

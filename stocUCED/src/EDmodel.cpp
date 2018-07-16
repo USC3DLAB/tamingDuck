@@ -99,14 +99,20 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 					genAvail[g][t] = min( inst.actuals.vals[rep][t0+t][it->second], genMax[g][t] );
 				}
 				else {
+					it = inst.meanForecast["4HA"].mapVarNamesToIndex.find(genPtr.name);
+					genAvail[g][t] = min(inst.meanForecast["4HA"].vals[rep][t0+t][it->second], genMax[g][t]);
+					
 					if (runParam.updateForecasts) {
-						it = inst.meanForecast["RT"].mapVarNamesToIndex.find(genPtr.name);
-						genAvail[g][t] = min(inst.meanForecast["RT"].vals[rep][t0+t][it->second], genMax[g][t]);
+						cout << "Updating forecasts currently has no effect on ED models" << endl;
 					}
-					else {
-						it = inst.meanForecast["DA"].mapVarNamesToIndex.find(genPtr.name);
-						genAvail[g][t] = min(inst.meanForecast["DA"].vals[rep][t0+t][it->second], genMax[g][t]);
-					}
+//					if (runParam.updateForecasts) {
+//						it = inst.meanForecast["RT"].mapVarNamesToIndex.find(genPtr.name);
+//						genAvail[g][t] = min(inst.meanForecast["RT"].vals[rep][t0+t][it->second], genMax[g][t]);
+//					}
+//					else {
+//						it = inst.meanForecast["DA"].mapVarNamesToIndex.find(genPtr.name);
+//						genAvail[g][t] = min(inst.meanForecast["DA"].vals[rep][t0+t][it->second], genMax[g][t]);
+//					}
 				}
 			}
 			
@@ -141,6 +147,8 @@ void EDmodel::formulate(instance &inst, int t0) {
 	demShed = IloArray <IloNumVarArray> (env, numLoad);
 	theta = IloArray< IloNumVarArray > (env, numLoad);
 	flow = IloArray< IloNumVarArray > (env, numLine);
+	IloArray<IloNumVarArray> delta_pos (env, numGen);	// positive deviations from settled DA-UC generation amounts
+	IloArray<IloNumVarArray> delta_neg (env, numGen);	// negative deviations from settled DA-UC generation amounts
 
 	for ( int t = 0; t < numPeriods; t++ ) {
 		/* Generation and over-generation */
@@ -199,6 +207,11 @@ void EDmodel::formulate(instance &inst, int t0) {
 		}
 	}
 
+	for (int g=0; g<numGen; g++) {
+		delta_pos[g] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+		delta_neg[g] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+	}
+	
 	/***** Constraints *****/
 	for (int t = 0; t < numPeriods; t++ ) {
 		/* Flow balance equation */
@@ -252,7 +265,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 					if (runParam.useGenHistory && inst.solList.size() > 0) {
 						prevGen = inst.solList.back().g_ED[g][runParam.numPeriods-1];
 					} else {
-						prevGen = inst.solution.g_UC[g][t0] * 1.0;	// all generators are assumed to be operational
+						prevGen = inst.solution.g_DAUC[g][t0] * 1.0;	// all generators are assumed to be operational
 					}
 				} else {
 					prevGen = inst.solution.g_ED[g][t0-1] * round(inst.solution.x[g][t0-1]);	// the latter is to prevent numerical errors
@@ -434,6 +447,54 @@ void EDmodel::formulate(instance &inst, int t0) {
 		}
 	}
 
+	// Stay within the ballpark of DA-UC generations
+//	for (int g=0; g<numGen; g++) {
+//		Generator *genPtr = &(inst.powSys->generators[g]);
+//		
+//		if (genPtr->type != Generator::SOLAR && genPtr->type != Generator::WIND) {
+//			for (int t=0; t<numPeriods; t++) {
+//				if (genPtr->isDAUCGen) {
+//					model.add( genUsed[g][t] + overGen[g][t] + delta_pos[g][t] - delta_neg[g][t] == inst.solution.g_DAUC[g][t0+t] );
+//				}
+//				else {
+//					model.add( genUsed[g][t] + overGen[g][t] + delta_pos[g][t] - delta_neg[g][t] == inst.solution.g_STUC[g][t0+t] );
+//				}
+//			}
+//		}
+//	}
+	
+	for (int g=0; g<numGen; g++) {
+		Generator *genPtr = &(inst.powSys->generators[g]);
+		
+		if (genPtr->type != Generator::SOLAR && genPtr->type != Generator::WIND) {
+			int t = numPeriods-1;
+			int tprime = numPeriods;
+			
+			double target = 0;
+//			if (genPtr->isDAUCGen)	{
+//				target = inst.solution.g_DAUC[g][ min(t0+tprime, runParam.numPeriods-1) ];
+//			} else {
+				int index;
+				if (t0+tprime > (1+t0/runParam.ST_numPeriods) * runParam.ST_numPeriods - 1) {
+					index = (1+t0/runParam.ST_numPeriods) * runParam.ST_numPeriods - 1;
+				} else {
+					index = t0+tprime;
+				}
+			
+				index = min(index, runParam.numPeriods-1);
+				target = inst.solution.g_STUC[g][index];
+//			}
+			
+			/* ramp-up */
+			IloConstraint c1( target - genUsed[g][t] - overGen[g][t] - delta_pos[g][t] <= genPtr->rampUpLim * runParam.ED_resolution);
+			model.add(c1);
+
+			/* ramp-down */
+			IloConstraint c2( genUsed[g][t] + overGen[g][t] - target - delta_neg[g][t] <= genPtr->rampDownLim * runParam.ED_resolution);
+			model.add(c2);
+		}
+	}
+
 	/***** Objective function *****/
 	IloExpr realTimeCost (env);
 	IloObjective obj;
@@ -446,13 +507,20 @@ void EDmodel::formulate(instance &inst, int t0) {
 				realTimeCost += renCurtailPenaltyCoef * overGen[g][t];
 			}
 			else {
-				realTimeCost += overGenPenaltyCoef*overGen[g][t];
+				realTimeCost += overGenPenaltyCoef * overGen[g][t];
 			}
 		}
 
 		/* Load shedding penalty */
 		for ( int d = 0; d < numBus; d++ )
 			realTimeCost += loadShedPenaltyCoef*demShed[d][t];
+		
+		/* Deviation penalty */
+		for (int g=0; g<numGen; g++) {
+			if ( inst.powSys->generators[g].type != Generator::SOLAR && inst.powSys->generators[g].type != Generator::WIND ) {
+				realTimeCost += 1000*(delta_pos[g][t] + delta_neg[g][t]);
+			}
+		}
 	}
 	obj = IloMinimize(env, realTimeCost);
 	obj.setName(elemName);
@@ -474,6 +542,12 @@ bool EDmodel::solve(instance &inst, int t0) {
 
 	try {
 		status = cplex.solve();
+		
+		if (!status) {
+			cplex.setParam(IloCplex::NodeAlg, IloCplex::Barrier);
+			cplex.solve();
+			cplex.setParam(IloCplex::NodeAlg, IloCplex::AutoAlg);
+		}
 
 		if (status) {
 			double totLoadShed = 0;

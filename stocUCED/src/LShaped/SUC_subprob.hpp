@@ -51,7 +51,7 @@ private:
 	
 	double 	getEDGenProd (int genId, int period);				// reads from inst->Solution.gED
 	bool 	getGenState	 (int genId, int period);				// reads from inst->Solution.x
-	double	getUCGenProd (int genId, int period);				// reads from Solution.gUC
+	double	getDAUCGenProd (int genId, int period);				// reads from Solution.gUC
 	double	getGenProd   (int g, int t); 	// reads from Solution.gED, or gUC, and handles the beginning of the planning horizon
 	
 	int	checkShutDownRampDownInconsistency (int g);	

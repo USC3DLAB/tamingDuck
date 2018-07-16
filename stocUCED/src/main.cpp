@@ -265,9 +265,10 @@ void readRunfile (string inputDir) {
 	cout << "DA-UC     " << fixed << setprecision(0) << setw(4) << runParam.DA_horizon/60 << setw(4) << " hr" << setw(9) << runParam.DA_resolution << " min    " << "every " << setw(2) << runParam.DA_frequency/60 << setw(4) << " hr" << endl;
 	cout << "ST-UC     " << fixed << setprecision(0) << setw(4) << runParam.ST_horizon/60 << setw(4) << " hr" << setw(9) << runParam.ST_resolution << " min    " << "every " << setw(2) << runParam.ST_frequency/60 << setw(4) << " hr" << endl;
 	cout << "ED        " << fixed << setprecision(0) << setw(4) << runParam.ED_horizon << " min " << setw(8) << runParam.ED_resolution << " min    " << "every " << setw(2) << runParam.ED_frequency << setw(4) << " min" << endl;
-	cout << endl << "Spinning reserve percentage = " << runParam.spinResPerc*100 << "%" << endl;
-	cout << "Renewable coefficient = " << runParam.renewableCoef << endl;
-	cout << "Ramping rate coefficient = " << runParam.rampingCoef << endl;
+	cout << "------------------------------------------------------------------" << endl;
+	cout << setw(27) << left << "Spinning-reserve percentage" << " = " << setprecision(2) << fixed << runParam.spinResPerc*100 << "%" << endl;
+	cout << setw(27) << left << "Renewable coefficient" << " = " << setprecision(2) << fixed << runParam.renewableCoef << endl;
+	cout << setw(27) << left << "Ramping rate coefficient" << " = " << setprecision(2) << fixed << runParam.rampingCoef << endl;
 	if (runParam.useGenHistory) cout << "Using generator histories from earlier days." << endl;
 	cout << "------------------------------------------------------------------" << endl;
 
