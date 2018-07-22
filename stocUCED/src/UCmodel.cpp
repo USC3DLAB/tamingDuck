@@ -155,7 +155,7 @@ void UCmodel::preprocessing ()
 	/* Spinning Reserve */
 	for (int b=0; b<numBus; b++) {
 		for (int t=0; t<numPeriods; t++) {
-			busLoad[b][t] *= (1+runParam.spinResPerc);
+			busLoad[b][t] *= (1+0.1);
 		}
 	}
 	
@@ -434,7 +434,33 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 			}
 		}
 	}
-	/****** Symmetry Breaking ******/
+
+	
+	/* ST-UC rampability constraints */
+	if (probType == ShortTerm) {
+		for (int g=0; g<numGen; g++) {
+			Generator *genPtr = &(inst.powSys->generators[g]);
+			
+			if (genPtr->type != Generator::SOLAR && genPtr->type != Generator::WIND && genPtr->isDAUCGen) {
+				int t = numPeriods-1;
+				
+				int target_idx = 0;
+				if (beginMin / runParam.ED_resolution + numPeriods * numBaseTimePerPeriod >= runParam.numPeriods ) {
+					target_idx = numPeriods-1;
+				} else {
+					target_idx = numPeriods;
+				}
+				
+				double target = getUCGenProd(g, target_idx);
+				
+				/* ramp-up */
+				//				model.add( target - p[g][t] - delta_pos[g][t] <= genPtr->rampUpLim * runParam.DA_resolution );
+				
+				/* ramp-down */
+				//				model.add( p[g][t] - target - delta_neg[g][t] <= genPtr->rampDownLim * runParam.DA_resolution );
+			}
+		}
+	}
 
 	
 	/** Objective Function **/
