@@ -435,12 +435,16 @@ void EDmodel::formulate(instance &inst, int t0) {
 	}
 	
 	/** Rampability to UC generation levels **/
-	IloArray<IloNumVarArray> delta_pos (env, numGen);	// positive deviations from settled DA-UC generation amounts
-	IloArray<IloNumVarArray> delta_neg (env, numGen);	// negative deviations from settled DA-UC generation amounts
+	IloNumVarArray delta_pos (env, numGen, 0, IloInfinity, ILOFLOAT);	// positive deviations from settled DA-UC generation amounts
+	IloNumVarArray delta_neg (env, numGen, 0, IloInfinity, ILOFLOAT);	// negative deviations from settled DA-UC generation amounts	
 	for (int g=0; g<numGen; g++) {
-		delta_pos[g] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
-		delta_neg[g] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+		sprintf(elemName, "delta_pos(%d)", g);
+		delta_pos[g].setName(elemName);
+		
+		sprintf(elemName, "delta_neg(%d)", g);
+		delta_neg[g].setName(elemName);
 	}
+	model.add(delta_pos); model.add(delta_neg);
 
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst.powSys->generators[g]);
@@ -462,11 +466,15 @@ void EDmodel::formulate(instance &inst, int t0) {
 			//			}
 			
 			/* ramp-up */
-			IloConstraint c1( target - genUsed[g][t] - overGen[g][t] - delta_pos[g][t] <= genPtr->rampUpLim * runParam.ED_resolution);
+			IloConstraint c1( target - genUsed[g][t] - overGen[g][t] - delta_pos[g] <= genPtr->rampUpLim * runParam.ED_resolution);
+			sprintf(elemName, "UPrampability(%d)(%d)", g, t);
+			c1.setName(elemName);
 			model.add(c1);
 			
 			/* ramp-down */
-			IloConstraint c2( genUsed[g][t] + overGen[g][t] - target - delta_neg[g][t] <= genPtr->rampDownLim * runParam.ED_resolution);
+			IloConstraint c2( genUsed[g][t] + overGen[g][t] - target - delta_neg[g] <= genPtr->rampDownLim * runParam.ED_resolution);
+			sprintf(elemName, "DNrampability(%d)(%d)", g, t);
+			c2.setName(elemName);
 			model.add(c2);
 		}
 	}
@@ -491,14 +499,15 @@ void EDmodel::formulate(instance &inst, int t0) {
 		/* Load shedding penalty */
 		for ( int d = 0; d < numBus; d++ )
 			realTimeCost += loadShedPenaltyCoef*demShed[d][t];
-		
-		/* Deviation penalty */
-		for (int g=0; g<numGen; g++) {
-			if ( inst.powSys->generators[g].type != Generator::SOLAR && inst.powSys->generators[g].type != Generator::WIND ) {
-				realTimeCost += 1000*(delta_pos[g][t] + delta_neg[g][t]);
-			}
+	}
+	
+	/* Deviation penalty */
+	for (int g=0; g<numGen; g++) {
+		if ( inst.powSys->generators[g].type != Generator::SOLAR && inst.powSys->generators[g].type != Generator::WIND ) {
+			realTimeCost += 1000*(delta_pos[g] + delta_neg[g]);
 		}
 	}
+
 	obj = IloMinimize(env, realTimeCost);
 	obj.setName(elemName);
 	model.add(obj);
