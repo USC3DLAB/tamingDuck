@@ -436,7 +436,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	}
 
 	
-	/* ST-UC rampability constraints */
+	/* ST-UC rampability constraints *
 	if (probType == ShortTerm) {
 		for (int g=0; g<numGen; g++) {
 			Generator *genPtr = &(inst.powSys->generators[g]);
@@ -458,9 +458,10 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 				
 				/* ramp-down */
 				//				model.add( p[g][t] - target - delta_neg[g][t] <= genPtr->rampDownLim * runParam.DA_resolution );
-			}
-		}
-	}
+//			}
+//		}
+//	}
+	/* */
 
 	
 	/** Objective Function **/
