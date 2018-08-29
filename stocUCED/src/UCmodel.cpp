@@ -343,6 +343,9 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst.powSys->generators[g]);
 		
+		// ignore ramping constraints for generators that are not meant to be scheduled in DA-UC problem
+		if (probType == DayAhead && !genPtr->isDAUCGen)	continue;
+		
 		/* t = 0 */
 		int t = 0;
 		if (getGenProd(g, t-1) > -INFINITY) {	// prev generation is available
@@ -365,6 +368,9 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst.powSys->generators[g]);
 		
+		// ignore ramping constraints for generators that are not meant to be scheduled in DA-UC problem
+		if (probType == DayAhead && !genPtr->isDAUCGen)	continue;
+
 		// input-inconsistency check
 		int shutDownPeriod = checkShutDownRampDownInconsistency(g);
 		
