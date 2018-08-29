@@ -236,6 +236,9 @@ void SUCsubprob::formulate_production()
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
+		// ignore ramping constraints for generators that are not meant to be scheduled in DA-UC problem
+		if (probType == DayAhead && !genPtr->isDAUCGen)	continue;
+
 		/* t = 0 */
 		int t=0;
 		if (getGenProd(g, t-1) > -INFINITY) {	// prev generation is available
@@ -254,6 +257,9 @@ void SUCsubprob::formulate_production()
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
+		// ignore ramping constraints for generators that are not meant to be scheduled in DA-UC problem
+		if (probType == DayAhead && !genPtr->isDAUCGen)	continue;
+
 		// input-inconsistency check
 		int shutDownPeriod = checkShutDownRampDownInconsistency(g);
 		if (shutDownPeriod >= 0) {
@@ -623,6 +629,9 @@ void SUCsubprob::compute_optimality_cut_coefs(BendersCutCoefs &cutCoefs, int &s)
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 
+		// ignore ramping constraints for generators that are not meant to be scheduled in DA-UC problem
+		if (probType == DayAhead && !genPtr->isDAUCGen)	continue;
+
 		int t=0;
 		if (getGenProd(g, t-1) > -INFINITY) {	// prev generation is available
 			cutCoefs.pi_b += duals[c] * (genPtr->rampUpLim*periodLength + getGenProd(g, t-1));
@@ -639,6 +648,9 @@ void SUCsubprob::compute_optimality_cut_coefs(BendersCutCoefs &cutCoefs, int &s)
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
+		// ignore ramping constraints for generators that are not meant to be scheduled in DA-UC problem
+		if (probType == DayAhead && !genPtr->isDAUCGen)	continue;
+
 		// input-inconsistency check
 		int shutDownPeriod = checkShutDownRampDownInconsistency(g);
 		
@@ -782,6 +794,9 @@ void SUCsubprob::compute_feasibility_cut_coefs(BendersCutCoefs &cutCoefs, int &s
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
+		// ignore ramping constraints for generators that are not meant to be scheduled in DA-UC problem
+		if (probType == DayAhead && !genPtr->isDAUCGen)	continue;
+
 		int t=0;
 		if (getGenProd(g, t-1) > -INFINITY) {	// prev generation is available
 			cutCoefs.pi_b += farkasMap[ cons[c].getId() ] * (genPtr->rampUpLim*periodLength + getGenProd(g, t-1));
@@ -796,6 +811,9 @@ void SUCsubprob::compute_feasibility_cut_coefs(BendersCutCoefs &cutCoefs, int &s
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
+		// ignore ramping constraints for generators that are not meant to be scheduled in DA-UC problem
+		if (probType == DayAhead && !genPtr->isDAUCGen)	continue;
+
 		// input-inconsistency check
 		int shutDownPeriod = checkShutDownRampDownInconsistency(g);
 		
