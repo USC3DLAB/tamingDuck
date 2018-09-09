@@ -429,7 +429,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 				IloConstraint c(demMet[d][t] + demShed[d][t] == busLoad[d][t]); c.setName(elemName); model.add(c);
 			} else {
 				/* Node-wise spinning reserves */
-				IloConstraint c(demMet[d][t] + demShed[d][t] == busLoad[d][t]*(1+runParam.spinResPerc)); c.setName(elemName); model.add(c);
+				IloConstraint c(demMet[d][t] + demShed[d][t] == busLoad[d][t]*(1+runParam.resPerc_ED)); c.setName(elemName); model.add(c);
 			}
 		}
 	}

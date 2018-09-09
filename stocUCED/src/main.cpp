@@ -167,7 +167,8 @@ void readRunfile (string inputDir) {
 	runParam.ED_horizon = 60;		runParam.ED_resolution = 15; runParam.ED_frequency = 15;
 	runParam.numRep = 1;
 	
-	runParam.spinResPerc = 0.2;
+	runParam.resPerc_UC = 0.2;
+	runParam.resPerc_ED = 0.2;
 	runParam.useGenHistory = false;
 	runParam.updateForecasts = false;
 	
@@ -212,8 +213,10 @@ void readRunfile (string inputDir) {
 					runParam.numTotScen = temp;
 				else if ( field1 == "numLSScen" )
 					runParam.numLSScen = temp;
-				else if ( field1 == "spinResPerc" )
-					runParam.spinResPerc = temp;
+				else if ( field1 == "resPerc_UC" )
+					runParam.resPerc_UC = temp;
+				else if ( field1 == "resPerc_ED" )
+					runParam.resPerc_ED = temp;
 				else if ( field1 == "useGenHistory" )
 					runParam.useGenHistory = temp;
 				else if ( field1 == "renewableCoef" )
@@ -265,7 +268,7 @@ void readRunfile (string inputDir) {
 	cout << "DA-UC     " << fixed << setprecision(0) << setw(4) << runParam.DA_horizon/60 << setw(4) << " hr" << setw(9) << runParam.DA_resolution << " min    " << "every " << setw(2) << runParam.DA_frequency/60 << setw(4) << " hr" << endl;
 	cout << "ST-UC     " << fixed << setprecision(0) << setw(4) << runParam.ST_horizon/60 << setw(4) << " hr" << setw(9) << runParam.ST_resolution << " min    " << "every " << setw(2) << runParam.ST_frequency/60 << setw(4) << " hr" << endl;
 	cout << "ED        " << fixed << setprecision(0) << setw(4) << runParam.ED_horizon << " min " << setw(8) << runParam.ED_resolution << " min    " << "every " << setw(2) << runParam.ED_frequency << setw(4) << " min" << endl;
-	cout << endl << "Spinning reserve percentage = " << runParam.spinResPerc*100 << "%" << endl;
+	cout << endl << "Spinning reserve percentage = " << setprecision(2) << runParam.resPerc_UC*100 << "%" << endl;
 	cout << "Renewable coefficient = " << runParam.renewableCoef << endl;
 	cout << "Ramping rate coefficient = " << runParam.rampingCoef << endl;
 	if (runParam.useGenHistory) cout << "Using generator histories from earlier days." << endl;

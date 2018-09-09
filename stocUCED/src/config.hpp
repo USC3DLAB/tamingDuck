@@ -70,7 +70,8 @@ struct runType {
 	int 	startRep;		// which replication to start with (minimum is 1)
 	
 	bool 	useGenHistory;			// true if generator histories from the previous run is being used, false oth.
-	double 	spinResPerc;			// spinning reserve percentage
+	double 	resPerc_UC;				// spinning reserve percentages
+	double 	resPerc_ED;
 	double	renewableCoef;			// renewable-supply will be multiplied with this factor
 	double	rampingCoef;			// ramping rates will be multiplied with this factor
 	bool	updateForecasts;		// real-time forecast updates
