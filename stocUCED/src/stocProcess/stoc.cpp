@@ -127,8 +127,10 @@ ScenarioType createScenarioList(StocProcess *stoc, vector<int> S_indices, int le
 	/* Compute the number of observations that can be generated */
 	for ( unsigned int n = 0; n < S_indices.size(); n++ ) {
 		double numValsInData = floor(  (double) (stoc->sp[S_indices[n]].numT - (lenT-stepSize)) / (double) stepSize  );
-		if (numVals > numValsInData)
+		if (numVals > numValsInData) {
+			cout << "Warning: Number of replications is reduced to " << setprecision(0) << numValsInData << "day(s) (insufficient data)." << endl;
 			numVals = numValsInData;
+		}
 	}
 	
 	for (int rep=0; rep<numVals; rep++) {
