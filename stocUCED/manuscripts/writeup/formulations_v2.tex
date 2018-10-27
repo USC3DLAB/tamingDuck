@@ -1,0 +1,109 @@
+\include{preamble}
+\usepackage{multicol}
+
+\begin{document}
+
+\newcommand{\usedgen}{G^+}
+\newcommand{\overgen}{G^-}
+
+\setlength{\columnsep}{1.5cm}
+\setlength{\columnseprule}{0.2pt}
+\begin{table} [h]
+\centering
+\footnotesize
+\begin{tabular}{c}
+\toprule
+\textbf{Sets} \\ 
+\midrule
+\begin{minipage}{0.95\textwidth}
+\begin{multicols}{3}
+\begin{description}[labelwidth=\widthof{$\mathcal{W}$:}]
+\item[$\set{B}$:] buses.
+\item[$\set{L}$:] transmission lines.
+\item[$\mathcal{G}$:] generators.
+\item[$\mathcal{G}_r$:] solar and wind generators.
+\item[$\mathcal{G}_c$:] conventional generators ($\set{G}_c = \set{G} \setminus \set{G}_r$).
+\item[$\mathcal{G}_j$:] generators that are located in bus $j \in \mathcal{B}$.
+\item[$\mathcal{T}$:] time periods.
+\end{description}
+\end{multicols}
+\end{minipage} \smallskip \\ 
+\midrule
+\textbf{Parameters} \\ 
+\midrule
+\begin{minipage}{0.95\textwidth}
+\begin{multicols}{2} 
+\begin{description}[labelwidth=\widthof{[$G^{\text{avail}}_{gt}$:]}]
+\item[$G^{\max}_g$:] generation capacity of $g \in \set{G}_c$.
+\item[$G^{\min}_g$:] minimum generation requirement for $g \in \set{G}_c$.
+\item[$G^{\text{avail}}_{gt}$:] wind/solar availability for $g \in \set{G}_r$, in $t \in \set{T}$.
+\item[$\Delta G^{\max}_g$:] ramp up limit for $g \in \set{G}_c$.
+\item[$\Delta G^{\min}_g$:] ramp down limit for $g \in \set{G}_c$.
+\item[$UT_g$:] minimum uptime requirement of $g \in \set{G}_c$.
+\item[$DT_g$:] minimum downtime requirement of $g \in \set{G}_c$.
+\item[$B_{ij}$:] susceptance of arc $(i,j) \in \set{L}$.
+\item[$D_{jt}$:] load in bus $j \in \set{B}$, in period $t \in \set{T}$.
+\item[$R_{jt}$:] reserve requirement in bus $j \in \set{B}$ and period $t \in \set{T}$.
+\item[$F_{ij}^{\max}$:] maximum permitted flow through arc $(i,j) \in \set{L}$.
+\item[$c^{s}_g$:] start up cost of $g \in \set{G}$.
+\item[$c^{f}_g$:] no-load cost of $g \in \set{G}$ (i.e., the intercept of the cost curve).
+\item[$c^{p}_g$:] variable generation cost of $g \in \set{G}$ (i.e., the slope of the cost curve).
+\item[$\theta^{\max}_j$:] upper bound on the voltage-angle at bus $j \in \set{B}$.
+\item[$\theta^{\min}_j$:] lower bound on the voltage-angle at bus $j \in \set{B}$.
+\item[$\phi^o_g$:] penalty for over-generation by $g \in \set{G}_c$.
+\item[$\phi^c_g$:] penalty for renewable curtailment in $g \in \set{G}_r$.
+\item[$\phi^u_j$:] penalty for unmet demand in bus $j \in \set{B}$. 
+\end{description}
+\end{multicols} 
+\end{minipage} \smallskip \\ 
+\midrule
+\textbf{Decision Variables} \\ 
+\midrule
+\begin{minipage}{0.95\textwidth}
+\begin{multicols}{2} 
+\begin{description}[labelwidth=\widthof{$D^{\text{shed}}_{jt}$:}]
+\item[$s_{gt}$:] 1 if $g \in \set{G}$ is turned on in $t \in \set{T}$, 0 otherwise.
+\item[$x_{gt}$:] 1 if $g \in \set{G}$ is operational in $t \in \set{T}$, 0 otherwise.
+\item[$z_{gt}$:] 1 if $g \in \set{G}$ is turned off in $t \in \set{T}$, 0 otherwise.
+\item[$\usedgen_{gt}$:] generation amount of $g \in \set{G}$, in $t \in \set{T}$, which is consumed by the grid.
+\item[$\overgen_{gt}$:] over-generation amount by $g \in \set{G}_c$, in $t \in \set{T}$.
+\item[$\overgen_{gt}$:] renewable curtailment in $g \in \set{G}_r$, in $t \in \set{T}$.
+\item[$F_{ij, t}$:] electricity flow through $(i, j) \in \set{L}$, in $t \in \set{T}$.
+\item[$\theta_{jt}$:] voltage angle at $j \in \set{B}$, in $t \in \set{T}$.
+\item[$D^{\text{shed}}_{jt}$:] amount of unmet load at $j \in \set{B}$, in $t \in \set{T}$.
+\end{description}
+\end{multicols} 
+\end{minipage} \smallskip \\ 
+\bottomrule
+\end{tabular}
+\caption{Nomenclature for the mathematical formulations.} \label{ch:td:tab:nomenclature}
+\end{table}
+
+\paragraph{Day-ahead Unit Commitment}
+
+\begin{align}
+&& \min ~ & \sum_{t \in \set{T}} \Bigg( \sum_{g \in \set{G}} \big( c_g^{s} s_{gt} + c_g^{f}x_{gt} + c_g^{v} \usedgen_{gt} \big) + \sum_{j \in \set{B}} \bigg( \sum_{g \in \set{G}_j\cap \set{G}_c}  \phi^{o}_g \overgen_{gt} + \sum_{g \in \set{G}_j\cap \set{G}_r}  \phi^{c}_g \overgen_{gt} + \phi^{u}_j D^{\text{shed}}_{jt} \bigg) \Bigg) \tag{$UC$} \label{ch:td:prob:duc} \\ 
+&& \text{subject to: } ~ & x_{gt} - x_{gt-1}  = s_{gt} - z_{gt}, \qquad \forall g \in \set{G}, \, t \in \set{T}, \\
+&&& \sum_{j=t-UT_g+1}^{t-1} s_{gt} \leq x_{gt}, \qquad \forall g \in \set{G},\, t \in \set{T}, \\ 
+&&&  \sum_{j=t-DT_g}^{t} s_{gt} \leq 1-x_{gt}, \qquad \forall g \in \set{G}, \, t \in \set{T}, \\ 
+&& &(x_{gt}, s_{gt}, z_{gt}) \in \binary^{3}, \, (\usedgen_{gt}, \overgen_{gt}) \in \mathbb{R}_+^2, \qquad \forall g \in \set{G},  \, t \in \set{T}, \nonumber \\ 
+&&& F_{ij, t} \in \mathbb{R}, \qquad \forall (i,j) \in \set{L}, \, t \in \set{T}, \nonumber \\ 
+&&& \theta_{jt} \in \mathbb{R},\, D^{\text{shed}}_{jt} \in \mathbb{R}_+, \qquad \forall j \in \set{B}, \, t \in \set{T}. \nonumber
+\end{align}
+
+\end{document}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
