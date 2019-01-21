@@ -12,6 +12,7 @@
 #include "../misc.hpp"
 
 #include "Generator.hpp"
+#include "Battery.hpp"
 #include "Bus.hpp"
 #include "Line.hpp"
 
@@ -29,14 +30,17 @@ public:
     int numGen;
     int numBus;
     int numLine;
+	int numBatteries;
     
     vector<Generator>   generators;
+	vector<Battery>		batteries;
     vector<Bus>         buses;
     vector<Line>        lines;
 
 private:
     
     bool readGeneratorData (string inputPath);
+	bool readBatteryData (string inputPath);
     bool readBusData (string inputPath);
     bool readLineData (string inputPath);
     void postprocessing ();
