@@ -25,7 +25,6 @@ bool PowSys::readData(string inputDir, string sysName) {
 
 	// read battery data
 	status = readBatteryData(inputDir + sysName);
-	if (!status) goto finalize;
 	
 	// read bus data
 	status = readBusData(inputDir + sysName);
@@ -54,8 +53,11 @@ bool PowSys::readBatteryData(string inputPath) {
 	
 	/* Open file */
 	bool status = open_file(input, inputPath + "/Batteries.csv");
-	if (!status)
+	if (!status) {
+		numBatteries = 0;
+		printf("> Batteries.csv file not found (Optional).\n");
 		return false;
+	}
 	
 	// skip the headers
 	safeGetline(input, temp_str);
@@ -77,6 +79,10 @@ bool PowSys::readBatteryData(string inputPath) {
 		
 		// capacity
 		input >> battery.maxCapacity;
+		move_cursor(input, delimiter);
+		
+		// degradation coefficient
+		input >> battery.degradeCoef;
 		safeGetline(input, temp_str);
 			
 		// add the generator to the list
