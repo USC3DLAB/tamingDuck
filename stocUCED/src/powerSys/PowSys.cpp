@@ -23,6 +23,10 @@ bool PowSys::readData(string inputDir, string sysName) {
 	status = readGeneratorData(inputDir + sysName);
 	if (!status) goto finalize;
 
+	// read battery data
+	status = readBatteryData(inputDir + sysName);
+	if (!status) goto finalize;
+	
 	// read bus data
 	status = readBusData(inputDir + sysName);
 	if (!status) goto finalize;
@@ -41,6 +45,48 @@ bool PowSys::readData(string inputDir, string sysName) {
 		printf("Error: Power system could not be read.\n");
 	}
 	return status;
+}
+
+bool PowSys::readBatteryData(string inputPath) {
+	ifstream input;
+	string temp_str;
+	int batteryIndex = 0;
+	
+	/* Open file */
+	bool status = open_file(input, inputPath + "/Batteries.csv");
+	if (!status)
+		return false;
+	
+	// skip the headers
+	safeGetline(input, temp_str);
+	
+	// read the data
+	while (!input.eof()) {
+		// create a generator
+		Battery battery;
+		battery.id = batteryIndex++;
+		
+		// skip the provided generator id
+		move_cursor(input, delimiter);
+		
+		// generator name
+		getline(input, battery.name, delimiter);
+		
+		// generator bus name
+		getline(input, battery.connectedBusName, delimiter);
+		
+		// capacity
+		input >> battery.maxCapacity;
+		safeGetline(input, temp_str);
+			
+		// add the generator to the list
+		batteries.push_back(battery);
+	}
+	input.close();
+	
+	numBatteries = (int)batteries.size();
+	
+	return true;
 }
 
 bool PowSys::readGeneratorData(string inputPath) {
@@ -257,8 +303,11 @@ bool PowSys::readLineData(string inputPath) {
 /****************************************************************************
  * postprocessing
  * Sets the connectedBus field of each generator
+ * Sets the connectedBus field of each battery
+ * Sets the connectedBatteries field of each bus
  * Sets the connectedGenerators field of each bus
- * Boosts solar/wind generator outputs
+ * Scale solar/wind generator outputs
+ * Scale generators' ramping capabilities
  ****************************************************************************/
 void PowSys::postprocessing() {
 
@@ -285,5 +334,19 @@ void PowSys::postprocessing() {
 			gen_ptr->rampUpLim *= runParam.rampingCoef;
 			gen_ptr->rampDownLim *= runParam.rampingCoef;
 		}
+	}
+	
+	for (int bt=0; bt<numBatteries; bt++) {
+		// get a handle of the generator
+		Battery *bat_ptr = &(batteries[bt]);
+		
+		// get a handle of the bus
+		Bus *bus_ptr = &(buses[ mapBusNameToIndex[bat_ptr->connectedBusName] ]);
+		
+		// set the connected bus of the generator
+		bat_ptr->connectedBus = bus_ptr;
+		
+		// add the generator to the list of connected generators of the bus
+		bus_ptr->connectedBatteries.push_back( bat_ptr );
 	}
 }

@@ -1,0 +1,4 @@
+﻿BatteryID,Battery Name,Bus of Connection,Max Capacity (MW)
+1,Battery1,bus012,250
+2,Battery2,bus080,250
+3,Battery2,bus111,250
