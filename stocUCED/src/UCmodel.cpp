@@ -40,9 +40,10 @@ UCmodel::~UCmodel() {
 void UCmodel::preprocessing ()
 {
 	/* basic parameters */
-	numGen	   = inst->powSys->numGen;
-	numLine    = inst->powSys->numLine;
-	numBus     = inst->powSys->numBus;
+	numGen = inst->powSys->numGen;
+	numLine = inst->powSys->numLine;
+	numBus = inst->powSys->numBus;
+	numBatteries = inst->powSys->numBatteries;
 	
 	numPeriods	 = (probType == DayAhead) ? runParam.DA_numPeriods : runParam.ST_numPeriods;
 	periodLength = (probType == DayAhead) ? runParam.DA_resolution : runParam.ST_resolution;
@@ -168,6 +169,60 @@ void UCmodel::preprocessing ()
 	}
 }
 
+void UCmodel::initializeVariables () {
+	// Generator dvars
+	s	  = IloArray<IloNumVarArray> (env, numGen);	// start up vars
+	x	  = IloArray<IloNumVarArray> (env, numGen);	// state vars
+	z	  = IloArray<IloNumVarArray> (env, numGen);	// shut down vars
+	p	  = IloArray<IloNumVarArray> (env, numGen);	// production amounts
+	p_var = IloArray<IloNumVarArray> (env, numGen);	// variable-production amounts	
+	// Battery dvars
+	v_pos = IloArray<IloNumVarArray> (env, numBatteries);	// charge amounts
+	v_neg = IloArray<IloNumVarArray> (env, numBatteries);	// discharge amounts
+	I     = IloArray<IloNumVarArray> (env, numBatteries);	// battery state
+
+	for (int g=0; g<numGen; g++) {
+		s[g] = IloNumVarArray(env, numPeriods, 0, 1, ILOBOOL);
+		x[g] = IloNumVarArray(env, numPeriods, 0, 1, ILOBOOL);
+		z[g] = IloNumVarArray(env, numPeriods, 0, 1, ILOBOOL);
+		
+		p[g]	 = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+		p_var[g] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+		
+		sprintf(buffer, "s_%d", g);
+		s[g].setNames(buffer);
+		sprintf(buffer, "x_%d", g);
+		x[g].setNames(buffer);
+		sprintf(buffer, "z_%d", g);
+		z[g].setNames(buffer);
+		sprintf(buffer, "p_%d", g);
+		p[g].setNames(buffer);
+		sprintf(buffer, "pv_%d", g);
+		p_var[g].setNames(buffer);
+		
+		model.add(s[g]);
+		model.add(x[g]);
+		model.add(z[g]);
+	}
+	
+	for (int bt=0; bt<numBatteries; bt++) {
+		v_pos[bt] = IloNumVarArray(env, numPeriods, 0, inst->powSys->batteries[bt].maxCapacity, ILOFLOAT);
+		v_neg[bt] = IloNumVarArray(env, numPeriods, 0, inst->powSys->batteries[bt].maxCapacity, ILOFLOAT);
+		I[bt] = IloNumVarArray(env, numPeriods, 0, inst->powSys->batteries[bt].maxCapacity, ILOFLOAT);
+		
+		sprintf(buffer, "vp_%d", bt);
+		v_pos[bt].setNames(buffer);
+		sprintf(buffer, "vn_%d", bt);
+		v_neg[bt].setNames(buffer);
+		sprintf(buffer, "I_%d", bt);
+		I[bt].setNames(buffer);
+		
+		model.add(v_pos[bt]);
+		model.add(v_neg[bt]);
+		model.add(I[bt]);
+	}
+}
+
 /****************************************************************************
  * formulate
  * - Performs preprocessing on the instance, to compute necessary model
@@ -187,39 +242,8 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	preprocessing();
 	
 	/* Prepare the Mathematical Model */
+	initializeVariables();
 	
-	/* Decision Variables */
-	s	  = IloArray<IloNumVarArray> (env, numGen);	// start up vars
-	x	  = IloArray<IloNumVarArray> (env, numGen);	// state vars
-	z	  = IloArray<IloNumVarArray> (env, numGen);	// shut down vars
-	p	  = IloArray<IloNumVarArray> (env, numGen);	// production amounts
-	p_var = IloArray<IloNumVarArray> (env, numGen);	// variable-production amounts
-	
-	for (int g=0; g<numGen; g++) {
-		s[g] = IloNumVarArray(env, numPeriods, 0, 1, ILOBOOL);
-		x[g] = IloNumVarArray(env, numPeriods, 0, 1, ILOBOOL);
-		z[g] = IloNumVarArray(env, numPeriods, 0, 1, ILOBOOL);
-	
-		p[g]	 = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
-		p_var[g] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
-		
-		sprintf(buffer, "s_%d", g);
-		s[g].setNames(buffer);
-		sprintf(buffer, "x_%d", g);
-		x[g].setNames(buffer);
-		sprintf(buffer, "z_%d", g);
-		z[g].setNames(buffer);
-		sprintf(buffer, "p_%d", g);
-		p[g].setNames(buffer);
-		sprintf(buffer, "pv_%d", g);
-		p_var[g].setNames(buffer);
-	
-		model.add(s[g]);
-		model.add(x[g]);
-		model.add(z[g]);
-	}
-
-
 	/**** Constraints (Traditional Formulation) ****/
 	
 	// state constraints
@@ -390,6 +414,21 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 		}
 	}
 	
+	// battery state
+	for (int bt=0; bt<numBatteries; bt++) {
+		Battery* bat_ptr = &inst.powSys->batteries[bt];
+		double degradeCoef = bat_ptr->degradeCoef * 60.0/periodLength;
+		
+		int t=0;
+		IloConstraint c ( I[bt][t] == 0 * degradeCoef + v_pos[bt][t] - v_neg[bt][t] );
+		sprintf(buffer, "Bt_%d_%d", bt, t); c.setName(buffer); model.add(c);
+
+		for (t=1; t<numPeriods; t++) {
+			IloConstraint c ( I[bt][t] == I[bt][t-1] * degradeCoef + v_pos[bt][t] - v_neg[bt][t] );
+			sprintf(buffer, "Bt_%d_%d", bt, t); c.setName(buffer); model.add(c);
+		}
+	}
+	
 //	// Stay within the ballpark of DA-UC generations
 //	if (probType == ShortTerm) {
 //		for (int g=0; g<numGen; g++) {
@@ -499,6 +538,9 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 			for (int g=0; g<numGen; g++) {
 				expr += p[g][t];
 			}
+			for (int bt=0; bt<numBatteries; bt++) {
+				expr -= v_pos[bt][t] + v_neg[bt][t];
+			}
 			expr += L[t];
 			expr -= O[t];
 			model.add( IloRange (env, sysLoad[t], expr, sysLoad[t]) );
@@ -576,6 +618,11 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 					expr += p[ busPtr->connectedGenerators[g]->id ][t];
 				}
 				
+				// storage (iterate over connected batteries)
+				for (int bt=0; bt < (int) busPtr->connectedBatteries.size(); bt++) {
+					expr -= v_pos[ busPtr->connectedBatteries[bt]->id ][t] + v_neg[ busPtr->connectedBatteries[bt]->id ][t];
+				}
+				
 				// in/out flows (iterate over all arcs)
 				for (auto linePtr = inst.powSys->lines.begin(); linePtr != inst.powSys->lines.end(); ++linePtr) {
 					if (linePtr->orig->id == busPtr->id) {	// if line-origin and bus have same ids, then this is outgoing flow
@@ -614,7 +661,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	obj.end();
 	
 	cplex.extract(model);
-	cplex.setParam(IloCplex::EpGap, 1e-2);
+	cplex.setParam(IloCplex::EpGap, 1e-4);
 	cplex.setOut(inst.out());
 	cplex.setWarning(inst.out());
 }

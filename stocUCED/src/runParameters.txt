@@ -1,0 +1,20 @@
+horizon	24 hours
+DA_time_horizon 24 hours
+ST_time_horizon 4 hours
+ED_time_horizon 75 minutes
+DA_time_resolution 1 hours
+ST_time_resolution 15 minutes
+ED_time_resolution 15 minutes
+DA_time_frequency 24 hours
+ST_time_frequency 3 hours
+ED_time_frequency 15 minutes
+numRep 7 scenarios
+startRep 1
+numLSScen 100 scenarios
+numTotScen 1000 scenarios
+resPerc_ED 0.100
+resPerc_UC 0.025
+useGenHistory 1
+renewableCoef 3.00
+rampingCoef 1
+updateForecasts 0

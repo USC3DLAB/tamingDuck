@@ -114,7 +114,7 @@ int generateOmegaIdx(stocType *stoc, long long *seed);
 void generateOmega(stocType *stoc, vectorC observ, long long *seed);
 void generateBlocks(stocType *stoc, vectorC observ, int groupID, long long *seed);
 void generateIndep(stocType *stoc, vectorC observ, int groupID, long long *seed);
-int normal(vectorC mu, vectorC stdev, int numOmega, vectorC observ, long long *seed);
+int rndNormal(vectorC mu, vectorC stdev, int numOmega, vectorC observ, long long *seed);
 float scalit(float lower, float upper, long long *RUN_SEED);
 float randUniform(long long *SEED);
 int randInteger(long long *SEED, int iMax);

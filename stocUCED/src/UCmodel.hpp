@@ -34,7 +34,8 @@ private:
 	IloModel	model;
 	IloCplex	cplex;
 
-	IloArray<IloNumVarArray> s, x, z, p, p_var, L, O;
+	IloArray<IloNumVarArray> s, x, z, p, p_var, L, O, v_pos, v_neg, I;
+	void initializeVariables();
 
 	/* data */
 	instance*	inst;
@@ -49,6 +50,7 @@ private:
 	int numBus;					// ..
 	int numLine;
 	int numPeriods;
+	int numBatteries;
 	int rep;
 	
 	double periodLength;		// in minutes
