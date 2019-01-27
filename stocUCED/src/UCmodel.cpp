@@ -417,14 +417,26 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	// battery state
 	for (int bt=0; bt<numBatteries; bt++) {
 		Battery* bat_ptr = &inst.powSys->batteries[bt];
-		double degradeCoef = bat_ptr->degradeCoef * 60.0/periodLength;
 		
+		double dissipationCoef = pow(bat_ptr->dissipationCoef, periodLength/60.0);
+		double chargingLossCoef = pow(bat_ptr->chargingLossCoef, periodLength/60.0);
+		double dischargingLossCoef = pow(bat_ptr->dischargingLossCoef, periodLength/60.0);
+
+		double initBtState = 0;
+//		if (t0 == 0) {
+//			if (runParam.useGenHistory && inst.solList.size() > 0) {
+//				initBtState = inst.solList.back().btState_ED[bt][runParam.numPeriods-1];
+//			}
+//		} else {
+//			initBtState = inst.solution.btState_ED[bt][t0-1];
+//		}
+
 		int t=0;
-		IloConstraint c ( I[bt][t] == 0 * degradeCoef + v_pos[bt][t] - v_neg[bt][t] );
+		IloConstraint c ( I[bt][t] == initBtState * dissipationCoef + v_pos[bt][t] * chargingLossCoef - v_neg[bt][t] * dischargingLossCoef);
 		sprintf(buffer, "Bt_%d_%d", bt, t); c.setName(buffer); model.add(c);
 
 		for (t=1; t<numPeriods; t++) {
-			IloConstraint c ( I[bt][t] == I[bt][t-1] * degradeCoef + v_pos[bt][t] - v_neg[bt][t] );
+			IloConstraint c ( I[bt][t] == I[bt][t-1] * dissipationCoef + v_pos[bt][t] * chargingLossCoef - v_neg[bt][t] * dischargingLossCoef );
 			sprintf(buffer, "Bt_%d_%d", bt, t); c.setName(buffer); model.add(c);
 		}
 	}
@@ -661,7 +673,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 	obj.end();
 	
 	cplex.extract(model);
-	cplex.setParam(IloCplex::EpGap, 1e-4);
+	cplex.setParam(IloCplex::EpGap, 1e-2);
 	cplex.setOut(inst.out());
 	cplex.setWarning(inst.out());
 }
