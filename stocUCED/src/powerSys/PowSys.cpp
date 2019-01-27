@@ -81,8 +81,14 @@ bool PowSys::readBatteryData(string inputPath) {
 		input >> battery.maxCapacity;
 		move_cursor(input, delimiter);
 		
-		// degradation coefficient
-		input >> battery.degradeCoef;
+		// dissipation coefficient
+		input >> battery.dissipationCoef;
+		move_cursor(input, delimiter);
+		
+		// conversion losses
+		input >> battery.chargingLossCoef;
+		move_cursor(input, delimiter);
+		input >> battery.dischargingLossCoef;		
 		safeGetline(input, temp_str);
 			
 		// add the generator to the list

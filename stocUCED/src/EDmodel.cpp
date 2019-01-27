@@ -31,6 +31,7 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 	numLine = inst.powSys->numLine;
 	this->rep = rep;
 	numPeriods = runParam.ED_numPeriods;
+	numBatteries = inst.powSys->numBatteries;
 
 	resize_matrix(busLoad, numBus, numPeriods);
 	resize_matrix(genMin, numGen, numPeriods);
@@ -198,6 +199,29 @@ void EDmodel::formulate(instance &inst, int t0) {
 			flow[l][t].setName(elemName); model.add(flow[l][t]);
 		}
 	}
+	
+	btCharge 	= IloArray<IloNumVarArray> (env, numBatteries);
+	btDischarge = IloArray<IloNumVarArray> (env, numBatteries);
+	btState 	= IloArray<IloNumVarArray> (env, numBatteries);
+	for (int bt=0; bt<numBatteries; bt++) {
+		Battery *btPtr = &(inst.powSys->batteries[bt]);
+		btCharge[bt] 	= IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+		btDischarge[bt] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+		btState[bt] 	= IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+		
+		char buffer[30];
+		sprintf(buffer, "vp_%d", bt);
+		btCharge[bt].setNames(buffer);
+		sprintf(buffer, "vn_%d", bt);
+		btDischarge[bt].setNames(buffer);
+		sprintf(buffer, "I_%d", bt);
+		btState[bt].setNames(buffer);
+		
+		model.add(btCharge[bt]);
+		model.add(btDischarge[bt]);
+		model.add(btState[bt]);
+	}
+
 
 	/***** Constraints *****/
 	for (int t = 0; t < numPeriods; t++ ) {
@@ -206,8 +230,17 @@ void EDmodel::formulate(instance &inst, int t0) {
 			IloExpr expr (env);
 			sprintf(elemName, "flowBalance(%d)(%d)", b, t);
 
+			// production
 			for ( int g = 0; g < numGen; g++ )
 				if ( inst.powSys->generators[g].connectedBus->id == b ) expr += genUsed[g][t];
+			
+			// storage
+			Bus* busPtr = &(inst.powSys->buses[b]);
+			for (int bt=0; bt < (int) busPtr->connectedBatteries.size(); bt++) {
+				expr -= btCharge[ busPtr->connectedBatteries[bt]->id ][t] + btDischarge[ busPtr->connectedBatteries[bt]->id ][t];
+			}
+			
+			// in/out flow
 			for ( int l = 0; l < numLine; l++ ) {
 				if ( inst.powSys->lines[l].dest->id == b ) expr += flow[l][t];
 				if ( inst.powSys->lines[l].orig->id == b ) expr -= flow[l][t];
@@ -232,7 +265,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 			IloExpr expr (env);
 			expr = flow[l][t] - inst.powSys->lines[l].susceptance*(theta[orig][t] - theta[dest][t]);
 
-			IloConstraint c( expr == 0); c.setName(elemName); model.add(c);
+			IloConstraint c(expr == 0); c.setName(elemName); model.add(c);
 		}
 
 		/* Generation ramping constraints: applicable only if the generator continues to be ON, i.e., x[g][t] = 1. */
@@ -479,6 +512,45 @@ void EDmodel::formulate(instance &inst, int t0) {
 		}
 	}
 	
+	// battery state
+	for (int bt=0; bt<numBatteries; bt++) {
+		Battery* batPtr = &inst.powSys->batteries[bt];
+		char buffer[30];
+	
+		double dissipationCoef = pow(batPtr->dissipationCoef, runParam.ED_resolution/60.0);
+		double chargingLossCoef = pow(batPtr->chargingLossCoef, runParam.ED_resolution/60.0);
+		double dischargingLossCoef = pow(batPtr->dischargingLossCoef, runParam.ED_resolution/60.0);
+		
+		// determine previous battery state
+		double initBtState = 0;
+		if (t0 == 0) {
+			if (runParam.useGenHistory && inst.solList.size() > 0) {
+				initBtState = inst.solList.back().btState_ED[bt][runParam.numPeriods-1];
+			}
+		} else {
+			initBtState = inst.solution.btState_ED[bt][t0-1];
+		}
+
+		int t=0;
+		IloConstraint c ( btState[bt][t] == initBtState * dissipationCoef + btCharge[bt][t] * chargingLossCoef - btDischarge[bt][t] * dischargingLossCoef);
+		sprintf(buffer, "Bt_%d_%d", bt, t); c.setName(buffer); model.add(c);
+		
+		for (t=1; t<numPeriods; t++) {
+			IloConstraint c ( btState[bt][t] == btState[bt][t-1] * dissipationCoef + btCharge[bt][t] * chargingLossCoef - btDischarge[bt][t] * dischargingLossCoef );
+			sprintf(buffer, "Bt_%d_%d", bt, t); c.setName(buffer); model.add(c);
+		}
+	}
+	
+	// battery capacity
+	for (int bt=0; bt<numBatteries; bt++) {
+		Battery* batPtr = &inst.powSys->batteries[bt];
+		char buffer[30];
+		
+		for (int t=0; t<numPeriods; t++) {
+			IloConstraint c (btState[bt][t] <= batPtr->maxCapacity);
+			sprintf(buffer, "BtCap_%d_%d", bt, t); c.setName(buffer); model.add(c);
+		}
+	}
 	
 	/***** Objective function *****/
 	IloExpr realTimeCost (env);
@@ -555,7 +627,7 @@ bool EDmodel::solve(instance &inst, int t0) {
 		if (status) {
 			for (int t = 0; t < numPeriods; t++) {
 				if ( t0 + t < runParam.numPeriods ) {	// do not record for periods that exceed the planning horizon
-					// record used and over-generation amounts
+					// used and over-generation amounts
 					for (int g = 0; g < numGen; g++) {
 						inst.solution.usedGen_ED[g][t0+t] = cplex.getValue(genUsed[g][t]);
 						inst.solution.overGen_ED[g][t0+t] = cplex.getValue(overGen[g][t]);
@@ -563,9 +635,16 @@ bool EDmodel::solve(instance &inst, int t0) {
 						inst.solution.g_ED[g][t0+t] = max(0.0, inst.solution.g_ED[g][t0+t]);	// numerical corrections
 					}
 					
-					// record load-shedding amounts
+					// load-shedding amounts
 					for (int b = 0; b < numBus; b++) {
 						inst.solution.loadShed_ED[b][t0+t] = cplex.getValue(demShed[b][t]);
+					}
+					
+					// storage
+					for (int bt=0; bt<numBatteries; bt++) {
+						inst.solution.btState_ED[bt][t0+t] = cplex.getValue(btState[bt][t]);
+						inst.solution.btCharge_ED[bt][t0+t] = cplex.getValue(btCharge[bt][t]);
+						inst.solution.btDischarge_ED[bt][t0+t] = cplex.getValue(btDischarge[bt][t]);
 					}
 				}
 			}

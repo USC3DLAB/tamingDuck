@@ -24,7 +24,9 @@ public:
 	
 	// battery characteristics
 	double maxCapacity;         // MW
-	double degradeCoef;			// degradation coef per hr (if capacity is I_t at t, 1 hr later, it will be I_t * degradeCoef)
+	double dissipationCoef;		// dissipation coef per hr (if capacity is I_t at t, 1 hr later, it will be I_t * dissipationCoef)
+	double chargingLossCoef;	// conversion loss per hr due to charging
+	double dischargingLossCoef;	// conversion loss per hr due to discharging
 	string  connectedBusName;   // name of the bus that this generator is connected to
 	Bus     *connectedBus;      // bus that this generator is connected to
 };

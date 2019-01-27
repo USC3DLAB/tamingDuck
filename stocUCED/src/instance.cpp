@@ -18,7 +18,7 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, string RScriptsPath
 	merge( detElems.begin(), detElems.end(), stocElems.begin(), stocElems.end(), elems.begin() );
 	
 	/* Allocate memory for solution matrices */
-	solution.allocateMem(powSys->numGen, runParam.numPeriods, powSys->numBus);
+	solution.allocateMem(powSys->numGen, runParam.numPeriods, powSys->numBus, powSys->numBatteries);
 
 #ifdef SAMPLE_USING_R
 	/* Setup R environment */
@@ -325,6 +325,9 @@ bool instance::printSolution(string filepath) {
 	fields.push_back("RampUpCap");
 	fields.push_back("RampDownCap");
 	fields.push_back("MinGenReq");
+	fields.push_back("Storage (MW)");
+	fields.push_back("Charge (MW)");
+	fields.push_back("Discharge (MW)");
 
 	/* print solutions */
 	ofstream output;
@@ -424,6 +427,13 @@ bool instance::printSolution(string filepath) {
 			stats["LoadShed"] += solution.loadShed_ED[b][t];
 		}
 		
+		// storage
+		for (int bt=0; bt<powSys->numBatteries; bt++) {
+			stats["Storage (MW)"] += solution.btState_ED[bt][t];
+			stats["Charge (MW)"] += solution.btCharge_ED[bt][t];
+			stats["Discharge (MW)"] += solution.btDischarge_ED[bt][t];
+		}
+		
 		// print
 		for (int f=0; f<fields.size(); f++) {
 			output << stats[fields[f]];
@@ -434,7 +444,102 @@ bool instance::printSolution(string filepath) {
 		timeInfo->tm_min += runParam.baseTime;
 		mktime(timeInfo);
 	}
+	output.close();
 	
+	/* print summarized statistics (to csv) */
+	status = open_file(output, filepath + "_stats.csv");
+	if (!status) goto finalize;
+	
+	// headers
+	output << "Time";
+	for (int f=0; f<fields.size(); f++) {
+		output << "," << fields[f];
+	}
+	output << endl;
+	
+	// data
+	for (int t=0; t<runParam.numPeriods; t++) {
+		output << setfill('0') << setw(2) << timeInfo->tm_hour << ":" << setfill('0') << setw(2) << timeInfo->tm_min << ",";
+		
+		// reset stats to 0.0
+		map<string, double> stats;
+		for (int f=0; f<fields.size(); f++) {
+			stats.insert(pair<string,double> (fields[f], 0.0));
+		}
+		
+		double coef = runParam.ED_resolution/60.0;
+
+		for (int g=0; g<powSys->numGen; g++) {
+			// open generator count
+			stats["#ofOnGen"] += solution.x[g][t];
+			
+			// capacities
+			stats["Capacity"] += powSys->generators[g].maxCapacity * solution.x[g][t];
+			stats["RampUpCap"] += powSys->generators[g].rampUpLim * solution.x[g][t];
+			stats["RampDownCap"] += powSys->generators[g].rampDownLim * solution.x[g][t];
+			stats["MinGenReq"] += powSys->generators[g].minGenerationReq * solution.x[g][t];
+			
+			// production amounts
+			stats["UsedGen"] += solution.usedGen_ED[g][t];
+			stats["OverGen"] += solution.overGen_ED[g][t];
+			
+			// costs
+			stats["UsedGenCost"] += powSys->generators[g].variableCost * coef * solution.usedGen_ED[g][t];
+			stats["OverGenCost"] += powSys->generators[g].variableCost * coef * solution.overGen_ED[g][t];
+			stats["NoLoadCost"] += powSys->generators[g].noLoadCost   * coef * solution.x[g][t];
+			
+			if (t > 0) {
+				stats["StartUpCost"] += powSys->generators[g].startupCost * max(solution.x[g][t]-solution.x[g][t-1], 0.0);
+			}
+			
+			// emissions
+			stats["CO2(kg)"] += powSys->generators[g].CO2_emission_base * coef * solution.x[g][t];
+			stats["CO2(kg)"] += powSys->generators[g].CO2_emission_var * coef * solution.g_ED[g][t];
+			stats["NOX(kg)"] += powSys->generators[g].NOX_emission_base * coef * solution.x[g][t];
+			stats["NOX(kg)"] += powSys->generators[g].NOX_emission_var * coef * solution.g_ED[g][t];
+			stats["SO2(kg)"] += powSys->generators[g].SO2_emission_base * coef * solution.x[g][t];
+			stats["SO2(kg)"] += powSys->generators[g].SO2_emission_var * coef * solution.g_ED[g][t];
+		}
+		
+		// shed demand
+		for (int b = 0; b < powSys->numBus; b++) {
+			stats["LoadShed"] += solution.loadShed_ED[b][t];
+		}
+		
+		// storage
+		for (int bt=0; bt<powSys->numBatteries; bt++) {
+			stats["Storage (MW)"] += solution.btState_ED[bt][t];
+			stats["Charge (MW)"] += solution.btCharge_ED[bt][t];
+			stats["Discharge (MW)"] += solution.btDischarge_ED[bt][t];
+		}
+
+		for (int f=0; f<fields.size(); f++) {
+			output << stats[fields[f]];
+			if (f != fields.size()-1) output << ",";
+		}
+		output << endl;
+		
+		timeInfo->tm_min += runParam.baseTime;
+		mktime(timeInfo);
+	}
+	output.close();
+
+	// Battery state
+	status = open_file(output, filepath + "_btState_ED.csv");
+	if (!status) goto finalize;
+	print_matrix(output, solution.btState_ED, delimiter, 2);
+	output.close();
+
+	// Charge
+	status = open_file(output, filepath + "_btCharge_ED.csv");
+	if (!status) goto finalize;
+	print_matrix(output, solution.btCharge_ED, delimiter, 2);
+	output.close();
+
+	// Discharge
+	status = open_file(output, filepath + "_btDischarge_ED.csv");
+	if (!status) goto finalize;
+	print_matrix(output, solution.btDischarge_ED, delimiter, 2);
 	output.close();
 	
 	finalize:
