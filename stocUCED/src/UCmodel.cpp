@@ -422,17 +422,8 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 		double chargingLossCoef = pow(bat_ptr->chargingLossCoef, periodLength/60.0);
 		double dischargingLossCoef = pow(bat_ptr->dischargingLossCoef, periodLength/60.0);
 
-		double initBtState = 0;
-//		if (t0 == 0) {
-//			if (runParam.useGenHistory && inst.solList.size() > 0) {
-//				initBtState = inst.solList.back().btState_ED[bt][runParam.numPeriods-1];
-//			}
-//		} else {
-//			initBtState = inst.solution.btState_ED[bt][t0-1];
-//		}
-
 		int t=0;
-		IloConstraint c ( I[bt][t] == initBtState * dissipationCoef + v_pos[bt][t] * chargingLossCoef - v_neg[bt][t] * dischargingLossCoef);
+		IloConstraint c ( I[bt][t] == getBatteryState(bat_ptr->id, -1) * dissipationCoef + v_pos[bt][t] * chargingLossCoef - v_neg[bt][t] * dischargingLossCoef);
 		sprintf(buffer, "Bt_%d_%d", bt, t); c.setName(buffer); model.add(c);
 
 		for (t=1; t<numPeriods; t++) {
@@ -843,6 +834,22 @@ double UCmodel::getGenProd(int g, int t) {
 		return getEDGenProd(g, t);
 	}
 	return -INFINITY;
+}
+
+double UCmodel::getBatteryState(int batteryId, int period) {
+	// which Solution component is requested?
+	int reqSolnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
+	
+	// return the requested generator state
+	if (reqSolnComp > 0) {
+		return inst->solution.btState_ED[batteryId][reqSolnComp];
+	} else {
+		if (runParam.useGenHistory && inst->solList.size() > 0) {
+			return inst->solList.back().btState_ED[batteryId][runParam.numPeriods-1];	// the latest battery state
+		} else {
+			return 0.0;
+		}
+	}
 }
 
 /****************************************************************************

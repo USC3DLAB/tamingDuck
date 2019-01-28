@@ -360,5 +360,8 @@ void PowSys::postprocessing() {
 		
 		// add the generator to the list of connected generators of the bus
 		bus_ptr->connectedBatteries.push_back( bat_ptr );
+		
+		// boost battery outputs
+		bat_ptr->maxCapacity *= runParam.storageCoef;
 	}
 }

@@ -221,6 +221,8 @@ void readRunfile (string inputDir) {
 					runParam.useGenHistory = temp;
 				else if ( field1 == "renewableCoef" )
 					runParam.renewableCoef = temp;
+				else if ( field1 == "storageCoef" )
+					runParam.storageCoef = temp;
 				else if ( field1 == "rampingCoef" )
 					runParam.rampingCoef = temp;
 				else if ( field1 == "updateForecasts" )
@@ -271,6 +273,7 @@ void readRunfile (string inputDir) {
 	cout << endl << "Spinning reserve percentage = " << setprecision(2) << runParam.resPerc_UC*100 << "%" << endl;
 	cout << "Renewable coefficient = " << runParam.renewableCoef << endl;
 	cout << "Ramping rate coefficient = " << runParam.rampingCoef << endl;
+	cout << "Storage rate coefficient = " << runParam.storageCoef << endl;
 	if (runParam.useGenHistory) cout << "Using generator histories from earlier days." << endl;
 	cout << "------------------------------------------------------------------" << endl;
 

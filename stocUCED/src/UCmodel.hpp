@@ -60,6 +60,7 @@ private:
 	bool	getGenState(int genId, int period);					// reads from Solution.x
 	void	setGenState(int genId, int period, double value);	// writes to Solution.x
 	void	setUCGenProd(int genId, int period, double value);	// writes to Solution.gUC
+	double	getBatteryState (int genId, int period);			// reads from Solution.btState_ED
 	double	getEDGenProd(int genId, int period);				// reads from Solution.gED
 	double 	getUCGenProd(int genId, int period);				// reads from Solution.gUC
 	double	getGenProd(int g, int t);		// reads from Solution.gED, or gUC, and handles the beginning of the planning horizon
