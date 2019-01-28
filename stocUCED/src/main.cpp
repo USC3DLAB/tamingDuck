@@ -270,7 +270,9 @@ void readRunfile (string inputDir) {
 	cout << "DA-UC     " << fixed << setprecision(0) << setw(4) << runParam.DA_horizon/60 << setw(4) << " hr" << setw(9) << runParam.DA_resolution << " min    " << "every " << setw(2) << runParam.DA_frequency/60 << setw(4) << " hr" << endl;
 	cout << "ST-UC     " << fixed << setprecision(0) << setw(4) << runParam.ST_horizon/60 << setw(4) << " hr" << setw(9) << runParam.ST_resolution << " min    " << "every " << setw(2) << runParam.ST_frequency/60 << setw(4) << " hr" << endl;
 	cout << "ED        " << fixed << setprecision(0) << setw(4) << runParam.ED_horizon << " min " << setw(8) << runParam.ED_resolution << " min    " << "every " << setw(2) << runParam.ED_frequency << setw(4) << " min" << endl;
-	cout << endl << "Spinning reserve percentage = " << setprecision(2) << runParam.resPerc_UC*100 << "%" << endl;
+	cout << endl;
+	cout << "UC reserve percentage = " << setprecision(2) << runParam.resPerc_UC*100 << "%" << endl;
+	cout << "ED reserve percentage = " << setprecision(2) << runParam.resPerc_ED*100 << "%" << endl;
 	cout << "Renewable coefficient = " << runParam.renewableCoef << endl;
 	cout << "Ramping rate coefficient = " << runParam.rampingCoef << endl;
 	cout << "Storage rate coefficient = " << runParam.storageCoef << endl;

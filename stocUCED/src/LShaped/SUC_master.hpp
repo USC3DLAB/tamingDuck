@@ -57,8 +57,9 @@ private:
 	IloModel	model;
 	IloCplex	cplex;
 	
-	IloArray<IloNumVarArray> s, x, z, p, L, O;
+	IloArray<IloNumVarArray> s, x, z, p, p_var, L, O, v_pos, v_neg, I;
 	IloNumVarArray	eta;	// exp value of the 2nd-stage subproblem
+	void initializeVariables();
 	
 	IloArray<IloNumArray> xvals;	// values to be passed to the subproblems
 	IloRangeArray BendersCuts;		// Benders Cuts collected from the LP relaxation
@@ -88,7 +89,7 @@ private:
 	void	setUCGenProd (int genId, int period, double value);	// writes to Solution.gUC
 	double	getUCGenProd (int genId, int period);				// reads from Solution.gUC
 	double	getGenProd   (int g, int t); // reads from Solution.gED, or gUC, and handles the beginning of the planning horizon
-
+	double	getBatteryState(int batteryId, int period);
 	
 	int	checkShutDownRampDownInconsistency (int g);
 	
@@ -101,7 +102,7 @@ private:
 	vector<double>		   sysLoad;		// aggregated load at each period
 	
 	int	beginMin;				// t=0 in the model corresponds to this minute in the planning horizon
-	int numGen, numLine, numBus, numPeriods, numBaseTimePerPeriod, rep;
+	int numGen, numLine, numBus, numPeriods, numBaseTimePerPeriod, rep, numBatteries;
 	double periodLength;
 	
 	char buffer[30];

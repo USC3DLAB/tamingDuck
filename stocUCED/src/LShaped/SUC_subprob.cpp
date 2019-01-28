@@ -51,9 +51,10 @@ SUCsubprob::~SUCsubprob () {
 void SUCsubprob::preprocessing ()
 {
 	/* basic parameters */
-	numGen	   = inst->powSys->numGen;
-	numLine    = inst->powSys->numLine;
-	numBus     = inst->powSys->numBus;
+	numGen = inst->powSys->numGen;
+	numLine = inst->powSys->numLine;
+	numBus = inst->powSys->numBus;
+	numBatteries = inst->powSys->numBatteries;
 	
 	numPeriods	 = (probType == DayAhead) ? runParam.DA_numPeriods : runParam.ST_numPeriods;
 	periodLength = (probType == DayAhead) ? runParam.DA_resolution : runParam.ST_resolution;
@@ -188,7 +189,27 @@ void SUCsubprob::formulate_production()
 		sprintf(buffer, "x_%d", g);
 		x[g].setNames(buffer);
 	}
+	v_pos = IloArray<IloNumVarArray> (env, numBatteries);
+	v_neg = IloArray<IloNumVarArray> (env, numBatteries);
+	I = IloArray<IloNumVarArray> (env, numBatteries);
+	for (int bt=0; bt<numBatteries; bt++) {
+		v_pos[bt] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+		v_neg[bt] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+		I[bt] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+		
+		sprintf(buffer, "vp_%d", bt);
+		v_pos[bt].setNames(buffer);
+		sprintf(buffer, "vn_%d", bt);
+		v_neg[bt].setNames(buffer);
+		sprintf(buffer, "I_%d", bt);
+		I[bt].setNames(buffer);
+		
+		model.add(v_pos[bt]);
+		model.add(v_neg[bt]);
+		model.add(I[bt]);
+	}
 
+	
 	/** Constraints **/
 
 	// state constraints
@@ -223,7 +244,6 @@ void SUCsubprob::formulate_production()
 			}
 		}
 	}
-
 	
 	// minimum production constraints
 	for (int g=0; g<numGen; g++) {
@@ -281,6 +301,32 @@ void SUCsubprob::formulate_production()
 			cons.add(con);
 		}
 	}
+	
+	// battery state
+	for (int bt=0; bt<numBatteries; bt++) {
+		Battery* bat_ptr = &inst->powSys->batteries[bt];
+
+		double dissipationCoef = pow(bat_ptr->dissipationCoef, periodLength/60.0);
+		double chargingLossCoef = pow(bat_ptr->chargingLossCoef, periodLength/60.0);
+		double dischargingLossCoef = pow(bat_ptr->dischargingLossCoef, periodLength/60.0);
+
+		int t=0;
+		model.add(I[bt][t] == getBatteryState(bat_ptr->id, -1) * dissipationCoef + v_pos[bt][t] * chargingLossCoef - v_neg[bt][t] * dischargingLossCoef);
+		for (t=1; t<numPeriods; t++) {
+			model.add(I[bt][t] == I[bt][t-1] * dissipationCoef + v_pos[bt][t] * chargingLossCoef - v_neg[bt][t] * dischargingLossCoef);
+		}
+	}
+
+	// battery capacity
+	for (int bt=0; bt<numBatteries; bt++) {
+		Battery* batPtr = &inst->powSys->batteries[bt];
+		
+		for (int t=0; t<numPeriods; t++) {
+			IloRange con (env, -IloInfinity, I[bt][t] - batPtr->maxCapacity, 0);
+			cons.add(con);
+		}
+	}
+
 }
 
 void SUCsubprob::formulate_nodebased_system()
@@ -379,6 +425,12 @@ void SUCsubprob::formulate_nodebased_system()
 				expr += p[ busPtr->connectedGenerators[g]->id ][t];
 			}
 
+			// storage
+			Bus* busPtr = &(inst->powSys->buses[b]);
+			for (int bt=0; bt < (int) busPtr->connectedBatteries.size(); bt++) {
+				expr -= v_pos[ busPtr->connectedBatteries[bt]->id ][t] + v_neg[ busPtr->connectedBatteries[bt]->id ][t];
+			}
+
 			// in/out flows (iterate over all arcs)
 			for (auto linePtr = inst->powSys->lines.begin(); linePtr != inst->powSys->lines.end(); ++linePtr) {
 				if (linePtr->orig->id == busPtr->id) {	// if line-origin and bus have same ids, then this is outgoing flow
@@ -441,6 +493,9 @@ void SUCsubprob::formulate_aggregate_system()
 	for (int t=0; t<numPeriods; t++) {
 		IloExpr expr (env);
 		for (int g=0; g<numGen; g++) expr += p[g][t];
+		for (int bt=0; bt<numBatteries; bt++) {
+			expr -= v_pos[bt][t] + v_neg[bt][t];
+		}
 		expr += L[t];
 		expr -= O[t];
 		IloRange con (env, sysLoad[t], expr, sysLoad[t]);
@@ -596,7 +651,7 @@ void SUCsubprob::compute_optimality_cut_coefs(BendersCutCoefs &cutCoefs, int &s)
 	}
 	
 	// capacity
-	// Variant 1: Randomness is in the coefficient matrix
+//	// Variant 1: Randomness is in the coefficient matrix
 //	// skipped, as all necessary coefs are 0
 //	c += numGen * numPeriods;
 	
@@ -624,6 +679,7 @@ void SUCsubprob::compute_optimality_cut_coefs(BendersCutCoefs &cutCoefs, int &s)
 	
 	// minimum generation requirements
 	// skipped, as all necessary coefs are 0
+	// Note: they are not part of the cons object, therefore their dual multipliers are not collected.
 	
 	// ramp up constraints
 	for (int g=0; g<numGen; g++) {
@@ -666,6 +722,19 @@ void SUCsubprob::compute_optimality_cut_coefs(BendersCutCoefs &cutCoefs, int &s)
 			rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
 //			displayDiscrepancy(cons[c].getUB(), rampDownRate);
 			cutCoefs.pi_b += duals[c] * rampDownRate;
+		}
+	}
+	
+	// battery state
+	// skipped, because the associated coefs are all 0
+	// Note: we haven't entered these constraints into the cons object, therefore their dual multipliers are not collected
+	
+	// battery capacity
+	for (int bt=0; bt<numBatteries; bt++) {
+		Battery* batPtr = &inst->powSys->batteries[bt];
+		
+		for (int t=0; t<numPeriods; t++, c++) {
+			cutCoefs.pi_b += duals[c] * batPtr->maxCapacity;
 		}
 	}
 	
@@ -969,6 +1038,22 @@ double SUCsubprob::getGenProd(int g, int t) {
 		return getEDGenProd(g, t);
 	}
 	return -INFINITY;
+}
+
+double SUCsubprob::getBatteryState(int batteryId, int period) {
+	// which Solution component is requested?
+	int reqSolnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
+	
+	// return the requested generator state
+	if (reqSolnComp > 0) {
+		return inst->solution.btState_ED[batteryId][reqSolnComp];
+	} else {
+		if (runParam.useGenHistory && inst->solList.size() > 0) {
+			return inst->solList.back().btState_ED[batteryId][runParam.numPeriods-1];	// the latest battery state
+		} else {
+			return 0.0;
+		}
+	}
 }
 
 /****************************************************************************
