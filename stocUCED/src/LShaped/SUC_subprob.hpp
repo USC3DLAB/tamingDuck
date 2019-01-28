@@ -53,6 +53,7 @@ private:
 	bool 	getGenState	 (int genId, int period);				// reads from inst->Solution.x
 	double	getUCGenProd (int genId, int period);				// reads from Solution.gUC
 	double	getGenProd   (int g, int t); 	// reads from Solution.gED, or gUC, and handles the beginning of the planning horizon
+	double	getBatteryState (int batteryId, int period);
 	
 	int	checkShutDownRampDownInconsistency (int g);	
 
@@ -70,12 +71,12 @@ private:
 	void compute_feasibility_cut_coefs	(BendersCutCoefs &cutCoefs, int &s);
 	
 	// Variables
-    IloArray< IloNumVarArray > p, L, x;		// production, load-shedding, state-variables (latter to be fixed by the master problem)
+    IloArray< IloNumVarArray > p, L, x, v_pos, v_neg, I;		// production, load-shedding, state-variables (latter to be fixed by the master problem)
 	
 	// data
 	void preprocessing();
 	
-	int numGen, numLine, numBus, numPeriods, numBaseTimePerPeriod, beginMin, rep;
+	int numGen, numLine, numBus, numPeriods, numBaseTimePerPeriod, beginMin, rep, numBatteries;
 	double periodLength;
 	
 	vector<double> minGenerationReq;	// minimum production requirements (obeying assumptions)

@@ -432,24 +432,6 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 		}
 	}
 	
-//	// Stay within the ballpark of DA-UC generations
-//	if (probType == ShortTerm) {
-//		for (int g=0; g<numGen; g++) {
-//			Generator *genPtr = &(inst.powSys->generators[g]);
-//			
-//			if ( (genPtr->isDAUCGen || beginMin != 0) &&
-//				genPtr->type != Generator::SOLAR && genPtr->type != Generator::WIND) {
-//				for (int t=0; t<numPeriods; t += runParam.DA_resolution/runParam.ST_resolution) {
-//					const double percentage = 0.1;
-//					
-//					double lb = max(0.0, getUCGenProd(g, t)*(1-percentage));
-//					double ub = min(getUCGenProd(g, t)*(1+percentage), genPtr->maxCapacity);
-//					p[g][t].setBounds(lb, ub);
-//				}
-//			}
-//		}
-//	}
-	
 	/****** Symmetry Breaking ******/
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst.powSys->generators[g]);

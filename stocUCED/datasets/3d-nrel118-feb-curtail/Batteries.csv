@@ -1,4 +1,19 @@
-﻿BatteryID,Battery Name,Bus of Connection,Max Capacity (MW)
-1,Battery1,bus012,250
-2,Battery2,bus080,250
-3,Battery2,bus111,250
+﻿BatteryID,Battery Name,Bus of Connection,Max Capacity (MW),Dissipation Coef (per hr),Charging Loss Coef (per hr),Discharging Loss Coef (per hr)
+1,Battery1,bus015,144.04,0.999,0.998,0.998
+2,Battery2,bus018,185.52,0.999,0.998,0.998
+3,Battery3,bus019,124.8,0.999,0.998,0.998
+4,Battery4,bus024,65.6,0.999,0.998,0.998
+5,Battery5,bus027,107.1,0.999,0.998,0.998
+6,Battery6,bus031,156.2,0.999,0.998,0.998
+7,Battery7,bus032,751.61,0.999,0.998,0.998
+8,Battery8,bus054,264.47,0.999,0.998,0.998
+9,Battery9,bus055,30,0.999,0.998,0.998
+10,Battery10,bus069,124.9,0.999,0.998,0.998
+11,Battery11,bus076,25,0.999,0.998,0.998
+12,Battery12,bus082,349,0.999,0.998,0.998
+13,Battery13,bus092,519.26,0.999,0.998,0.998
+14,Battery14,bus100,504.99,0.999,0.998,0.998
+15,Battery15,bus104,467,0.999,0.998,0.998
+16,Battery16,bus105,274.48,0.999,0.998,0.998
+17,Battery17,bus110,253.9,0.999,0.998,0.998
+18,Battery18,bus112,175.8,0.999,0.998,0.998
