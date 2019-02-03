@@ -530,13 +530,12 @@ void EDmodel::formulate(instance &inst, int t0) {
 		} else {
 			initBtState = inst.solution.btState_ED[bt][t0-1];
 		}
-
-		int t=0;
-		IloConstraint c ( btState[bt][t] == initBtState * dissipationCoef + btCharge[bt][t] * chargingLossCoef - btDischarge[bt][t] * dischargingLossCoef);
-		sprintf(buffer, "Bt_%d_%d", bt, t); c.setName(buffer); model.add(c);
 		
+		int t=0;
+		IloConstraint c ( 0 == -btState[bt][t] + initBtState * dissipationCoef + btCharge[bt][t] * chargingLossCoef - btDischarge[bt][t] * dischargingLossCoef);
+		sprintf(buffer, "Bt_%d_%d", bt, t); c.setName(buffer); model.add(c);
 		for (t=1; t<numPeriods; t++) {
-			IloConstraint c ( btState[bt][t] == btState[bt][t-1] * dissipationCoef + btCharge[bt][t] * chargingLossCoef - btDischarge[bt][t] * dischargingLossCoef );
+			IloConstraint c ( 0 == -btState[bt][t] + btState[bt][t-1] * dissipationCoef + btCharge[bt][t] * chargingLossCoef - btDischarge[bt][t] * dischargingLossCoef );
 			sprintf(buffer, "Bt_%d_%d", bt, t); c.setName(buffer); model.add(c);
 		}
 	}
@@ -551,7 +550,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 			sprintf(buffer, "BtCap_%d_%d", bt, t); c.setName(buffer); model.add(c);
 		}
 	}
-	
+		
 	/***** Objective function *****/
 	IloExpr realTimeCost (env);
 	IloObjective obj;
