@@ -47,7 +47,7 @@ int integrateSD(instance &inst, EDmodel &rtED, string probName, string &configPa
 #if defined(WRITE_PROB)
 	testIntegrateSD(orig);
 #endif
-
+	
 	/* Build the timeType structure */
 	if ( (tim = buildTimeType(rtED.model, rtED.timeRows, rtED.timeCols)) == NULL) {
 		perror("Failed to build the timeType structure for 2SD.\n");
@@ -243,7 +243,7 @@ oneProblem *buildOneProblem(IloModel &model, IloCplex &cplex, string probName) {
 			else if ( (*it).isVariable() ) {
 				/* Decision variable */
 				IloNumVar var = (*it).asVariable();
-
+				
 				orig->bdl[c] = var.getLB();
 				orig->bdu[c] = var.getUB();
 
