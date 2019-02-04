@@ -59,8 +59,13 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC probName, vect
 
 	/* Extract relevant part of the solutions */
 	(*edSols) = (vectorC) arr_alloc(prob[0]->num->cols, double);
+//	printf("%d variables", prob[0]->num->cols);
 	for (int n = 0; n < prob[0]->num->cols; n++ ) {
 		(*edSols)[n] = cell->incumbX[n+1];
+//		printf(cell->master->cname[n]);
+//		printf(" ");
+//		printf("%.2f", cell->incumbX[n+1]);
+//		printf("\n");
 	}
 	*objVal = cell->incumbEst;
 

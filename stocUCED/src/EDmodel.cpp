@@ -135,14 +135,20 @@ void EDmodel::formulate(instance &inst, int t0) {
 	timeRows = vector <string> ();
 	stocRows = vector <string> ();
 
-	/**** Decision variables *****/
+	/**** Decision variables *****
+	 * IMP: Declare every variable immediately in here if the variable
+	 * can appear in the first-stage problem.
+	 */
 	genUsed = IloArray< IloNumVarArray > (env, numGen);
 	overGen = IloArray< IloNumVarArray > (env, numGen);
 	demMet = IloArray< IloNumVarArray > (env, numLoad);
 	demShed = IloArray <IloNumVarArray> (env, numLoad);
 	theta = IloArray< IloNumVarArray > (env, numLoad);
 	flow = IloArray< IloNumVarArray > (env, numLine);
-
+	btCharge 	= IloArray<IloNumVarArray> (env, numBatteries);
+	btDischarge = IloArray<IloNumVarArray> (env, numBatteries);
+	btState 	= IloArray<IloNumVarArray> (env, numBatteries);
+	
 	for ( int t = 0; t < numPeriods; t++ ) {
 		/* Generation and over-generation */
 		for ( int g = 0; g < numGen; g++ ) {
@@ -198,32 +204,34 @@ void EDmodel::formulate(instance &inst, int t0) {
 			sprintf(elemName, "flow(%s)(%d)", lptr->name.c_str(), t);
 			flow[l][t].setName(elemName); model.add(flow[l][t]);
 		}
-	}
-	
-	btCharge 	= IloArray<IloNumVarArray> (env, numBatteries);
-	btDischarge = IloArray<IloNumVarArray> (env, numBatteries);
-	btState 	= IloArray<IloNumVarArray> (env, numBatteries);
-	for (int bt=0; bt<numBatteries; bt++) {
-		Battery *btPtr = &(inst.powSys->batteries[bt]);
-		btCharge[bt] 	= IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
-		btDischarge[bt] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
-		btState[bt] 	= IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
 		
-		char buffer[30];
-		sprintf(buffer, "vp_%d", bt);
-		btCharge[bt].setNames(buffer);
-		sprintf(buffer, "vn_%d", bt);
-		btDischarge[bt].setNames(buffer);
-		sprintf(buffer, "I_%d", bt);
-		btState[bt].setNames(buffer);
-		
-		model.add(btCharge[bt]);
-		model.add(btDischarge[bt]);
-		model.add(btState[bt]);
+		/* Batteries */
+		for (int bt=0; bt<numBatteries; bt++) {
+			Battery *btPtr = &(inst.powSys->batteries[bt]);
+			if ( t == 0 ) {
+				btCharge[bt] 	= IloNumVarArray(env, numPeriods, 0, btPtr->maxCapacity, ILOFLOAT);
+				btDischarge[bt] = IloNumVarArray(env, numPeriods, 0, btPtr->maxCapacity, ILOFLOAT);
+				btState[bt] 	= IloNumVarArray(env, numPeriods, 0, btPtr->maxCapacity, ILOFLOAT);
+			}
+			
+			sprintf(elemName, "vp(%d)(%d)", bt, t);
+			btCharge[bt][t].setName(elemName);
+			model.add(btCharge[bt][t]);
+				
+			sprintf(elemName, "vn(%d)(%d)", bt, t);
+			btDischarge[bt][t].setName(elemName);
+			model.add(btDischarge[bt][t]);
+				
+			sprintf(elemName, "I(%d)(%d)", bt, t);
+			btState[bt][t].setName(elemName);
+			model.add(btState[bt][t]);
+		}
 	}
 
-
-	/***** Constraints *****/
+	/***** Constraints *****
+	 * IMP: Declare every constraint immediately in here, if the
+	 * constraint may appear in the first-stage.
+	 */
 	for (int t = 0; t < numPeriods; t++ ) {
 		/* Flow balance equation */
 		for ( int b = 0; b < numBus; b++ ) {
@@ -320,100 +328,6 @@ void EDmodel::formulate(instance &inst, int t0) {
 			}
 		}
 		
-		/* system-wide spinning-reserve constraints *
-		if (t != 0) {
-			IloExpr sysOverGen (env);
-			
-			for (int g=0; g<numGen; g++) {
-				sysOverGen += overGen[g][t];
-			}
-			sprintf(elemName, "reserve(%d)", t);
-			IloConstraint con ( sysOverGen >= sysLoad[t] * runParam.spinResPerc );
-			con.setName(elemName); model.add(con);
-			
-			sysOverGen.end();
-		}
-		/*	*/
-		
-//		// Stay within the ballpark of UC generation levels
-//		for (int g=0; g<numGen; g++) {
-//			Generator *genPtr = &(inst.powSys->generators[g]);
-//			if (genPtr->type != Generator::SOLAR && genPtr->type != Generator::WIND) {
-//				for (int t=0; t<numPeriods; t++) {
-//					const double percentage = 0.1;
-//
-//					model.add( genUsed[g][t] + overGen[g][t] <= inst.solution.g_UC[g][t0+t] * (1+percentage) );
-//					model.add( genUsed[g][t] + overGen[g][t] >= inst.solution.g_UC[g][t0+t] * (1-percentage) );
-//				}
-//			}
-//		}
-
-		/* system-wide ramping capability *
-		if (t==0) {
-			for (int t_future=t0+1; t_future<runParam.numPeriods; t_future++) {	// for every future period in the "whole" planning horizon
-				double sysRampUpCap = 0, predRenGen = 0, currentRenGen = 0;
-				int nbPeriodsOpen = 0;
-				for (int g=0; g<numGen; g++) {
-					Generator *genPtr = &(inst.powSys->generators[g]);
-					if ( genPtr->type == Generator::SOLAR || genPtr->type == Generator::WIND ) {
-						// solar and wind generators
-						
-						// get the actuals for the current time period
-						auto it = inst.actuals.mapVarNamesToIndex.find(genPtr->name);
-						currentRenGen += min(inst.actuals.vals[rep][t0][it->second], genMax[g][t]);
-						
-						// get the amount of predicted-supply at t_future
-						if (runParam.updateForecasts) {
-							auto it = inst.meanForecast["RT"].mapVarNamesToIndex.find(genPtr->name);
-							predRenGen += min(inst.meanForecast["RT"].vals[rep][t_future][it->second], genMax[g][t]);
-						}
-						else {
-							auto it = inst.meanForecast["DA"].mapVarNamesToIndex.find(genPtr->name);
-							predRenGen += min(inst.meanForecast["DA"].vals[rep][t_future][it->second], genMax[g][t]);
-						}
-					}
-					else {
-						// conventional generators
-						// count the # of periods generator can ramp up till t_future
-						nbPeriodsOpen = 0;
-						for (int l=t_future; l >= t0+1; l--) {
-							if ( inst.solution.x[g][l] <= EPSzero ) break;
-							
-							nbPeriodsOpen++;
-						}
-						
-						// calculate the ramping capability of the generator till t_future
-						sysRampUpCap += nbPeriodsOpen * inst.powSys->generators[g].rampUpLim * runParam.ED_resolution;
-					}
-				}
-				
-				// get the system load at time t_future
-				double futureSysLoad = 0, currentSysLoad = 0;
-				for (int r=0; r<3; r++)	{	// assuming 3 regions in here. TODO: generalize this
-					auto it = inst.actuals.mapVarNamesToIndex.find( num2str(r+1) );
-					futureSysLoad += inst.actuals.vals[rep][t_future][it->second];
-					currentSysLoad += inst.actuals.vals[rep][t0][it->second];
-				}
-				
-				// add the constraint
-				if (futureSysLoad-currentSysLoad > 0) {
-					cout << endl << "t=" << t0 << ", tf=" << t_future << ", Sys-RampUpReq = " << (futureSysLoad-predRenGen)-(currentSysLoad-currentRenGen) << ", " << "Sys-RampUpCap = " << sysRampUpCap + (predRenGen-currentRenGen);
-				}
-				if (futureSysLoad-currentSysLoad > sysRampUpCap + (predRenGen-currentRenGen)) {
-					IloExpr sysOverGen (env);
-					for (int g=0; g<numGen; g++) {
-						Generator *genPtr = &(inst.powSys->generators[g]);
-						if ( genPtr->type == Generator::SOLAR || genPtr->type == Generator::WIND )	continue;
-						
-						if (inst.solution.x[g][t_future] >= 1-EPSzero)	sysOverGen += overGen[g][t];
-					}
-					model.add( sysOverGen >= futureSysLoad-currentSysLoad - sysRampUpCap - (predRenGen-currentRenGen) );
-				}
-			}
-		}
-		/*  */
-		
-		
 		for ( int g = 0; g < numGen; g++ ) {
 			Generator genPtr = inst.powSys->generators[g];
 
@@ -465,9 +379,39 @@ void EDmodel::formulate(instance &inst, int t0) {
 				IloConstraint c(demMet[d][t] + demShed[d][t] == busLoad[d][t]*(1+runParam.resPerc_ED)); c.setName(elemName); model.add(c);
 			}
 		}
+		
+		// battery state
+		for (int bt=0; bt<numBatteries; bt++) {
+			Battery* batPtr = &inst.powSys->batteries[bt];
+			
+			double dissipationCoef = pow(batPtr->dissipationCoef, runParam.ED_resolution/60.0);
+			double chargingLossCoef = pow(batPtr->chargingLossCoef, runParam.ED_resolution/60.0);
+			double dischargingLossCoef = pow(batPtr->dischargingLossCoef, runParam.ED_resolution/60.0);
+			
+			if (t == 0) {
+				// determine previous battery state
+				double initBtState = 0;
+				if (t0 == 0) {
+					if (runParam.useGenHistory && inst.solList.size() > 0) {
+						initBtState = inst.solList.back().btState_ED[bt][runParam.numPeriods-1];
+					}
+				} else {
+					initBtState = inst.solution.btState_ED[bt][t0-1];
+				}
+				IloConstraint c ( 0 == -btState[bt][t] + initBtState * dissipationCoef + btCharge[bt][t] * chargingLossCoef - btDischarge[bt][t] * dischargingLossCoef);
+				sprintf(elemName, "Bt_%d_%d", bt, t); c.setName(elemName); model.add(c);
+			}
+			else {
+				IloConstraint c ( 0 == -btState[bt][t] + btState[bt][t-1] * dissipationCoef + btCharge[bt][t] * chargingLossCoef - btDischarge[bt][t] * dischargingLossCoef );
+				sprintf(elemName, "Bt_%d_%d", bt, t); c.setName(elemName); model.add(c);
+			}
+		}
 	}
-	
+
 	/** Rampability to UC generation levels **/
+	/* IMP: These variables and constraints only appear in the second-stage
+	 * problem, therefore they can be declared after the above loop.
+	 */
 	IloNumVarArray delta_pos (env, numGen, 0, IloInfinity, ILOFLOAT);	// positive deviations from settled DA-UC generation amounts
 	IloNumVarArray delta_neg (env, numGen, 0, IloInfinity, ILOFLOAT);	// negative deviations from settled DA-UC generation amounts	
 	for (int g=0; g<numGen; g++) {
@@ -509,45 +453,6 @@ void EDmodel::formulate(instance &inst, int t0) {
 			sprintf(elemName, "DNrampability(%d)(%d)", g, t);
 			c2.setName(elemName);
 			model.add(c2);
-		}
-	}
-	
-	// battery state
-	for (int bt=0; bt<numBatteries; bt++) {
-		Battery* batPtr = &inst.powSys->batteries[bt];
-		char buffer[30];
-	
-		double dissipationCoef = pow(batPtr->dissipationCoef, runParam.ED_resolution/60.0);
-		double chargingLossCoef = pow(batPtr->chargingLossCoef, runParam.ED_resolution/60.0);
-		double dischargingLossCoef = pow(batPtr->dischargingLossCoef, runParam.ED_resolution/60.0);
-		
-		// determine previous battery state
-		double initBtState = 0;
-		if (t0 == 0) {
-			if (runParam.useGenHistory && inst.solList.size() > 0) {
-				initBtState = inst.solList.back().btState_ED[bt][runParam.numPeriods-1];
-			}
-		} else {
-			initBtState = inst.solution.btState_ED[bt][t0-1];
-		}
-		
-		int t=0;
-		IloConstraint c ( 0 == -btState[bt][t] + initBtState * dissipationCoef + btCharge[bt][t] * chargingLossCoef - btDischarge[bt][t] * dischargingLossCoef);
-		sprintf(buffer, "Bt_%d_%d", bt, t); c.setName(buffer); model.add(c);
-		for (t=1; t<numPeriods; t++) {
-			IloConstraint c ( 0 == -btState[bt][t] + btState[bt][t-1] * dissipationCoef + btCharge[bt][t] * chargingLossCoef - btDischarge[bt][t] * dischargingLossCoef );
-			sprintf(buffer, "Bt_%d_%d", bt, t); c.setName(buffer); model.add(c);
-		}
-	}
-	
-	// battery capacity
-	for (int bt=0; bt<numBatteries; bt++) {
-		Battery* batPtr = &inst.powSys->batteries[bt];
-		char buffer[30];
-		
-		for (int t=0; t<numPeriods; t++) {
-			IloConstraint c (btState[bt][t] <= batPtr->maxCapacity);
-			sprintf(buffer, "BtCap_%d_%d", bt, t); c.setName(buffer); model.add(c);
 		}
 	}
 		
