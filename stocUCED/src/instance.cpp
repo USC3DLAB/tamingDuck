@@ -326,8 +326,7 @@ bool instance::printSolution(string filepath) {
 	fields.push_back("RampDownCap");
 	fields.push_back("MinGenReq");
 	fields.push_back("Storage (MW)");
-	fields.push_back("Charge (MW)");
-	fields.push_back("Discharge (MW)");
+	fields.push_back("Storage Use (MW)");
 
 	/* print solutions */
 	ofstream output;
@@ -430,8 +429,7 @@ bool instance::printSolution(string filepath) {
 		// storage
 		for (int bt=0; bt<powSys->numBatteries; bt++) {
 			stats["Storage (MW)"] += solution.btState_ED[bt][t];
-			stats["Charge (MW)"] += solution.btCharge_ED[bt][t];
-			stats["Discharge (MW)"] += solution.btDischarge_ED[bt][t];
+			stats["Storage Use (MW)"] += solution.btFlow_ED[bt][t];
 		}
 		
 		// print
@@ -509,8 +507,7 @@ bool instance::printSolution(string filepath) {
 		// storage
 		for (int bt=0; bt<powSys->numBatteries; bt++) {
 			stats["Storage (MW)"] += solution.btState_ED[bt][t];
-			stats["Charge (MW)"] += solution.btCharge_ED[bt][t];
-			stats["Discharge (MW)"] += solution.btDischarge_ED[bt][t];
+			stats["Storage Use (MW)"] += solution.btFlow_ED[bt][t];
 		}
 
 		for (int f=0; f<fields.size(); f++) {
@@ -530,18 +527,12 @@ bool instance::printSolution(string filepath) {
 	print_matrix(output, solution.btState_ED, delimiter, 2);
 	output.close();
 
-	// Charge
-	status = open_file(output, filepath + "_btCharge_ED.csv");
+	// Battery flows
+	status = open_file(output, filepath + "_btFlow_ED.csv");
 	if (!status) goto finalize;
-	print_matrix(output, solution.btCharge_ED, delimiter, 2);
+	print_matrix(output, solution.btFlow_ED, delimiter, 2);
 	output.close();
 
-	// Discharge
-	status = open_file(output, filepath + "_btDischarge_ED.csv");
-	if (!status) goto finalize;
-	print_matrix(output, solution.btDischarge_ED, delimiter, 2);
-	output.close();
-	
 	finalize:
 	return status;
 }

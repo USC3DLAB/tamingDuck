@@ -57,7 +57,7 @@ private:
 	IloModel	model;
 	IloCplex	cplex;
 	
-	IloArray<IloNumVarArray> s, x, z, p, p_var, L, O, v_pos, v_neg, I;
+	IloArray<IloNumVarArray> s, x, z, p, p_var, L, O, v, I;
 	IloNumVarArray	eta;	// exp value of the 2nd-stage subproblem
 	void initializeVariables();
 	

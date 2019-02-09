@@ -48,7 +48,7 @@ public:
 	vector <string> stocRows;
 
 private:
-	IloArray <IloNumVarArray> genUsed, overGen, demMet, demShed, flow, theta, btCharge, btDischarge, btState;
+	IloArray <IloNumVarArray> genUsed, overGen, demMet, demShed, flow, theta, btFlow, btState;
 
 	int numGen, numBus, numLine, numLoad, numPeriods, rep, numBatteries;
 	vector<vector<double>> busLoad, genMin, genMax, genRampUp, genRampDown, genAvail;

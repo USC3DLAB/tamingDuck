@@ -189,23 +189,18 @@ void SUCsubprob::formulate_production()
 		sprintf(buffer, "x_%d", g);
 		x[g].setNames(buffer);
 	}
-	v_pos = IloArray<IloNumVarArray> (env, numBatteries);
-	v_neg = IloArray<IloNumVarArray> (env, numBatteries);
+	v = IloArray<IloNumVarArray> (env, numBatteries);
 	I = IloArray<IloNumVarArray> (env, numBatteries);
 	for (int bt=0; bt<numBatteries; bt++) {
-		v_pos[bt] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
-		v_neg[bt] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+		v[bt] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
 		I[bt] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
 		
-		sprintf(buffer, "vp_%d", bt);
-		v_pos[bt].setNames(buffer);
-		sprintf(buffer, "vn_%d", bt);
-		v_neg[bt].setNames(buffer);
+		sprintf(buffer, "v_%d", bt);
+		v[bt].setNames(buffer);
 		sprintf(buffer, "I_%d", bt);
 		I[bt].setNames(buffer);
 		
-		model.add(v_pos[bt]);
-		model.add(v_neg[bt]);
+		model.add(v[bt]);
 		model.add(I[bt]);
 	}
 
@@ -307,13 +302,12 @@ void SUCsubprob::formulate_production()
 		Battery* bat_ptr = &inst->powSys->batteries[bt];
 
 		double dissipationCoef = pow(bat_ptr->dissipationCoef, periodLength/60.0);
-		double chargingLossCoef = pow(bat_ptr->chargingLossCoef, periodLength/60.0);
-		double dischargingLossCoef = pow(bat_ptr->dischargingLossCoef, periodLength/60.0);
+		double conversionLossCoef = pow(bat_ptr->conversionLossCoef, periodLength/60.0);
 
 		int t=0;
-		model.add(I[bt][t] == getBatteryState(bat_ptr->id, -1) * dissipationCoef + v_pos[bt][t] * chargingLossCoef - v_neg[bt][t] * dischargingLossCoef);
+		model.add(I[bt][t] == getBatteryState(bat_ptr->id, -1) * dissipationCoef + v[bt][t] * conversionLossCoef);
 		for (t=1; t<numPeriods; t++) {
-			model.add(I[bt][t] == I[bt][t-1] * dissipationCoef + v_pos[bt][t] * chargingLossCoef - v_neg[bt][t] * dischargingLossCoef);
+			model.add(I[bt][t] == I[bt][t-1] * dissipationCoef + v[bt][t] * conversionLossCoef);
 		}
 	}
 
@@ -428,7 +422,7 @@ void SUCsubprob::formulate_nodebased_system()
 			// storage
 			Bus* busPtr = &(inst->powSys->buses[b]);
 			for (int bt=0; bt < (int) busPtr->connectedBatteries.size(); bt++) {
-				expr -= v_pos[ busPtr->connectedBatteries[bt]->id ][t] + v_neg[ busPtr->connectedBatteries[bt]->id ][t];
+				expr -= v[ busPtr->connectedBatteries[bt]->id ][t];
 			}
 
 			// in/out flows (iterate over all arcs)
@@ -494,7 +488,7 @@ void SUCsubprob::formulate_aggregate_system()
 		IloExpr expr (env);
 		for (int g=0; g<numGen; g++) expr += p[g][t];
 		for (int bt=0; bt<numBatteries; bt++) {
-			expr -= v_pos[bt][t] + v_neg[bt][t];
+			expr -= v[bt][t];
 		}
 		expr += L[t];
 		expr -= O[t];

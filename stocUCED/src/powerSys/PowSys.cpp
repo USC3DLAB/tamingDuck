@@ -86,9 +86,7 @@ bool PowSys::readBatteryData(string inputPath) {
 		move_cursor(input, delimiter);
 		
 		// conversion losses
-		input >> battery.chargingLossCoef;
-		move_cursor(input, delimiter);
-		input >> battery.dischargingLossCoef;		
+		input >> battery.conversionLossCoef;
 		safeGetline(input, temp_str);
 			
 		// add the generator to the list

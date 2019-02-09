@@ -86,13 +86,11 @@ int integrateSD(instance &inst, EDmodel &rtED, string probName, string &configPa
 	for (int l=0; l<inst.powSys->numLine; l++, j++) {
 		// flow (skipped)
 	}
-	for (int bt=0; bt<inst.powSys->numBatteries; bt++, j=j+3) {
-		// btCharge (extracted)
-		// btDischarge (extracted)
+	for (int bt=0; bt<inst.powSys->numBatteries; bt++, j=j+2) {
+		// btFlow (extracted)
 		// btState (extracted)
-		inst.solution.btCharge_ED[bt][t0] = edSols[j];
-		inst.solution.btDischarge_ED[bt][t0] = edSols[j+1];
-		inst.solution.btState_ED[bt][t0] = edSols[j+2];
+		inst.solution.btFlow_ED[bt][t0] = edSols[j];
+		inst.solution.btState_ED[bt][t0] = edSols[j+1];
 	}
 	totalLoadShed = 0.0;
 	for (int b=0; b<inst.powSys->numBus; b++) {
