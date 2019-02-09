@@ -34,7 +34,7 @@ private:
 	IloModel	model;
 	IloCplex	cplex;
 
-	IloArray<IloNumVarArray> s, x, z, p, p_var, L, O, v_pos, v_neg, I;
+	IloArray<IloNumVarArray> s, x, z, p, p_var, L, O, v, I;
 	void initializeVariables();
 
 	/* data */

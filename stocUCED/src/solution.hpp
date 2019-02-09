@@ -26,11 +26,10 @@ struct Solution {
 		resize_matrix(usedGen_ED, numGen, periods);
 		resize_matrix(loadShed_ED, numBus, periods);
 		resize_matrix(btState_ED, numBatteries, periods);
-		resize_matrix(btCharge_ED, numBatteries, periods);
-		resize_matrix(btDischarge_ED, numBatteries, periods);
+		resize_matrix(btFlow_ED, numBatteries, periods);
     }
     
-    vector< vector<double> > x, g_UC, g_ED, overGen_ED, usedGen_ED, loadShed_ED, btState_ED, btCharge_ED, btDischarge_ED;
+    vector< vector<double> > x, g_UC, g_ED, overGen_ED, usedGen_ED, loadShed_ED, btState_ED, btFlow_ED;
 };
 
 #endif /* solution_hpp */

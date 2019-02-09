@@ -579,23 +579,18 @@ void SUCmaster::initializeVariables() {
 		model.add(z[g]);
 	}
 	
-	v_pos = IloArray<IloNumVarArray> (env, numBatteries);
-	v_neg = IloArray<IloNumVarArray> (env, numBatteries);
+	v = IloArray<IloNumVarArray> (env, numBatteries);
 	I = IloArray<IloNumVarArray> (env, numBatteries);
 	for (int bt=0; bt<numBatteries; bt++) {
-		v_pos[bt] = IloNumVarArray(env, numPeriods, 0, inst->powSys->batteries[bt].maxCapacity, ILOFLOAT);
-		v_neg[bt] = IloNumVarArray(env, numPeriods, 0, inst->powSys->batteries[bt].maxCapacity, ILOFLOAT);
+		v[bt] = IloNumVarArray(env, numPeriods, -inst->powSys->batteries[bt].maxCapacity, inst->powSys->batteries[bt].maxCapacity, ILOFLOAT);
 		I[bt] = IloNumVarArray(env, numPeriods, 0, inst->powSys->batteries[bt].maxCapacity, ILOFLOAT);
 		
-		sprintf(buffer, "vp_%d", bt);
-		v_pos[bt].setNames(buffer);
-		sprintf(buffer, "vn_%d", bt);
-		v_neg[bt].setNames(buffer);
+		sprintf(buffer, "v_%d", bt);
+		v[bt].setNames(buffer);
 		sprintf(buffer, "I_%d", bt);
 		I[bt].setNames(buffer);
 		
-		model.add(v_pos[bt]);
-		model.add(v_neg[bt]);
+		model.add(v[bt]);
 		model.add(I[bt]);
 	}
 }
@@ -719,15 +714,14 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 		Battery* bat_ptr = &inst.powSys->batteries[bt];
 		
 		double dissipationCoef = pow(bat_ptr->dissipationCoef, periodLength/60.0);
-		double chargingLossCoef = pow(bat_ptr->chargingLossCoef, periodLength/60.0);
-		double dischargingLossCoef = pow(bat_ptr->dischargingLossCoef, periodLength/60.0);
+		double conversionLossCoef = pow(bat_ptr->conversionLossCoef, periodLength/60.0);
 		
 		int t=0;
-		IloConstraint c ( I[bt][t] == getBatteryState(bat_ptr->id, -1) * dissipationCoef + v_pos[bt][t] * chargingLossCoef - v_neg[bt][t] * dischargingLossCoef);
+		IloConstraint c (I[bt][t] == getBatteryState(bat_ptr->id, -1) * dissipationCoef + v[bt][t] * conversionLossCoef);
 		sprintf(buffer, "Bt_%d_%d", bt, t); c.setName(buffer); model.add(c);
 		
 		for (t=1; t<numPeriods; t++) {
-			IloConstraint c ( I[bt][t] == I[bt][t-1] * dissipationCoef + v_pos[bt][t] * chargingLossCoef - v_neg[bt][t] * dischargingLossCoef );
+			IloConstraint c (I[bt][t] == I[bt][t-1] * dissipationCoef + v[bt][t] * conversionLossCoef);
 			sprintf(buffer, "Bt_%d_%d", bt, t); c.setName(buffer); model.add(c);
 		}
 	}
@@ -868,7 +862,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 				expr += p[g][t];
 			}
 			for (int bt=0; bt<numBatteries; bt++) {
-				expr -= v_pos[bt][t] + v_neg[bt][t];
+				expr -= v[bt][t];
 			}
 			expr += L[t];
 			expr -= O[t];
@@ -949,7 +943,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 				
 				// storage (iterate over connected batteries)
 				for (int bt=0; bt < (int) busPtr->connectedBatteries.size(); bt++) {
-					expr -= v_pos[ busPtr->connectedBatteries[bt]->id ][t] + v_neg[ busPtr->connectedBatteries[bt]->id ][t];
+					expr -= v[ busPtr->connectedBatteries[bt]->id ][t];
 				}
 				
 				// in/out flows (iterate over all arcs)
