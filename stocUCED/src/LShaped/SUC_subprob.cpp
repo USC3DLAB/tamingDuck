@@ -15,7 +15,6 @@ SUCsubprob::SUCsubprob () {
 	cplex = IloCplex (env);
 
 	cons		= IloRangeArray (env);
-	duals		= IloNumArray (env);
 
 	cplex.setOut(env.getNullStream());
 	cplex.setWarning(env.getNullStream());
@@ -513,6 +512,7 @@ void SUCsubprob::formulate_aggregate_system()
 	}
 	
 	// prepare the model and the solver
+	duals = IloNumArray (env, cons.getSize());
 	model.add( IloMinimize(env, obj) );
 	model.add( cons );
 	cplex.extract(model);
@@ -521,14 +521,14 @@ void SUCsubprob::formulate_aggregate_system()
 void SUCsubprob::setMasterSoln () {
 	int c=0;
 
-	IloRangeArray stateCons (env);
-	IloNumArray stateVals (env);
+	IloRangeArray stateCons (env, numGen * numPeriods);
+	IloNumArray stateVals (env, numGen * numPeriods);
 	
 	// state constraints
 	for (int g=0; g<numGen; g++) {
 		for (int t=0; t<numPeriods; t++) {
-			stateCons.add(cons[c]);
-			stateVals.add( (double)(*genState)[g][t] );
+			stateCons[g * numPeriods + t] = cons[c];
+			stateVals[g * numPeriods + t] = (double)(*genState)[g][t];
 			c++;
 		}
 	}
