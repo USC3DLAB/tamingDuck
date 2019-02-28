@@ -9,6 +9,7 @@
 #include "SUC_master.hpp"
 
 extern runType runParam;
+extern string outDir;
 
 ILOHEURISTICCALLBACK2(rounding, IloArray<IloNumVarArray> &, x, SUCmaster &, me) {
 	
@@ -1132,8 +1133,9 @@ bool SUCmaster::solve () {
 			inst->out() << "Obj = \t" << cplex.getObjValue() << endl;
 			inst->out() << "LB = \t" << cplex.getBestObjValue() << endl;
 		} else {
-			cplex.exportModel("infeasible.lp");
-			inst->printSolution("infeasible");
+			string fname = outDir + "infeasible.lp";
+			cplex.exportModel(fname.c_str());
+			inst->printSolution(outDir + "/infeasible");
 			inst->out() << "Benders' decomposition has failed." << endl;
 			exit(1);
 		}

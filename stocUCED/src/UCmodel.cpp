@@ -9,7 +9,7 @@
 #include "UCmodel.hpp"
 
 extern runType runParam;
-
+extern string outDir;
 
 UCmodel::UCmodel () {
 	model = IloModel(env);
@@ -688,7 +688,8 @@ bool UCmodel::solve(bool saveSol) {
 		}
 		
 		if (!status) {
-			cplex.exportModel("infeasible_UC.lp");
+			string fname = outDir + "infeasible_UC.lp";
+			cplex.exportModel(fname.c_str());
 			exit(5);
 		}
 	}
