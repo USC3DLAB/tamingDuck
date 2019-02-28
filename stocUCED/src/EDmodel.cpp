@@ -14,6 +14,7 @@
 #include "./powerSys/Generator.hpp"
 
 extern runType runParam;
+extern string outDir;
 
 EDmodel::EDmodel(instance &inst, int t0, int rep) {
 
@@ -69,25 +70,25 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 			// error check
 			if (genMax[g][t] < 0) {
 				ofstream errorlog;
-				open_file(errorlog, "error.log");
+				open_file(errorlog, outDir + "/error.log");
 				errorlog << "Error:" << endl;
 				errorlog << "genMax g: " << g << " t: " << t << " " << setprecision(10) << genMax[g][t] << endl;
 				errorlog << "genMin g: " << g << " t: " << t << " " << setprecision(10) << genMin[g][t] << endl;
 				errorlog << "x g: " << g << " t: " << t << " idxT " << idxT << " " << inst.solution.x[g][idxT] << endl;
 				errorlog << "maxCapacity: " << genPtr.maxCapacity << endl;
 				errorlog.close();
-				inst.printSolution("infeasRTED");
+				inst.printSolution(outDir + "/infeasRTED");
 			}
 			if (genMin[g][t] < 0) {
 				ofstream errorlog;
-				open_file(errorlog, "error.log");
+				open_file(errorlog, outDir + "/error.log");
 				errorlog << "Error:" << endl;
 				errorlog << "genMax g: " << g << " t: " << t << " " << setprecision(10) << genMax[g][t] << endl;
 				errorlog << "genMin g: " << g << " t: " << t << " " << setprecision(10) << genMin[g][t] << endl;
 				errorlog << "x g: " << g << " t: " << t << " idxT " << idxT << " " << inst.solution.x[g][idxT] << endl;
 				errorlog << "maxCapacity: " << genPtr.maxCapacity << endl;
 				errorlog.close();
-				inst.printSolution("infeasRTED");
+				inst.printSolution(outDir + "/infeasRTED");
 			}
 			
 			/* Stochastic generation set to what is available */
@@ -516,7 +517,8 @@ bool EDmodel::solve(instance &inst, int t0) {
 		}
 		
 		if (!status) {
-			cplex.exportModel("infeasible_RTED.lp");
+			string fname = outDir + "infeasible_RTED.lp";
+			cplex.exportModel(fname.c_str());
 			exit(5);
 		}
 		

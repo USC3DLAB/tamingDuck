@@ -11,7 +11,7 @@
 
 // MACROS
 // #define SAMPLE_USING_R
-#define BOOST_PARALLEL_LIBS		// Parallel programming libraries of boost is being used
+#undef BOOST_PARALLEL_LIBS		// Parallel programming libraries of boost is being used
 
 enum ProblemType {
 	DayAhead,
