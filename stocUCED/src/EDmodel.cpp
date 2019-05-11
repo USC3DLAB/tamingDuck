@@ -466,24 +466,25 @@ void EDmodel::formulate(instance &inst, int t0) {
 	model.add(gamma_pos); model.add(gamma_neg);
 	
 	for (int bt=0; bt<numBatteries; bt++) {
-		int t = numPeriods-1;
-		int tprime = numPeriods;
+		for (int t = 1; t<numPeriods; t++) {
+			int tprime = numPeriods;
 
-		double target = 0;
-		int index;
-		if (t0+tprime > (1+t0/runParam.ST_numPeriods) * runParam.ST_numPeriods - 1) {
-			index = (1+t0/runParam.ST_numPeriods) * runParam.ST_numPeriods - 1;
-		} else {
-			index = t0+tprime;
+			double target = 0;
+			int index;
+			if (t0+tprime > (1+t0/runParam.ST_numPeriods) * runParam.ST_numPeriods - 1) {
+				index = (1+t0/runParam.ST_numPeriods) * runParam.ST_numPeriods - 1;
+			} else {
+				index = t0+tprime;
+			}
+			index = min(index, runParam.numPeriods-1);
+			target = inst.solution.btState_UC[bt][index];
+
+			/* battery state deviation from UC recommended levels */
+			IloConstraint c( btState[bt][t] + gamma_neg[bt] - gamma_pos[bt] == target );
+			sprintf(elemName, "BtDev(%d)(%d)", bt, t);
+			c.setName(elemName);
+			model.add(c);
 		}
-		index = min(index, runParam.numPeriods-1);
-		target = inst.solution.btState_UC[bt][index];
-
-		/* battery state deviation from UC recommended levels */
-		IloConstraint c( btState[bt][t] + gamma_neg[bt] - gamma_pos[bt] == target );
-		sprintf(elemName, "BtDev(%d)(%d)", bt, t);
-		c.setName(elemName);
-		model.add(c);
 	}
 		
 	/***** Objective function *****/
