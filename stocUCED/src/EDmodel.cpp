@@ -387,6 +387,8 @@ void EDmodel::formulate(instance &inst, int t0) {
 				if (t0 == 0) {
 					if (runParam.useGenHistory && inst.solList.size() > 0) {
 						initBtState = inst.solList.back().btState_ED[bt][runParam.numPeriods-1];
+					} else {
+						initBtState = inst.powSys->batteries[bt].maxCapacity / 2.0;
 					}
 				} else {
 					initBtState = inst.solution.btState_ED[bt][t0-1];
