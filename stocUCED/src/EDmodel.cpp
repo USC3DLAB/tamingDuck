@@ -435,7 +435,6 @@ void EDmodel::formulate(instance &inst, int t0) {
 			
 			index = min(index, runParam.numPeriods-1);
 			target = inst.solution.g_UC[g][index];
-			//			}
 			
 			/* ramp-up */
 			IloConstraint c1( target - genUsed[g][t] - overGen[g][t] - delta_pos[g] <= genPtr->rampUpLim * runParam.ED_resolution);
@@ -449,6 +448,42 @@ void EDmodel::formulate(instance &inst, int t0) {
 			c2.setName(elemName);
 			model.add(c2);
 		}
+	}
+	
+	/** Deviation from Bt State levels **/
+	/* IMP: These variables and constraints only appear in the second-stage
+	 * problem, therefore they can be declared after the above loop.
+	 */
+	IloNumVarArray gamma_pos (env, numBatteries, 0, IloInfinity, ILOFLOAT);	// positive deviations from settled DA-UC generation amounts
+	IloNumVarArray gamma_neg (env, numBatteries, 0, IloInfinity, ILOFLOAT);	// negative deviations from settled DA-UC generation amounts
+	for (int bt=0; bt<numBatteries; bt++) {
+		sprintf(elemName, "gamma_pos(%d)", bt);
+		gamma_pos[bt].setName(elemName);
+		
+		sprintf(elemName, "gamma_neg(%d)", bt);
+		gamma_neg[bt].setName(elemName);
+	}
+	model.add(gamma_pos); model.add(gamma_neg);
+	
+	for (int bt=0; bt<numBatteries; bt++) {
+		int t = numPeriods-1;
+		int tprime = numPeriods;
+
+		double target = 0;
+		int index;
+		if (t0+tprime > (1+t0/runParam.ST_numPeriods) * runParam.ST_numPeriods - 1) {
+			index = (1+t0/runParam.ST_numPeriods) * runParam.ST_numPeriods - 1;
+		} else {
+			index = t0+tprime;
+		}
+		index = min(index, runParam.numPeriods-1);
+		target = inst.solution.btState_UC[bt][index];
+
+		/* battery state deviation from UC recommended levels */
+		IloConstraint c( btState[bt][t] + gamma_neg[bt] - gamma_pos[bt] == target );
+		sprintf(elemName, "BtDev(%d)(%d)", bt, t);
+		c.setName(elemName);
+		model.add(c);
 	}
 		
 	/***** Objective function *****/
@@ -472,13 +507,16 @@ void EDmodel::formulate(instance &inst, int t0) {
 			realTimeCost += loadShedPenaltyCoef*demShed[d][t];
 	}
 	
-	/* Deviation penalty */
+	/* Deviation penalties */
 	for (int g=0; g<numGen; g++) {
 		if ( inst.powSys->generators[g].type != Generator::SOLAR && inst.powSys->generators[g].type != Generator::WIND ) {
 			realTimeCost += 1000*(delta_pos[g] + delta_neg[g]);
 		}
 	}
-
+	for (int bt=0; bt<numBatteries; bt++) {
+		realTimeCost += (overGenPenaltyCoef+renCurtailPenaltyCoef)/2.0 * 0.25 * (gamma_pos[bt] + gamma_neg[bt]);
+	}
+	
 	obj = IloMinimize(env, realTimeCost);
 	obj.setName(elemName);
 	model.add(obj);
