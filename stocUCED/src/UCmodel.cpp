@@ -823,7 +823,7 @@ double UCmodel::getBatteryState(int batteryId, int period) {
 		if (runParam.useGenHistory && inst->solList.size() > 0) {
 			return inst->solList.back().btState_ED[batteryId][runParam.numPeriods-1];	// the latest battery state
 		} else {
-			return 0.0;
+			return inst->powSys->batteries[batteryId].maxCapacity/2.0;
 		}
 	}
 }
