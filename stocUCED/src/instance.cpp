@@ -526,6 +526,11 @@ bool instance::printSolution(string filepath) {
 	if (!status) goto finalize;
 	print_matrix(output, solution.btState_ED, delimiter, 2);
 	output.close();
+	
+	status = open_file(output, filepath + "_btState_UC.csv");
+	if (!status) goto finalize;
+	print_matrix(output, solution.btState_UC, delimiter, 2);
+	output.close();
 
 	// Battery flows
 	status = open_file(output, filepath + "_btFlow_ED.csv");

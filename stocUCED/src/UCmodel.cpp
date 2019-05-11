@@ -659,6 +659,12 @@ void UCmodel::saveSolution() {
 		}
 	}
 	
+	for (int bt=0; bt<numBatteries; bt++) {
+		for (int t=0; t<numPeriods; t++) {
+			setBtState(bt, t, cplex.getValue(I[bt][t]));
+		}
+	}
+	
 	double totLoadShed = 0;
 	for (int b=0; b<numBus; b++) {
 		for (int t=0; t<numPeriods; t++) {
@@ -921,9 +927,27 @@ void UCmodel::setUCGenProd(int genId, int period, double value) {
 		}
 	}
 	else {
-		// Setting generator production at time that is beyond the planning horizon
+		// Setting generator production at a time that is beyond the planning horizon
 	}
 }
+
+void UCmodel::setBtState(int btId, int period, double value) {
+	// which Solution component is being set?
+	int solnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
+
+	// set the solution
+	if (solnComp >= 0 && solnComp < (int) inst->solution.btState_UC[btId].size()) {
+		for (int t=solnComp; t<solnComp+numBaseTimePerPeriod; t++) {
+			inst->solution.btState_UC[btId][solnComp] = value;
+		}
+	}
+	else {
+		// Setting battery states at a time that is beyond the planning horizon
+	}
+
+	
+}
+
 
 /****************************************************************************
  * getObjValue
