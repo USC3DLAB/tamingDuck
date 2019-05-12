@@ -315,8 +315,8 @@ void SUCsubprob::formulate_production()
 		Battery* batPtr = &inst->powSys->batteries[bt];
 		
 		for (int t=0; t<numPeriods; t++) {
-			IloRange con (env, -IloInfinity, I[bt][t] - batPtr->maxCapacity, 0);
-//			IloRange con (env, -IloInfinity, I[bt][t] - 0, 0);
+//			IloRange con (env, -IloInfinity, I[bt][t] - batPtr->maxCapacity, 0);
+			IloRange con (env, -IloInfinity, I[bt][t] - 0, 0);
 			cons.add(con);
 		}
 	}
