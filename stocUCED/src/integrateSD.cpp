@@ -86,9 +86,11 @@ int integrateSD(instance &inst, EDmodel &rtED, string probName, string &configPa
 	for (int l=0; l<inst.powSys->numLine; l++, j++) {
 		// flow (skipped)
 	}
-	for (int bt=0; bt<inst.powSys->numBatteries; bt++, j=j+2) {
+	for (int bt=0; bt<inst.powSys->numBatteries; bt++, j=j+4) {
 		// btFlow (extracted)
 		// btState (extracted)
+		// gamma_pos (not extracted)
+		// gamma_neg (not extracted)
 		inst.solution.btFlow_ED[bt][t0] = edSols[j];
 		inst.solution.btState_ED[bt][t0] = edSols[j+1];
 	}
