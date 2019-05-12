@@ -415,7 +415,17 @@ void EDmodel::formulate(instance &inst, int t0) {
 			}
 			
 			/* battery state deviation from UC targets */
-			double target = inst.powSys->batteries[bt].maxCapacity / 2.0;
+			double target = 0;
+			int index;
+			if (t0+t > (1+t0/runParam.ST_numPeriods) * runParam.ST_numPeriods - 1) {
+				index = (1+t0/runParam.ST_numPeriods) * runParam.ST_numPeriods - 1;
+			} else {
+				index = t0+t;
+			}
+			
+			index = min(index, runParam.numPeriods-1);
+			target = inst.solution.btState_UC[bt][index];
+			
 			IloConstraint c( btState[bt][t] + gamma_neg[bt][t] - gamma_pos[bt][t] == target );
 			sprintf(elemName, "BtDev(%d)(%d)", bt, t);
 			c.setName(elemName);
@@ -499,7 +509,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 	}
 	for (int bt=0; bt<numBatteries; bt++) {
 		for (int t=0; t<numPeriods; t++) {
-			realTimeCost += (overGenPenaltyCoef+renCurtailPenaltyCoef)/2.0 * 0.1 * (gamma_pos[bt][t] + gamma_neg[bt][t]);
+			realTimeCost += (overGenPenaltyCoef+renCurtailPenaltyCoef)/2.0 * 0.25 * (gamma_pos[bt][t] + gamma_neg[bt][t]);
 		}
 	}
 	
