@@ -148,8 +148,8 @@ void EDmodel::formulate(instance &inst, int t0) {
 	btFlow 	= IloArray<IloNumVarArray> (env, numBatteries);
 	btState = IloArray<IloNumVarArray> (env, numBatteries);
 	
-//	IloArray<IloNumVarArray> gamma_pos (env, numBatteries);
-//	IloArray<IloNumVarArray> gamma_neg (env, numBatteries);
+	IloArray<IloNumVarArray> gamma_pos (env, numBatteries);
+	IloArray<IloNumVarArray> gamma_neg (env, numBatteries);
 	
 	for ( int t = 0; t < numPeriods; t++ ) {
 		/* Generation and over-generation */
@@ -213,8 +213,8 @@ void EDmodel::formulate(instance &inst, int t0) {
 			if ( t == 0 ) {
 				btFlow[bt] 	= IloNumVarArray(env, numPeriods, -btPtr->maxCapacity, btPtr->maxCapacity, ILOFLOAT);
 				btState[bt] = IloNumVarArray(env, numPeriods, 0, btPtr->maxCapacity, ILOFLOAT);
-//				gamma_pos[bt] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
-//				gamma_neg[bt] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+				gamma_pos[bt] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+				gamma_neg[bt] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
 			}
 			
 			sprintf(elemName, "v(%d)(%d)", bt, t);
@@ -225,7 +225,13 @@ void EDmodel::formulate(instance &inst, int t0) {
 			btState[bt][t].setName(elemName);
 			model.add(btState[bt][t]);
 			
+			sprintf(elemName, "gamma_pos(%d)(%d)", bt, t);
+			gamma_pos[bt][t].setName(elemName);
+			model.add(gamma_pos[bt][t]);
 			
+			sprintf(elemName, "gamma_neg(%d)(%d)", bt, t);
+			gamma_neg[bt][t].setName(elemName);
+			model.add(gamma_neg[bt][t]);
 		}
 	}
 
@@ -408,21 +414,12 @@ void EDmodel::formulate(instance &inst, int t0) {
 				sprintf(elemName, "Bt_%d_%d", bt, t); c.setName(elemName); model.add(c);
 			}
 			
-//			/* battery state deviation from UC targets */
-//			double target = 0;
-//			int index;
-//			if (t0+t > (1+t0/runParam.ST_numPeriods) * runParam.ST_numPeriods - 1) {
-//				index = (1+t0/runParam.ST_numPeriods) * runParam.ST_numPeriods - 1;
-//			} else {
-//				index = t0+t;
-//			}
-//			index = min(index, runParam.numPeriods-1);
-//			target = inst.solution.btState_UC[bt][index];
-//
-//			IloConstraint c( btState[bt][t] + gamma_neg[bt][t] - gamma_pos[bt][t] == target );
-//			sprintf(elemName, "BtDev(%d)(%d)", bt, t);
-//			c.setName(elemName);
-//			model.add(c);
+			/* battery state deviation from UC targets */
+			double target = inst.powSys->batteries[bt].maxCapacity / 2.0;
+			IloConstraint c( btState[bt][t] + gamma_neg[bt][t] - gamma_pos[bt][t] == target );
+			sprintf(elemName, "BtDev(%d)(%d)", bt, t);
+			c.setName(elemName);
+			model.add(c);
 		}
 	}
 
@@ -500,11 +497,11 @@ void EDmodel::formulate(instance &inst, int t0) {
 			realTimeCost += 1000*(delta_pos[g] + delta_neg[g]);
 		}
 	}
-//	for (int bt=0; bt<numBatteries; bt++) {
-//		for (int t=0; t<numPeriods; t++) {
-//			realTimeCost += (overGenPenaltyCoef+renCurtailPenaltyCoef)/2.0 * 0.1 * (gamma_pos[bt][t] + gamma_neg[bt][t]);
-//		}
-//	}
+	for (int bt=0; bt<numBatteries; bt++) {
+		for (int t=0; t<numPeriods; t++) {
+			realTimeCost += (overGenPenaltyCoef+renCurtailPenaltyCoef)/2.0 * 0.1 * (gamma_pos[bt][t] + gamma_neg[bt][t]);
+		}
+	}
 	
 	obj = IloMinimize(env, realTimeCost);
 	obj.setName(elemName);
