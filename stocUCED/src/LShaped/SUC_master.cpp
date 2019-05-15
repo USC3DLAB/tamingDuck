@@ -585,6 +585,7 @@ void SUCmaster::initializeVariables() {
 	for (int bt=0; bt<numBatteries; bt++) {
 		v[bt] = IloNumVarArray(env, numPeriods, -inst->powSys->batteries[bt].maxCapacity, inst->powSys->batteries[bt].maxCapacity, ILOFLOAT);
 		I[bt] = IloNumVarArray(env, numPeriods, 0, inst->powSys->batteries[bt].maxCapacity, ILOFLOAT);
+//		I[bt] = IloNumVarArray(env, numPeriods, 0, 0, ILOFLOAT);
 		
 		sprintf(buffer, "v_%d", bt);
 		v[bt].setNames(buffer);

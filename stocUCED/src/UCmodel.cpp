@@ -207,6 +207,7 @@ void UCmodel::initializeVariables () {
 	for (int bt=0; bt<numBatteries; bt++) {
 		v[bt] = IloNumVarArray(env, numPeriods, -inst->powSys->batteries[bt].maxCapacity, inst->powSys->batteries[bt].maxCapacity, ILOFLOAT);
 		I[bt] = IloNumVarArray(env, numPeriods, 0, inst->powSys->batteries[bt].maxCapacity, ILOFLOAT);
+//		I[bt] = IloNumVarArray(env, numPeriods, 0, 0, ILOFLOAT);
 		
 		sprintf(buffer, "v_%d", bt);
 		v[bt].setNames(buffer);
@@ -659,6 +660,12 @@ void UCmodel::saveSolution() {
 		}
 	}
 	
+	for (int bt=0; bt<numBatteries; bt++) {
+		for (int t=0; t<numPeriods; t++) {
+			setBtState(bt, t, cplex.getValue(I[bt][t]));
+		}
+	}
+	
 	double totLoadShed = 0;
 	for (int b=0; b<numBus; b++) {
 		for (int t=0; t<numPeriods; t++) {
@@ -824,7 +831,7 @@ double UCmodel::getBatteryState(int batteryId, int period) {
 		if (runParam.useGenHistory && inst->solList.size() > 0) {
 			return inst->solList.back().btState_ED[batteryId][runParam.numPeriods-1];	// the latest battery state
 		} else {
-			return 0.0;
+			return inst->powSys->batteries[batteryId].maxCapacity/2.0;
 		}
 	}
 }
@@ -922,9 +929,27 @@ void UCmodel::setUCGenProd(int genId, int period, double value) {
 		}
 	}
 	else {
-		// Setting generator production at time that is beyond the planning horizon
+		// Setting generator production at a time that is beyond the planning horizon
 	}
 }
+
+void UCmodel::setBtState(int btId, int period, double value) {
+	// which Solution component is being set?
+	int solnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
+
+	// set the solution
+	if (solnComp >= 0 && solnComp < (int) inst->solution.btState_UC[btId].size()) {
+		for (int t=solnComp; t<solnComp+numBaseTimePerPeriod; t++) {
+			inst->solution.btState_UC[btId][solnComp] = value;
+		}
+	}
+	else {
+		// Setting battery states at a time that is beyond the planning horizon
+	}
+
+	
+}
+
 
 /****************************************************************************
  * getObjValue
