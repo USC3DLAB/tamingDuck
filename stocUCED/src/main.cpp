@@ -290,9 +290,9 @@ void readRunfile (string inputDir) {
 	cout << endl;
 	cout << "UC reserve percentage = " << setprecision(2) << runParam.resPerc_UC*100 << "%" << endl;
 	cout << "ED reserve percentage = " << setprecision(2) << runParam.resPerc_ED*100 << "%" << endl;
-	cout << "Renewable coefficient = " << runParam.renewableCoef << endl;
-	cout << "Ramping rate coefficient = " << runParam.rampingCoef << endl;
-	cout << "Storage rate coefficient = " << runParam.storageCoef << endl;
+	cout << "Renewable scaling coefficient = " << runParam.renewableCoef << endl;
+	cout << "Ramping rate scaling coefficient = " << runParam.rampingCoef << endl;
+	cout << "Storage scaling coefficient = " << runParam.storageCoef << endl;
 	if (runParam.useGenHistory) cout << "Using generator histories from earlier days." << endl;
 	cout << "------------------------------------------------------------------" << endl;
 

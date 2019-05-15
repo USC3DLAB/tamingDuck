@@ -149,6 +149,9 @@ void EDmodel::formulate(instance &inst, int t0) {
 	btFlow 	= IloArray<IloNumVarArray> (env, numBatteries);
 	btState = IloArray<IloNumVarArray> (env, numBatteries);
 	
+	IloArray<IloNumVarArray> gamma_pos (env, numBatteries);
+	IloArray<IloNumVarArray> gamma_neg (env, numBatteries);
+	
 	for ( int t = 0; t < numPeriods; t++ ) {
 		/* Generation and over-generation */
 		for ( int g = 0; g < numGen; g++ ) {
@@ -211,6 +214,8 @@ void EDmodel::formulate(instance &inst, int t0) {
 			if ( t == 0 ) {
 				btFlow[bt] 	= IloNumVarArray(env, numPeriods, -btPtr->maxCapacity, btPtr->maxCapacity, ILOFLOAT);
 				btState[bt] = IloNumVarArray(env, numPeriods, 0, btPtr->maxCapacity, ILOFLOAT);
+				gamma_pos[bt] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+				gamma_neg[bt] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
 			}
 			
 			sprintf(elemName, "v(%d)(%d)", bt, t);
@@ -220,6 +225,14 @@ void EDmodel::formulate(instance &inst, int t0) {
 			sprintf(elemName, "I(%d)(%d)", bt, t);
 			btState[bt][t].setName(elemName);
 			model.add(btState[bt][t]);
+			
+			sprintf(elemName, "gamma_pos(%d)(%d)", bt, t);
+			gamma_pos[bt][t].setName(elemName);
+			model.add(gamma_pos[bt][t]);
+			
+			sprintf(elemName, "gamma_neg(%d)(%d)", bt, t);
+			gamma_neg[bt][t].setName(elemName);
+			model.add(gamma_neg[bt][t]);
 		}
 	}
 
@@ -388,6 +401,8 @@ void EDmodel::formulate(instance &inst, int t0) {
 				if (t0 == 0) {
 					if (runParam.useGenHistory && inst.solList.size() > 0) {
 						initBtState = inst.solList.back().btState_ED[bt][runParam.numPeriods-1];
+					} else {
+						initBtState = inst.powSys->batteries[bt].maxCapacity / 2.0;
 					}
 				} else {
 					initBtState = inst.solution.btState_ED[bt][t0-1];
@@ -399,6 +414,23 @@ void EDmodel::formulate(instance &inst, int t0) {
 				IloConstraint c (0 == -btState[bt][t] + btState[bt][t-1] * dissipationCoef + btFlow[bt][t] * conversionLossCoef);
 				sprintf(elemName, "Bt_%d_%d", bt, t); c.setName(elemName); model.add(c);
 			}
+			
+			/* battery state deviation from UC targets */
+			double target = 0;
+			int index;
+			if (t0+t > (1+t0/runParam.ST_numPeriods) * runParam.ST_numPeriods - 1) {
+				index = (1+t0/runParam.ST_numPeriods) * runParam.ST_numPeriods - 1;
+			} else {
+				index = t0+t;
+			}
+			
+			index = min(index, runParam.numPeriods-1);
+			target = inst.solution.btState_UC[bt][index];
+			
+			IloConstraint c( btState[bt][t] + gamma_neg[bt][t] - gamma_pos[bt][t] == target );
+			sprintf(elemName, "BtDev(%d)(%d)", bt, t);
+			c.setName(elemName);
+			model.add(c);
 		}
 	}
 
@@ -434,7 +466,6 @@ void EDmodel::formulate(instance &inst, int t0) {
 			
 			index = min(index, runParam.numPeriods-1);
 			target = inst.solution.g_UC[g][index];
-			//			}
 			
 			/* ramp-up */
 			IloConstraint c1( target - genUsed[g][t] - overGen[g][t] - delta_pos[g] <= genPtr->rampUpLim * runParam.ED_resolution);
@@ -449,7 +480,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 			model.add(c2);
 		}
 	}
-		
+	
 	/***** Objective function *****/
 	IloExpr realTimeCost (env);
 	IloObjective obj;
@@ -471,13 +502,18 @@ void EDmodel::formulate(instance &inst, int t0) {
 			realTimeCost += loadShedPenaltyCoef*demShed[d][t];
 	}
 	
-	/* Deviation penalty */
+	/* Deviation penalties */
 	for (int g=0; g<numGen; g++) {
 		if ( inst.powSys->generators[g].type != Generator::SOLAR && inst.powSys->generators[g].type != Generator::WIND ) {
 			realTimeCost += 1000*(delta_pos[g] + delta_neg[g]);
 		}
 	}
-
+	for (int bt=0; bt<numBatteries; bt++) {
+		for (int t=0; t<numPeriods; t++) {
+			realTimeCost += (overGenPenaltyCoef+renCurtailPenaltyCoef)/2.0 * 0.25 * (gamma_pos[bt][t] + gamma_neg[bt][t]);
+		}
+	}
+	
 	obj = IloMinimize(env, realTimeCost);
 	obj.setName(elemName);
 	model.add(obj);
