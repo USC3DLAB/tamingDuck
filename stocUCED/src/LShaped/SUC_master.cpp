@@ -718,7 +718,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 		double conversionLossCoef = pow(bat_ptr->conversionLossCoef, periodLength/60.0);
 		
 		int t=0;
-		IloConstraint c (I[bt][t] == getBatteryState(bat_ptr->id, -1) * dissipationCoef + v[bt][t] * conversionLossCoef);
+		IloConstraint c (I[bt][t] == getBtState(bat_ptr->id, -1) * dissipationCoef + v[bt][t] * conversionLossCoef);
 		sprintf(buffer, "Bt_%d_%d", bt, t); c.setName(buffer); model.add(c);
 		
 		for (t=1; t<numPeriods; t++) {
@@ -1113,12 +1113,15 @@ bool SUCmaster::solve () {
 		/****** Process the MIP ******/
 		inst->out() << "****** SOLVING THE PROBLEM ******" << endl;
 		cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*7200 + (probType == ShortTerm)*1800);
+		
+		// Legacy callback routine
 //		cplex.use(LazySepCallback(env, *this));
 //		cplex.use(rounding(env, x, *this));
 //		if (probType == DayAhead) {
 //			cplex.use(IncCallback(env, *this));
 //		}
 		
+		// New callback routine
 		// create an LShapedCallback
 		LShapedCallback callback (*this);
 		CPXLONG contextMask = 0;
@@ -1151,6 +1154,14 @@ bool SUCmaster::solve () {
 				
 				if ( probType == DayAhead || (probType == ShortTerm && beginMin == 0) ) {
 					setUCGenProd(g, 0, expInitGen[g] * getGenState(g, 0));
+				}
+			}
+			
+			if (probType == DayAhead) {
+				for (int bt=0; bt<numBatteries; bt++) {
+					for (int t=0; t<numPeriods; t++) {
+						setBtState(bt, t, expBtState[bt][t]);
+					}
 				}
 			}
 		}
@@ -1335,7 +1346,7 @@ double SUCmaster::getGenProd(int g, int t) {
 	return -INFINITY;
 }
 
-double SUCmaster::getBatteryState(int batteryId, int period) {
+double SUCmaster::getBtState(int batteryId, int period) {
 	// which Solution component is requested?
 	int reqSolnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
 	
@@ -1348,6 +1359,21 @@ double SUCmaster::getBatteryState(int batteryId, int period) {
 		} else {
 			return 0.0;
 		}
+	}
+}
+
+void SUCmaster::setBtState(int btId, int period, double value) {
+	// which Solution component is being set?
+	int solnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
+	
+	// set the solution
+	if (solnComp >= 0 && solnComp < (int) inst->solution.btState_UC[btId].size()) {
+		for (int t=solnComp; t<solnComp+numBaseTimePerPeriod; t++) {
+			inst->solution.btState_UC[btId][t] = value;
+		}
+	}
+	else {
+		// Setting battery states at a time that is beyond the planning horizon
 	}
 }
 

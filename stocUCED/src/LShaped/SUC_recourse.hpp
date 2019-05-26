@@ -37,7 +37,9 @@ public:
 	double getObjValue();
 	double getScenObjValue(int s);
 	
-	vector<double> getExpInitGen ();
+	vector<double> 			getExpInitGen ();
+	vector<vector<double>> 	getExpBtState ();
+	
 private:
 	/* Benders' cuts */
 	vector<BendersCutCoefs> cutCoefs;
@@ -48,12 +50,13 @@ private:
 	/* Scenario-wise Containers */
 	vector<double> objValues;
 	vector< vector<double> > initGens;
+	vector< vector< vector<double> > > btStates;
 	
 	/* Parallelization */
 	const int numThreads = LShapedSubprobThreads;
 #ifdef BOOST_PARALLEL_LIBS
 	map<boost::thread::id, unsigned short> thread_map;
-	void solveOneSubproblem (int s, BendersCutCoefs &cutCoefs, double &objValue, vector<double> &initGens);
+	void solveOneSubproblem (int s, BendersCutCoefs &cutCoefs, double &objValue, vector<double> &initGens, vector<vector<double>> &btStates);
 #endif
 	
 	/* Misc */
