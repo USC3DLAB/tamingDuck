@@ -21,6 +21,7 @@ void SUCrecourse::formulate(instance &inst, ProblemType probType, ModelType mode
 	
 	int numGen = inst.powSys->numGen;
 	int numPeriods = (probType == DayAhead) ? runParam.DA_numPeriods : runParam.ST_numPeriods;
+	int numBatteries = inst.powSys->numBatteries;
 
 	/* formulate the subproblems */
 	for (int k=0; k<subprobs.size(); k++) {
@@ -35,6 +36,10 @@ void SUCrecourse::formulate(instance &inst, ProblemType probType, ModelType mode
 	}
 	
 	resize_matrix(initGens, numScen, numGen);
+	btStates.resize(numScen);
+	for (int s=0; s<numScen; s++) {
+		resize_matrix(btStates[s], numBatteries, numPeriods);
+	}
 	
 	this->rndPermutation = rndPermutation;
 }
@@ -72,7 +77,8 @@ bool SUCrecourse::solve() {
 									 rndPermutation[ randomized_order[s] ],
 									 boost::ref(cutCoefs[ randomized_order[s] ]),
 									 boost::ref(objValues[ randomized_order[s] ]),
-									 boost::ref(initGens[ randomized_order[s] ])) );
+									 boost::ref(initGens[ randomized_order[s] ]),
+									 boost::ref(btStates[ randomized_order[s] ])) );
 	}
 
 	/***** Parallel programming stuff (START) *****/
@@ -91,8 +97,8 @@ bool SUCrecourse::solve() {
 	return status;
 }
 
-void SUCrecourse::solveOneSubproblem (int s, BendersCutCoefs &cutCoefs, double &objValue, vector<double> &initGens) {
-	subprobs[ thread_map[boost::this_thread::get_id()] ].solve(s, cutCoefs, objValue, initGens);
+void SUCrecourse::solveOneSubproblem (int s, BendersCutCoefs &cutCoefs, double &objValue, vector<double> &initGens, vector<vector<double>> &btStates) {
+	subprobs[ thread_map[boost::this_thread::get_id()] ].solve(s, cutCoefs, objValue, initGens, btStates);
 }
 
 #else
@@ -101,7 +107,7 @@ bool SUCrecourse::solve() {
 	
 	// process second-stage scenario subproblems
 	for (int s=0; s<numScen; s++) {
-		status = subprobs[0].solve(rndPermutation[s], cutCoefs[s], objValues[s], initGens[s]);
+		status = subprobs[0].solve(rndPermutation[s], cutCoefs[s], objValues[s], initGens[s], btStates[s]);
 		
 		if (!status) {
 			break;
@@ -113,7 +119,7 @@ bool SUCrecourse::solve() {
 #endif
 
 bool SUCrecourse::solveMeanProb() {
-	return subprobs[0].solve(-1, cutCoefs[0], objValues[0], initGens[0]);
+	return subprobs[0].solve(-1, cutCoefs[0], objValues[0], initGens[0], btStates[0]);
 }
 
 /****************************************************************************
@@ -149,7 +155,7 @@ double SUCrecourse::getScenObjValue(int s) {
 /****************************************************************************
  * getExpInitGen
  * - Computes the sample-average of period-0 generation levels, which were
- * recorded from the Benders' subproblems.
+ * recorded in the Benders' subproblems.
  ****************************************************************************/
 vector<double> SUCrecourse::getExpInitGen() {
 	vector<double> expInitGen (initGens[0].size(), 0.0);	// # of generators-many
@@ -160,6 +166,24 @@ vector<double> SUCrecourse::getExpInitGen() {
 		}
 	}
 	return expInitGen;
+}
+
+/****************************************************************************
+ * getExpBtState
+ * - Computes the sample-average of battery state levels, which were
+ * recorded in the Benders' subproblems.
+ ****************************************************************************/
+vector<vector<double>> SUCrecourse::getExpBtState() {
+	vector<vector<double>> expBtState (btStates[0].size(), vector<double> (btStates[0][0].size(), 0.0));	// # of (batteries x periods)-many
+	
+	for (int s=0; s<numScen; s++) {
+		for (int bt=0; bt<btStates[0].size(); bt++) {
+			for (int t=0; t<btStates[0][0].size(); t++) {
+				expBtState[bt][t] += 1.0/(double)numScen * btStates[s][bt][t];
+			}
+		}
+	}
+	return expBtState;
 }
 
 /****************************************************************************

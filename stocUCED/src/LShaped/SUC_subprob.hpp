@@ -28,7 +28,7 @@ public:
 	
 	void formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep, IloArray<IloNumArray> &masterSoln, vector<vector<double>> &expCapacity);
 	
-	bool solve (int mappedScen, BendersCutCoefs &cutCoefs, double &objValue, vector<double> &initGen);
+	bool solve (int mappedScen, BendersCutCoefs &cutCoefs, double &objValue, vector<double> &initGen, vector<vector<double>> &btStates);
 	
 	void setMasterSoln ();
 
@@ -60,8 +60,10 @@ private:
 	void	setup_subproblem (int &s);
 	double	getRandomCoef (int &s, int &t, int &loc);
 	
-	/* Keep record of period 1 generation, later to be used by the ED model */
+	/* Keep record of (i) period 1 generation, (ii) battery states, later to be used by the ED model */
 	void getInitGen(vector<double> &initGen);
+	void getBtStates(vector<vector<double>> &btStates);
+
 	
 	// fixed master solution
 	IloArray<IloNumArray> *genState;

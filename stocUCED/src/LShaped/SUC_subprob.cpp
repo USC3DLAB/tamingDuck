@@ -541,7 +541,7 @@ void SUCsubprob::setMasterSoln () {
 	// rest of the constraints are not a function of x
 }
 
-bool SUCsubprob::solve(int mappedScen, BendersCutCoefs &cutCoefs, double &objValue, vector<double> &initGen) {
+bool SUCsubprob::solve(int mappedScen, BendersCutCoefs &cutCoefs, double &objValue, vector<double> &initGen, vector<vector<double>> &btStates) {
 	
 	cutCoefs.reset();
 	
@@ -568,6 +568,14 @@ bool SUCsubprob::solve(int mappedScen, BendersCutCoefs &cutCoefs, double &objVal
 void SUCsubprob::getInitGen(vector<double> &initGen) {
 	for (int g=0; g<numGen; g++) {
 		initGen[g] = cplex.getValue( p[g][0] );
+	}
+}
+
+void SUCsubprob::getBtStates(vector<vector<double>> &btStates) {
+	for (int bt=0; bt<numBatteries; bt++) {
+		for (int t=0; t<numPeriods; t++) {
+			btStates[bt][t] = cplex.getValue( I[bt][t] );
+		}
 	}
 }
 

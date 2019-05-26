@@ -70,6 +70,7 @@ private:
 	vector<int> rndPermutation;
 	
 	vector<double> expInitGen;
+	vector<vector<double>> expBtState;
 	
 	bool multicut;
 	
@@ -89,7 +90,8 @@ private:
 	void	setUCGenProd (int genId, int period, double value);	// writes to Solution.gUC
 	double	getUCGenProd (int genId, int period);				// reads from Solution.gUC
 	double	getGenProd   (int g, int t); // reads from Solution.gED, or gUC, and handles the beginning of the planning horizon
-	double	getBatteryState(int batteryId, int period);
+	double	getBtState	 (int bt, int period);
+	void 	setBtState	 (int bt, int period, double value);
 	
 	int	checkShutDownRampDownInconsistency (int g);
 	
