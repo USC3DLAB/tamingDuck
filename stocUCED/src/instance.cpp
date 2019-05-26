@@ -2,6 +2,7 @@
 #include "./stocProcess/stoc.hpp"
 
 extern runType runParam;
+extern string outDir;
 
 instance::instance () {}
 
@@ -571,6 +572,7 @@ string instance::getLogStreamName() {
  * log files can be used to print out optimization logs from CPLEX or SD.
  ****************************************************************************/
 bool instance::openLogFile(string filename) {
+
 	bool status = open_file(log_stream, filename);
 	if (status) {
 		log_stream_name = filename;
