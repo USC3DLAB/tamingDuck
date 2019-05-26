@@ -680,9 +680,11 @@ void UCmodel::saveSolution() {
 		}
 	}
 
-	for (int bt=0; bt<numBatteries; bt++) {
-		for (int t=0; t<numPeriods; t++) {
-			setBtState(bt, t, cplex.getValue(I[bt][t]));
+	if (probType == ProblemType::DayAhead) {
+		for (int bt=0; bt<numBatteries; bt++) {
+			for (int t=0; t<numPeriods; t++) {
+				setBtState(bt, t, cplex.getValue(I[bt][t]));
+			}
 		}
 	}
 
