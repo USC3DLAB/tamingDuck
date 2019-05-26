@@ -32,6 +32,7 @@ function output = writeDescriptiveStatistics(res, field, oname)
     output.SW_coef = [];
     output.UC_res_coef = [];
     output.ED_res_coef = [];
+    output.Battery_coef = [];
     
     output.mean = [];
     output.std = [];
@@ -43,6 +44,11 @@ function output = writeDescriptiveStatistics(res, field, oname)
         output.SW_coef = [output.SW_coef; str2double(instance{2}(4:end))];
         output.UC_res_coef = [output.UC_res_coef; str2double(instance{3}(4:end))];
         output.ED_res_coef = [output.ED_res_coef; str2double(instance{4})];
+        if isempty(strfind(output.names{f},'Bt'))
+            output.Battery_coef = [output.Battery_coef; 0.0];
+        else
+            output.Battery_coef = [output.Battery_coef; str2num(output.names{f}(end))];
+        end
         
         output.min = [output.min; min(getfield(res.stats{f}, field))];
         output.max = [output.max; max(getfield(res.stats{f}, field))];
