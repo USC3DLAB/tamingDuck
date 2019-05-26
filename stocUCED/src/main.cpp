@@ -192,6 +192,9 @@ void readRunfile (string inputDir) {
 	runParam.rampingCoef = 1.0;
 	runParam.renewableCoef = 1.0;
 	
+	runParam.storageCoef = 1.0;
+	runParam.storageDev = 0.1;
+
 	/* Read the run parameters if a run file is included in the default folder */
 	if ( open_file(fptr, (inputDir + "runParameters.txt")) ) {
 		while ( getline(fptr, line) ) {
@@ -238,8 +241,12 @@ void readRunfile (string inputDir) {
 					runParam.useGenHistory = temp;
 				else if ( field1 == "renewableCoef" )
 					runParam.renewableCoef = temp;
+
 				else if ( field1 == "storageCoef" )
 					runParam.storageCoef = temp;
+				else if ( field1 == "storageDev" )
+					runParam.storageDev = temp;
+
 				else if ( field1 == "rampingCoef" )
 					runParam.rampingCoef = temp;
 				else if ( field1 == "updateForecasts" )

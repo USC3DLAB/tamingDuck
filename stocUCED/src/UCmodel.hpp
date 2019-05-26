@@ -23,7 +23,7 @@ public:
 	UCmodel ();
 	~UCmodel();
 
-	void formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep);
+	void formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep, int t0);
 	double getObjValue();
 	bool solve ();
 	bool solve (bool saveSolution);

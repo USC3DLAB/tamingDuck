@@ -75,7 +75,7 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc, string &RScriptsPath) {
 			fflush(stdout);
 			
 			UCmodel DAmodel;
-			DAmodel.formulate(inst, DayAhead, Transmission, beginMin, rep);
+			DAmodel.formulate(inst, DayAhead, Transmission, beginMin, rep, 0);
 			
 			status = DAmodel.solve();
 			if (status)	printf("Success (Obj= %.2f).\n", DAmodel.getObjValue());
@@ -90,7 +90,7 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc, string &RScriptsPath) {
 				fflush(stdout);
 				
 				UCmodel STmodel;
-				STmodel.formulate(inst, ShortTerm, Transmission, beginMin, rep);
+				STmodel.formulate(inst, ShortTerm, Transmission, beginMin, rep, t);
 				
 				status = STmodel.solve();
 				if (status)	printf("Success (Obj= %.2f).\n", STmodel.getObjValue());
@@ -205,7 +205,7 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 			timeLog << get_wall_time() - begin_t << endl;
 
 			UCmodel DAmodel;
-			DAmodel.formulate(inst, DayAhead, Transmission, beginMin, rep);
+			DAmodel.formulate(inst, DayAhead, Transmission, beginMin, rep, 0);
 			status = DAmodel.solve();
 			if (status)	printf("Success (Obj= %.2f).\n", DAmodel.getObjValue());
 			else		printf("Failed.\n");
@@ -219,7 +219,7 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 				fflush(stdout);
 				
 				UCmodel STmodel;
-				STmodel.formulate(inst, ShortTerm, Transmission, beginMin, rep);
+				STmodel.formulate(inst, ShortTerm, Transmission, beginMin, rep, t);
 				status = STmodel.solve();
 				if (status)	printf("Success (Obj= %.2f).\n", STmodel.getObjValue());
 				else		printf("Failed.\n");
@@ -488,7 +488,7 @@ int setup (PowSys &powSys, StocProcess &stocProc, string &configPath, string &RS
 			timeLog << get_wall_time() - begin_t << endl;
 			if (settings[0] == DETERMINISTIC) {
 				UCmodel DAmodel;
-				DAmodel.formulate(inst, DayAhead, Transmission, beginMin, rep);
+				DAmodel.formulate(inst, DayAhead, Transmission, beginMin, rep, 0);
 				
 				status = DAmodel.solve();
 				if (status)	printf("Success (Obj= %.2f).\n", DAmodel.getObjValue());
@@ -523,7 +523,7 @@ int setup (PowSys &powSys, StocProcess &stocProc, string &configPath, string &RS
 				/* solve the problem */
 				if (settings[1] == DETERMINISTIC) {
 					UCmodel STmodel;
-					STmodel.formulate(inst, ShortTerm, Transmission, beginMin, rep);
+					STmodel.formulate(inst, ShortTerm, Transmission, beginMin, rep, t);
 					
 					status = STmodel.solve();
 					if (status)	printf("Success (Obj= %.2f).\n", STmodel.getObjValue());

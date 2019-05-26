@@ -994,7 +994,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 	recourse.formulate(inst, probType, modelType, beginMin, rep, xvals, rndPermutation, expCapacity);
 	
 	// formulate the warm-up problem
-	warmUpProb.formulate(inst, probType, modelType, beginMin, rep);
+	warmUpProb.formulate(inst, probType, modelType, beginMin, rep, 0);
 	warmUpProb.cplex.setParam(IloCplex::SolnPoolGap, 5e-2);
 	warmUpProb.cplex.setParam(IloCplex::SolnPoolCapacity, 5);
 
