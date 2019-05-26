@@ -16,6 +16,7 @@
 
 runType runParam;
 vector<Setting> settings = {DETERMINISTIC, DETERMINISTIC, DETERMINISTIC};
+string outDir;
 
 void readRunfile (string inputDir);
 void parseCmdLine(int argc, const char *argv[], string &inputDir, string &configPath, string &RScriptsPath, string &sysName, string &setting);
@@ -74,27 +75,30 @@ int main(int argc, const char * argv[]) {
 
 void parseCmdLine(int argc, const char *argv[], string &inputDir, string &configPath, string &RScriptsPath, string &sysName, string &setting)
 {
+	string tempDir;
 	if (argc == 6) {
 		inputDir	= argv[1];
-		configPath	= argv[2];
-		RScriptsPath= argv[3];
-		sysName		= argv[4];
-		setting		= argv[5];
+		tempDir	    = argv[2];
+		configPath	= argv[3];
+		RScriptsPath= argv[4];
+		sysName		= argv[5];
+		setting		= argv[6];
 	}
-	else if (argc == 9 && strcmp(argv[5], "-setting") == 0) {
+	else if (argc == 10 && strcmp(argv[6], "-setting") == 0) {
 		inputDir	= argv[1];
-		configPath	= argv[2];
-		RScriptsPath= argv[3];
-		sysName		= argv[4];
+		tempDir      = argv[2];
+		configPath	= argv[3];
+		RScriptsPath= argv[4];
+		sysName		= argv[5];
 		setting		= "custom";	// -setting
 		
 		settings.resize(3);
 		for (int i=0; i<3; i++) {
-			if ( strcmp(argv[6+i], "deterministic") == 0 ) {
+			if ( strcmp(argv[7+i], "d") == 0 ) {
 				settings[i] = DETERMINISTIC;
-			} else if ( strcmp(argv[6+i], "stochastic") == 0 ) {
+			} else if ( strcmp(argv[7+i], "s") == 0 ) {
 				settings[i] = STOCHASTIC;
-			} else if ( strcmp(argv[6+i], "na") == 0 ) {
+			} else if ( strcmp(argv[7+i], "na") == 0 ) {
 				settings[i] = NA;
 			} else {
 				cout << "Wrong input" << endl;
@@ -103,11 +107,24 @@ void parseCmdLine(int argc, const char *argv[], string &inputDir, string &config
 		}
 	}
 	else {
-		cout << "Missing inputs. Please provide the following in the given order:\n  (1) input directory path,\n  (2) SD config.sd path,\n  (3) R scripts path,\n  (4) system name,\n  (5) framework setting." << endl;
-		cout << "Instead of (5), you can type ""-setting"" followed by three modeling settings, i.e., ""-setting deterministic na stochastic""" << endl;
+		cout << "Missing inputs. Please provide the following in the given order:\n"
+				"(1) input directory path,\n "
+				"(2) output directory path,\n"
+				"(3) SD config.sd path,\n  "
+				"(4) R scripts path,\n  "
+				"(5) system name,\n  "
+				"(6) framework setting." << endl;
+		cout << "Instead of (6), you can type ""-setting"" followed by three modeling settings, i.e., ""-setting deterministic na stochastic""" << endl;
 		exit(1);
 	}
 	
+	/* Create output folder */
+	string cmdStr;
+	outDir = tempDir + sysName;
+	cmdStr = "mkdir " +  outDir;
+	system(cmdStr.c_str());
+	cout << "\nAll output files will be written to " << outDir << endl;
+
 	/*
 	switch (argc) {
 	case 2:
@@ -175,6 +192,9 @@ void readRunfile (string inputDir) {
 	runParam.rampingCoef = 1.0;
 	runParam.renewableCoef = 1.0;
 	
+	runParam.storageCoef = 1.0;
+	runParam.storageDev = 0.1;
+
 	/* Read the run parameters if a run file is included in the default folder */
 	if ( open_file(fptr, (inputDir + "runParameters.txt")) ) {
 		while ( getline(fptr, line) ) {
@@ -221,8 +241,12 @@ void readRunfile (string inputDir) {
 					runParam.useGenHistory = temp;
 				else if ( field1 == "renewableCoef" )
 					runParam.renewableCoef = temp;
+
 				else if ( field1 == "storageCoef" )
 					runParam.storageCoef = temp;
+				else if ( field1 == "storageDev" )
+					runParam.storageDev = temp;
+
 				else if ( field1 == "rampingCoef" )
 					runParam.rampingCoef = temp;
 				else if ( field1 == "updateForecasts" )

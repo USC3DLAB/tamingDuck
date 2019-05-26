@@ -11,7 +11,7 @@
 
 // MACROS
 // #define SAMPLE_USING_R
-#define BOOST_PARALLEL_LIBS		// Parallel programming libraries of boost is being used
+#undef BOOST_PARALLEL_LIBS		// Parallel programming libraries of boost is being used
 
 enum ProblemType {
 	DayAhead,
@@ -73,7 +73,10 @@ struct runType {
 	double 	resPerc_UC;				// spinning reserve percentages
 	double 	resPerc_ED;
 	double	renewableCoef;			// renewable-supply will be multiplied with this factor
+
 	double	storageCoef;			// storage capacity will be multiplied with this factor
+	double  storageDev;				// Allowable deviation from higher hierarchy optimization solution
+
 	double	rampingCoef;			// ramping rates will be multiplied with this factor
 	bool	updateForecasts;		// real-time forecast updates
 };

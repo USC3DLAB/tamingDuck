@@ -9,7 +9,7 @@
 #include "UCmodel.hpp"
 
 extern runType runParam;
-
+extern string outDir;
 
 UCmodel::UCmodel () {
 	model = IloModel(env);
@@ -44,13 +44,13 @@ void UCmodel::preprocessing ()
 	numLine = inst->powSys->numLine;
 	numBus = inst->powSys->numBus;
 	numBatteries = inst->powSys->numBatteries;
-	
+
 	numPeriods	 = (probType == DayAhead) ? runParam.DA_numPeriods : runParam.ST_numPeriods;
 	periodLength = (probType == DayAhead) ? runParam.DA_resolution : runParam.ST_resolution;
-	
+
 	numBaseTimePerPeriod = (int)round(periodLength) / runParam.ED_resolution;
-	
-	
+
+
 	/* initialize containers */
 	minGenerationReq.resize(numGen);					// minimum production requirements
 	minUpTimePeriods.resize(numGen);					// minimum uptime in periods
@@ -58,29 +58,29 @@ void UCmodel::preprocessing ()
 	resize_matrix(capacity, numGen, numPeriods);		// generator capacities
 	sysLoad.resize(numPeriods);							// aggregated system load
 	resize_matrix(busLoad, numBus, numPeriods);			// individual bus loads
-	
+
 	/* Min Generation Amounts */
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
-		
+
 		// do not remove this assignment, as STUC generators' minGenReqs are set to 0 later on.
 		minGenerationReq[g] = genPtr->minGenerationReq;
 		if (minGenerationReq[g] > min(genPtr->rampUpLim * periodLength, genPtr->rampDownLim * periodLength)) {
 			minGenerationReq[g] = min(genPtr->rampUpLim * periodLength, genPtr->rampDownLim * periodLength);
 		}
 	}
-	
+
 	/* Min Up/Down */
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
-		
+
 		minUpTimePeriods[g]		= round(genPtr->minUpTime * 60.0/periodLength);
 		minDownTimePeriods[g]	= round(genPtr->minDownTime * 60.0/periodLength);
 
 		if (minUpTimePeriods[g] < 1)	minUpTimePeriods[g] = 1;
 		if (minDownTimePeriods[g] < 1)	minDownTimePeriods[g] = 1;
 	}
-	
+
 	/* Mean Generator Capacity */
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
@@ -88,7 +88,7 @@ void UCmodel::preprocessing ()
 		auto it = inst->actuals.mapVarNamesToIndex.find(genPtr->name);
 		if ( it != inst->actuals.mapVarNamesToIndex.end() ) {
 			/* supply info found within the time series */
-			
+
 			int period;
 			for (int t=0; t<numPeriods; t++) {
 				period = (beginMin/periodLength)+(t*numBaseTimePerPeriod);
@@ -122,24 +122,24 @@ void UCmodel::preprocessing ()
 	if (probType == DayAhead) {
 		for (int g=0; g<numGen; g++) {
 			Generator *genPtr = &(inst->powSys->generators[g]);
-			
+
 			if (!genPtr->isDAUCGen) {
 				minGenerationReq[g] = 0.0;
 				fill(capacity[g].begin(), capacity[g].end(), 0.0);
 			}
 		}
 	}
-	
+
 	/* Load */
 	for (int b=0; b<numBus; b++) {
 		Bus *busPtr = &(inst->powSys->buses[b]);
-		
+
 		auto it = inst->actuals.mapVarNamesToIndex.find( num2str(busPtr->regionId) );
-		
+
 		int period;
 		for (int t=0; t<numPeriods; t++) {
 			period = (beginMin/periodLength)+(t*numBaseTimePerPeriod);
-			
+
 			if ( probType == DayAhead ) {
 				// use DA forecast of the load in the DA-UC problem
 				it = inst->meanForecast["DA"].mapVarNamesToIndex.find( num2str(busPtr->regionId) );
@@ -159,7 +159,7 @@ void UCmodel::preprocessing ()
 			busLoad[b][t] *= (1+runParam.resPerc_UC);
 		}
 	}
-	
+
 	/* System-level loads */
 	fill( sysLoad.begin(), sysLoad.end(), 0.0 );		// reset system load to 0
 	for (int t=0; t<numPeriods; t++) {
@@ -184,10 +184,10 @@ void UCmodel::initializeVariables () {
 		s[g] = IloNumVarArray(env, numPeriods, 0, 1, ILOBOOL);
 		x[g] = IloNumVarArray(env, numPeriods, 0, 1, ILOBOOL);
 		z[g] = IloNumVarArray(env, numPeriods, 0, 1, ILOBOOL);
-		
+
 		p[g]	 = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
 		p_var[g] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
-		
+
 		sprintf(buffer, "s_%d", g);
 		s[g].setNames(buffer);
 		sprintf(buffer, "x_%d", g);
@@ -198,22 +198,22 @@ void UCmodel::initializeVariables () {
 		p[g].setNames(buffer);
 		sprintf(buffer, "pv_%d", g);
 		p_var[g].setNames(buffer);
-		
+
 		model.add(s[g]);
 		model.add(x[g]);
 		model.add(z[g]);
 	}
-	
+
 	for (int bt=0; bt<numBatteries; bt++) {
 		v[bt] = IloNumVarArray(env, numPeriods, -inst->powSys->batteries[bt].maxCapacity, inst->powSys->batteries[bt].maxCapacity, ILOFLOAT);
 		I[bt] = IloNumVarArray(env, numPeriods, 0, inst->powSys->batteries[bt].maxCapacity, ILOFLOAT);
-//		I[bt] = IloNumVarArray(env, numPeriods, 0, 0, ILOFLOAT);
-		
+		//		I[bt] = IloNumVarArray(env, numPeriods, 0, 0, ILOFLOAT);
+
 		sprintf(buffer, "v_%d", bt);
 		v[bt].setNames(buffer);
 		sprintf(buffer, "I_%d", bt);
 		I[bt].setNames(buffer);
-		
+
 		model.add(v[bt]);
 		model.add(I[bt]);
 	}
@@ -225,8 +225,8 @@ void UCmodel::initializeVariables () {
  * parameters.
  * - Formulates the mathematical program.
  ****************************************************************************/
-void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep) {
-	
+void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep, int t0) {
+
 	/* Initializations */
 	this->inst		= &inst;
 	this->beginMin	= beginMin;
@@ -236,33 +236,33 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 
 	/* Prepare Model-Dependent Input Data */
 	preprocessing();
-	
+
 	/* Prepare the Mathematical Model */
 	initializeVariables();
-	
+
 	/**** Constraints (Traditional Formulation) ****/
-	
+
 	// state constraints
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst.powSys->generators[g]);
-		
+
 		if ( (probType == DayAhead && !genPtr->isDAUCGen) || (probType == ShortTerm && genPtr->isDAUCGen) ) {
 			continue;	// skip scheduling constraints for not-to-be-scheduled generators
 		}
-		
+
 		// t=0: generators are assumed to be turned on
 		model.add( x[g][0] - getGenState(g,-1) == s[g][0] - z[g][0] );
-	
+
 		// t>0
 		for (int t=1; t<numPeriods; t++) {
 			model.add( x[g][t] - x[g][t-1] == s[g][t] - z[g][t] );
 		}
 	}
-	
+
 	// minimum uptime constraints
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst.powSys->generators[g]);
-		
+
 		if ( (probType == DayAhead && !genPtr->isDAUCGen) || (probType == ShortTerm && genPtr->isDAUCGen) ) {
 			continue;	// skip scheduling constraints for not-to-be-scheduled generators
 		}
@@ -279,11 +279,11 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 			lhs.end();
 		}
 	}
-	
+
 	// minimum downtime constraints
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst.powSys->generators[g]);
-		
+
 		if ( (probType == DayAhead && !genPtr->isDAUCGen) || (probType == ShortTerm && genPtr->isDAUCGen) ) {
 			continue;	// skip scheduling constraints for not-to-be-scheduled generators
 		}
@@ -302,7 +302,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 			lhs.end();
 		}
 	}
-	
+
 	// must-run units must be committed
 	for (int g=0; g<numGen; g++) {
 		if ( inst.powSys->generators[g].isMustRun ) {
@@ -311,7 +311,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 			}
 		}
 	}
-	
+
 	// commit the right set of generators for the right type of problem
 	if (probType == DayAhead) {
 		/* ST-UC generators will not produce in the DA-UC problem. */
@@ -329,7 +329,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 		double genState;
 		for (int g=0; g<numGen; g++) {
 			Generator *genPtr = &(inst.powSys->generators[g]);
-			
+
 			if (genPtr->isDAUCGen) {
 				for (int t=0; t<numPeriods; t++) {
 					genState = getGenState(g, t);
@@ -338,11 +338,11 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 			}
 		}
 	}
-	
+
 	// capacity constraints
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst.powSys->generators[g]);
-		
+
 		for (int t=0; t<numPeriods; t++) {
 			if (genPtr->isMustUse) {
 				model.add( p_var[g][t] == (capacity[g][t] - minGenerationReq[g]) );
@@ -351,21 +351,21 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 			}
 		}
 	}
-	
+
 	// production amounts
 	for (int g=0; g<numGen; g++) {
 		for (int t=0; t<numPeriods; t++) {
 			model.add( p[g][t] == p_var[g][t] + x[g][t] * minGenerationReq[g] );
 		}
 	}
-	
+
 	// ramp up constraints
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst.powSys->generators[g]);
-		
+
 		// ignore ramping constraints for generators that are not meant to be scheduled in DA-UC problem
 		if (probType == DayAhead && !genPtr->isDAUCGen)	continue;
-		
+
 		/* t = 0 */
 		int t = 0;
 		if (getGenProd(g, t-1) > -INFINITY) {	// prev generation is available
@@ -374,7 +374,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 			c.setName(buffer);
 			model.add(c);
 		}
-		
+
 		/* t > 0 */
 		for (t=1; t<numPeriods; t++) {
 			IloConstraint c ( p_var[g][t] - p_var[g][t-1] <= genPtr->rampUpLim*periodLength * x[g][t] - minGenerationReq[g] * s[g][t]);
@@ -383,74 +383,94 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 			model.add(c);
 		}
 	}
-	
+
 	// ramp down constraints
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst.powSys->generators[g]);
-		
+
 		// ignore ramping constraints for generators that are not meant to be scheduled in DA-UC problem
 		if (probType == DayAhead && !genPtr->isDAUCGen)	continue;
 
 		// input-inconsistency check
 		int shutDownPeriod = checkShutDownRampDownInconsistency(g);
-		
+
 		double rampDownRate;
 		int t=0;
 		if (getGenProd(g, t-1) > -INFINITY) {
 			rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
-			
+
 			IloConstraint c ( getGenProd(g, t-1) - p[g][t] <= rampDownRate );
 			sprintf(buffer, "RD_%d_%d", g, t); c.setName(buffer); model.add(c);
 		}
 		for (t=1; t<numPeriods; t++) {
 			rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
-			
+
 			IloConstraint c ( p_var[g][t-1] - p_var[g][t] <= rampDownRate * x[g][t-1] - minGenerationReq[g] * z[g][t] );
 			sprintf(buffer, "RD_%d_%d", g, t); c.setName(buffer); model.add(c);
 		}
 	}
-	
+
 	// battery state
-	for (int bt=0; bt<numBatteries; bt++) {
+	for (int bt = 0; bt < numBatteries; bt++) {
 		Battery* bat_ptr = &inst.powSys->batteries[bt];
-		
+
 		double dissipationCoef = pow(bat_ptr->dissipationCoef, periodLength/60.0);
 		double conversionLossCoef = pow(bat_ptr->conversionLossCoef, periodLength/60.0);
 
-		int t=0;
+		/* Set up the constraint that captures charging and discharging in the current time period. */
+		int t = 0;
 		IloConstraint c (I[bt][t] == getBatteryState(bat_ptr->id, -1) * dissipationCoef + v[bt][t] * conversionLossCoef);
 		sprintf(buffer, "Bt_%d_%d", bt, t); c.setName(buffer); model.add(c);
 
-		for (t=1; t<numPeriods; t++) {
+		for ( t = 1; t < numPeriods; t++ ) {
 			IloConstraint c (I[bt][t] == I[bt][t-1] * dissipationCoef + v[bt][t] * conversionLossCoef );
 			sprintf(buffer, "Bt_%d_%d", bt, t); c.setName(buffer); model.add(c);
 		}
+
+		if ( probType == ShortTerm ) {
+			/* Ensure that the terminal battery state does not deviate significantly from the higher hierarchy UC solutions */
+			bool lastSTUC = (t0 == (runParam.ST_numSolves-1));
+
+			if ( !lastSTUC ) {
+				int index = runParam.ST_frequency/runParam.ST_resolution*t0 + runParam.ST_horizon/runParam.ST_resolution;
+				double target = inst.solution.btState_UC[bt][index];
+
+				/* The bounds limit the deviation to be within a certain fraction of the solution proposed by DA-UC */
+				IloConstraint c1( I[bt][numPeriods-1] <= (1 + runParam.storageDev)*target );
+				sprintf(buffer, "BtDev_up(%d)(%d)", bt, numPeriods-1);
+				c1.setName(buffer); model.add(c1);
+
+				IloConstraint c2( I[bt][numPeriods-1] >= (1 - runParam.storageDev)*target );
+				sprintf(buffer, "BtDev_dw(%d)(%d)", bt, numPeriods-1);
+				c2.setName(buffer); model.add(c2);
+			}
+		}
 	}
-	
+
 	/****** Symmetry Breaking ******/
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst.powSys->generators[g]);
-		
+
 		// compare characteristics of generator g, with an other generator k
 		for (int k=g+1; k<numGen; k++) {
 			Generator *gen2Ptr = &(inst.powSys->generators[k]);
-			
+
 			// check if gen g and k are the same
 			if ( genPtr->type == gen2Ptr->type
-				&& genPtr->connectedBusName == gen2Ptr->connectedBusName
-				&& fabs(genPtr->rampUpLim - gen2Ptr->rampUpLim) < EPSzero
-				&& fabs(genPtr->rampDownLim - gen2Ptr->rampDownLim) < EPSzero
-				&& fabs(genPtr->minGenerationReq - gen2Ptr->minGenerationReq) < EPSzero
-				&& fabs(genPtr->maxCapacity - gen2Ptr->maxCapacity) < EPSzero
-				&& fabs(genPtr->minUpTime - gen2Ptr->minUpTime) < EPSzero
-				&& fabs(genPtr->minDownTime - gen2Ptr->minDownTime) < EPSzero
-				&& fabs(genPtr->isDAUCGen - gen2Ptr->isDAUCGen) < EPSzero
-				&& fabs(genPtr->isMustRun - gen2Ptr->isMustRun) < EPSzero
-				&& fabs(genPtr->isMustUse - gen2Ptr->isMustUse) < EPSzero
-				&& fabs(genPtr->noLoadCost - gen2Ptr->noLoadCost) < EPSzero
-				&& fabs(genPtr->startupCost - gen2Ptr->startupCost) < EPSzero
-				&& fabs(genPtr->variableCost - gen2Ptr->variableCost) < EPSzero){
-				
+					&& genPtr->connectedBusName == gen2Ptr->connectedBusName
+					&& fabs(genPtr->rampUpLim - gen2Ptr->rampUpLim) < EPSzero
+					&& fabs(genPtr->rampDownLim - gen2Ptr->rampDownLim) < EPSzero
+					&& fabs(genPtr->minGenerationReq - gen2Ptr->minGenerationReq) < EPSzero
+					&& fabs(genPtr->maxCapacity - gen2Ptr->maxCapacity) < EPSzero
+					&& fabs(genPtr->minUpTime - gen2Ptr->minUpTime) < EPSzero
+					&& fabs(genPtr->minDownTime - gen2Ptr->minDownTime) < EPSzero
+					&& fabs(genPtr->isDAUCGen - gen2Ptr->isDAUCGen) < EPSzero
+					&& fabs(genPtr->isMustRun - gen2Ptr->isMustRun) < EPSzero
+					&& fabs(genPtr->isMustUse - gen2Ptr->isMustUse) < EPSzero
+					&& fabs(genPtr->noLoadCost - gen2Ptr->noLoadCost) < EPSzero
+					&& fabs(genPtr->startupCost - gen2Ptr->startupCost) < EPSzero
+					&& fabs(genPtr->variableCost - gen2Ptr->variableCost) < EPSzero){
+
 				// if these generators are the same, create a symmetry-breaking constraint
 				for (int t=0; t<numPeriods; t++) {
 					model.add( x[g][t] >= x[k][t] );	// if you need to open k, make sure g is already open
@@ -460,58 +480,58 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 		}
 	}
 
-	
+
 	/* ST-UC rampability constraints *
 	if (probType == ShortTerm) {
 		for (int g=0; g<numGen; g++) {
 			Generator *genPtr = &(inst.powSys->generators[g]);
-			
+
 			if (genPtr->type != Generator::SOLAR && genPtr->type != Generator::WIND && genPtr->isDAUCGen) {
 				int t = numPeriods-1;
-				
+
 				int target_idx = 0;
 				if (beginMin / runParam.ED_resolution + numPeriods * numBaseTimePerPeriod >= runParam.numPeriods ) {
 					target_idx = numPeriods-1;
 				} else {
 					target_idx = numPeriods;
 				}
-				
+
 				double target = getUCGenProd(g, target_idx);
-				
+
 				/* ramp-up */
-				//				model.add( target - p[g][t] - delta_pos[g][t] <= genPtr->rampUpLim * runParam.DA_resolution );
-				
-				/* ramp-down */
-				//				model.add( p[g][t] - target - delta_neg[g][t] <= genPtr->rampDownLim * runParam.DA_resolution );
-//			}
-//		}
-//	}
+	//				model.add( target - p[g][t] - delta_pos[g][t] <= genPtr->rampUpLim * runParam.DA_resolution );
+
+	/* ramp-down */
+	//				model.add( p[g][t] - target - delta_neg[g][t] <= genPtr->rampDownLim * runParam.DA_resolution );
+	//			}
+	//		}
+	//	}
 	/* */
 
-	
+
 	/** Objective Function **/
 	IloExpr obj (env);
-	
+
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst.powSys->generators[g]);
-		
+
 		double varCostPerPeriod    = genPtr->variableCost * periodLength/60.0;
 		double noloadCostPerPeriod = genPtr->noLoadCost * periodLength/60.0;
-		
+
 		for (int t=0; t<numPeriods; t++) {
 			obj += genPtr->startupCost * s[g][t];						// start up cost
 			obj += minGenerationReq[g] * varCostPerPeriod * x[g][t];	// cost of producing minimum generation requirements
 			obj += varCostPerPeriod * p_var[g][t];						// variable cost
 			obj += noloadCostPerPeriod * x[g][t];						// no-load cost
 		}
-	}	
-	
+	}
+
 	/** Model-dependent obj function components, constraints **/
 	if (modelType == System)
 	{
 		IloNumVarArray L (env, numPeriods, 0, IloInfinity, ILOFLOAT);	// load shedding
 		IloNumVarArray O (env, numPeriods, 0, IloInfinity, ILOFLOAT);	// over generation
-		
+
 		// aggregated-demand constraints
 		for (int t=0; t<numPeriods; t++) {
 			IloExpr expr (env);
@@ -525,7 +545,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 			expr -= O[t];
 			model.add( IloRange (env, sysLoad[t], expr, sysLoad[t]) );
 		}
-		
+
 		// load-shedding penalties
 		for (int t=0; t<numPeriods; t++) {
 			obj += loadShedPenaltyCoef * L[t];
@@ -543,7 +563,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 			L[b] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
 			O[b] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
 			T[b] = IloNumVarArray(env, numPeriods, inst.powSys->buses[b].minPhaseAngle, inst.powSys->buses[b].maxPhaseAngle, ILOFLOAT);
-			
+
 			sprintf(buffer, "L_%d", b);
 			L[b].setNames(buffer);
 			sprintf(buffer, "O_%d", b);
@@ -551,14 +571,14 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 			sprintf(buffer, "T_%d", b);
 			T[b].setNames(buffer);
 		}
-		
+
 		for (int l=0; l<numLine; l++) {
 			F[l] = IloNumVarArray(env, numPeriods, inst.powSys->lines[l].minFlowLim, inst.powSys->lines[l].maxFlowLim, ILOFLOAT);
-			
+
 			sprintf(buffer, "F_%d", l);
 			F[l].setNames(buffer);
 		}
-		
+
 		// No load-shedding in buses with 0 load
 		for (int b=0; b<numBus; b++) {
 			for (int t=0; t<numPeriods; t++) {
@@ -573,11 +593,11 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 				}
 			}
 		}
-		
+
 		// DC-approximation to AC power flow
 		for (int l=0; l<numLine; l++) {
 			Line *linePtr = &(inst.powSys->lines[l]);
-			
+
 			int orig = linePtr->orig->id;
 			int dest = linePtr->dest->id;
 
@@ -585,24 +605,24 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 				model.add( F[l][t] == linePtr->susceptance * (T[orig][t] - T[dest][t]) );
 			}
 		}
-		
+
 		// Flow balance
 		for (int b=0; b<numBus; b++) {
 			Bus *busPtr = &(inst.powSys->buses[b]);
-			
+
 			for (int t=0; t<numPeriods; t++) {
 				IloExpr expr (env);
-				
+
 				// production (iterate over connected generators)
 				for (int g=0; g < (int) busPtr->connectedGenerators.size(); g++) {
 					expr += p[ busPtr->connectedGenerators[g]->id ][t];
 				}
-				
+
 				// storage (iterate over connected batteries)
 				for (int bt=0; bt < (int) busPtr->connectedBatteries.size(); bt++) {
 					expr -= v[ busPtr->connectedBatteries[bt]->id ][t];
 				}
-				
+
 				// in/out flows (iterate over all arcs)
 				for (auto linePtr = inst.powSys->lines.begin(); linePtr != inst.powSys->lines.end(); ++linePtr) {
 					if (linePtr->orig->id == busPtr->id) {	// if line-origin and bus have same ids, then this is outgoing flow
@@ -612,21 +632,21 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 						expr += F[linePtr->id][t];
 					}
 				}
-				
+
 				// load shedding
 				expr += L[b][t];
-				
+
 				// over generation
 				expr -= O[b][t];
-				
+
 				// constraint
 				model.add( expr == busLoad[b][t] );
-				
+
 				// free up memory
 				expr.end();
 			}
 		}
-		
+
 		// load-shedding penalties
 		for (int b=0; b<numBus; b++) {
 			for (int t=0; t<numPeriods; t++) {
@@ -635,11 +655,11 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 			}
 		}
 	}
-	
+
 	/** Finalize **/
 	model.add( IloMinimize(env, obj) );
 	obj.end();
-	
+
 	cplex.extract(model);
 	cplex.setParam(IloCplex::EpGap, 1e-2);
 	cplex.setOut(inst.out());
@@ -649,7 +669,7 @@ void UCmodel::formulate (instance &inst, ProblemType probType, ModelType modelTy
 void UCmodel::saveSolution() {
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
-		
+
 		for (int t=0; t<numPeriods; t++) {
 			if ( (probType == DayAhead && genPtr->isDAUCGen) || (probType == ShortTerm && !genPtr->isDAUCGen) ) {
 				setGenState(g,t, cplex.getValue(x[g][t]));
@@ -659,7 +679,7 @@ void UCmodel::saveSolution() {
 			setUCGenProd(g, t, cplex.getValue(p[g][t]) * getGenState(g, t));
 		}
 	}
-	
+
 	if (probType == ProblemType::DayAhead) {
 		for (int bt=0; bt<numBatteries; bt++) {
 			for (int t=0; t<numPeriods; t++) {
@@ -690,21 +710,22 @@ bool UCmodel::solve(bool saveSol) {
 	bool status;
 	try {
 		status = cplex.solve();
-		
+
 		// record the solution
 		if (status && saveSol) {
 			saveSolution();
 		}
-		
+
 		if (!status) {
-			cplex.exportModel("infeasible_UC.lp");
+			string fname = outDir + "infeasible_UC.lp";
+			cplex.exportModel(fname.c_str());
 			exit(5);
 		}
 	}
 	catch (IloException &e) {
 		cout << e << endl;
 	}
-	
+
 	return status;
 }
 
@@ -726,7 +747,7 @@ bool UCmodel::solve() {
 bool UCmodel::getGenState(int genId, int period) {
 	// which Solution component is requested?
 	int reqSolnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
-	
+
 	// return the requested generator state
 	if (reqSolnComp < 0) {
 		if (runParam.useGenHistory) {
@@ -735,10 +756,10 @@ bool UCmodel::getGenState(int genId, int period) {
 			while (rit != inst->solList.rend()) {
 				reqSolnComp += runParam.numPeriods;
 				if (reqSolnComp >= 0) break;
-				
+
 				++rit;
 			}
-			
+
 			// if found, return, otherwise return true.
 			if (rit != inst->solList.rend()) {
 				return rit->x[genId][reqSolnComp];
@@ -773,10 +794,10 @@ bool UCmodel::getGenState(int genId, int period) {
 int UCmodel::checkShutDownRampDownInconsistency (int g) {
 	// This is a problem pertaining only to DA generators in the ST-UC problem
 	if (probType==DayAhead || !inst->powSys->generators[g].isDAUCGen) return -1;
-	
+
 	// Was g producing at period -1?
 	if ( getGenProd(g, -1) <= EPSzero )	return -1;
-	
+
 	// Will g shutdown during the problem's planning horizon?
 	bool answer = false;
 	int t;
@@ -787,7 +808,7 @@ int UCmodel::checkShutDownRampDownInconsistency (int g) {
 		}
 	}
 	if (!answer) return -1;
-	
+
 	// Can the generator ramp down?
 	if ( inst->powSys->generators[g].rampDownLim * periodLength * (double)(t+1) < getGenProd(g, -1) ) {
 		inst->out() << "Warning: Generator " << g << " (" << inst->powSys->generators[g].name << ") cannot ramp down to 0 in the ST-UC problem" << endl;
@@ -824,7 +845,7 @@ double UCmodel::getGenProd(int g, int t) {
 double UCmodel::getBatteryState(int batteryId, int period) {
 	// which Solution component is requested?
 	int reqSolnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
-	
+
 	// return the requested generator state
 	if (reqSolnComp > 0) {
 		return inst->solution.btState_ED[batteryId][reqSolnComp];
@@ -845,7 +866,7 @@ double UCmodel::getBatteryState(int batteryId, int period) {
 double UCmodel::getUCGenProd(int genId, int period) {
 	// which Solution component is requested?
 	int reqSolnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
-	
+
 	// return the requested generator state
 	if (reqSolnComp < 0) {										// all generators are assumed to be online, for a long time, at t=0.
 		cout << "Error: Initial production levels are not available" << endl;
@@ -870,7 +891,7 @@ double UCmodel::getUCGenProd(int genId, int period) {
 double UCmodel::getEDGenProd(int genId, int period) {
 	// which Solution component is requested?
 	int reqSolnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
-	
+
 	// return the requested generator state
 	if (reqSolnComp < 0) {										// all generators are assumed to be online, for a long time, at t=0.
 		if (inst->solList.size() > 0) {
@@ -897,13 +918,13 @@ double UCmodel::getEDGenProd(int genId, int period) {
 void UCmodel::setGenState(int genId, int period, double value) {
 	// which Solution component is being set?
 	int solnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
-	
+
 	// correct potential numerical errors (important for binary variables)
 	value = round(value);
-	
+
 	// set the solution
 	if (solnComp >= 0 && solnComp < (int) inst->solution.x[genId].size()) {
-		for (int t=solnComp; t<solnComp+numBaseTimePerPeriod; t++) {
+		for (int t = solnComp; t < solnComp+numBaseTimePerPeriod; t++) {
 			inst->solution.x[genId][t] = value;
 		}
 	}
@@ -919,13 +940,13 @@ void UCmodel::setGenState(int genId, int period, double value) {
 void UCmodel::setUCGenProd(int genId, int period, double value) {
 	// which Solution component is being set?
 	int solnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
-	
+
 	// correct potential numerical errors
 	value = max(0.0, value);
-	
+
 	// set the solution
 	if (solnComp >= 0 && solnComp < (int) inst->solution.g_UC[genId].size()) {
-		for (int t=solnComp; t<solnComp+numBaseTimePerPeriod; t++) {
+		for (int t = solnComp; t < solnComp+numBaseTimePerPeriod; t++) {
 			inst->solution.g_UC[genId][t] = value;
 		}
 	}
@@ -940,13 +961,15 @@ void UCmodel::setBtState(int btId, int period, double value) {
 
 	// set the solution
 	if (solnComp >= 0 && solnComp < (int) inst->solution.btState_UC[btId].size()) {
-		for (int t=solnComp; t<solnComp+numBaseTimePerPeriod; t++) {
-			inst->solution.btState_UC[btId][t] = value;
+		for (int t = solnComp; t < solnComp+numBaseTimePerPeriod; t++) {
+			inst->solution.btState_UC[btId][solnComp] = value;
 		}
 	}
 	else {
 		// Setting battery states at a time that is beyond the planning horizon
 	}
+
+
 }
 
 
