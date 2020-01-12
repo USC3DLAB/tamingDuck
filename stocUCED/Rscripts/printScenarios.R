@@ -2,8 +2,8 @@
 rm(list=ls(all=TRUE))
 set.seed(0)
 numScenarios = 1000
-nRep = 7
-today = 45  # Feb 14, we will plan, starting with this day...  
+nRep = 8
+today = 44  # Feb 13, we will plan, starting with this day...  
 #today = 197 # Jul 15"
 forecastWindow = 14 # we will look 14 days of history for fitting the models...
 
@@ -30,20 +30,22 @@ printTS <- function(srcType, fileType) {
     }
   }
   write.csv(data[,,1], sprintf("%s_%s.csv", fileType, srcType))
+  
+  return(data[,,1]);
 }
-printTS("Load", "DA")
-printTS("Load", "RT")
-printTS("Solar", "DA")
-printTS("Solar", "RT")
-printTS("Wind", "DA")
-printTS("Wind", "RT")
+printTS("Load", "DA");
+printTS("Load", "RT");
+printTS("Solar", "DA");
+printTS("Solar", "RT");
+printTS("Wind", "DA");
+printTS("Wind", "RT");
 
 ### MAIN LOOP ###
 meanDailyWTrend <- NULL; meanDailySTrend <- NULL;
 rep = 1; # dummy assignment
 for (rep in 1:nRep) {
   # set the seed
-  set.seed(rep)
+  set.seed(rep-1)
   
   ### FIT THE MODEL ###
   source("runModel.R")

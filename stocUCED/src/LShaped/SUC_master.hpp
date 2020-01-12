@@ -88,9 +88,10 @@ private:
 	bool	getGenState  (int genId, int period);				// reads from Solution.x
 	void	setGenState  (int genId, int period, double value);	// writes to Solution.x
 	void	setUCGenProd (int genId, int period, double value);	// writes to Solution.gUC
-	double	getUCGenProd (int genId, int period);				// reads from Solution.gUC
+	double	getDAUCGenProd (int genId, int period);				// reads from Solution.gUC
 	double	getGenProd   (int g, int t); // reads from Solution.gED, or gUC, and handles the beginning of the planning horizon
-	double	getBtState	 (int bt, int period);
+
+  double	getBtState	 (int bt, int period);
 	void 	setBtState	 (int bt, int period, double value);
 	
 	int	checkShutDownRampDownInconsistency (int g);
