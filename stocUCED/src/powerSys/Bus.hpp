@@ -14,11 +14,13 @@
 #include <vector>
 
 #include "Generator.hpp"
+#include "Battery.hpp"
 #include "../config.hpp"
 
 using namespace std;
 
 class Generator;
+class Battery;
 
 class Bus {
 
@@ -36,7 +38,8 @@ public:
     double  maxPhaseAngle =  pi;
     double  minPhaseAngle = -pi;
     
-    vector<Generator*> connectedGenerators;
+    vector<Generator*> 	connectedGenerators;
+	vector<Battery*>	connectedBatteries;
 };
 
 #endif /* Bus_hpp */

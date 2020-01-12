@@ -44,9 +44,6 @@ public:
 	
 	void updateForecasts(int rep, int beginMin, int endMin);
 	
-//	ScenarioType simulations;
-//	map< string, ScenarioType > observations;
-
 	/* log keeping */
 	ofstream&	out ();
 	string		getLogStreamName ();

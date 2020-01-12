@@ -15,7 +15,6 @@ SUCsubprob::SUCsubprob () {
 	cplex = IloCplex (env);
 
 	cons		= IloRangeArray (env);
-	duals		= IloNumArray (env);
 
 	cplex.setOut(env.getNullStream());
 	cplex.setWarning(env.getNullStream());
@@ -51,9 +50,10 @@ SUCsubprob::~SUCsubprob () {
 void SUCsubprob::preprocessing ()
 {
 	/* basic parameters */
-	numGen	   = inst->powSys->numGen;
-	numLine    = inst->powSys->numLine;
-	numBus     = inst->powSys->numBus;
+	numGen = inst->powSys->numGen;
+	numLine = inst->powSys->numLine;
+	numBus = inst->powSys->numBus;
+	numBatteries = inst->powSys->numBatteries;
 	
 	numPeriods	 = (probType == DayAhead) ? runParam.DA_numPeriods : runParam.ST_numPeriods;
 	periodLength = (probType == DayAhead) ? runParam.DA_resolution : runParam.ST_resolution;
@@ -121,7 +121,7 @@ void SUCsubprob::preprocessing ()
 	/* Spinning Reserve */
 	for (int b=0; b<numBus; b++) {
 		for (int t=0; t<numPeriods; t++) {
-			busLoad[b][t] *= (1+runParam.spinResPerc);
+			busLoad[b][t] *= (1+runParam.resPerc_UC);
 		}
 	}
 	
@@ -188,7 +188,22 @@ void SUCsubprob::formulate_production()
 		sprintf(buffer, "x_%d", g);
 		x[g].setNames(buffer);
 	}
+	v = IloArray<IloNumVarArray> (env, numBatteries);
+	I = IloArray<IloNumVarArray> (env, numBatteries);
+	for (int bt=0; bt<numBatteries; bt++) {
+		v[bt] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+		I[bt] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+		
+		sprintf(buffer, "v_%d", bt);
+		v[bt].setNames(buffer);
+		sprintf(buffer, "I_%d", bt);
+		I[bt].setNames(buffer);
+		
+		model.add(v[bt]);
+		model.add(I[bt]);
+	}
 
+	
 	/** Constraints **/
 
 	// state constraints
@@ -223,7 +238,6 @@ void SUCsubprob::formulate_production()
 			}
 		}
 	}
-
 	
 	// minimum production constraints
 	for (int g=0; g<numGen; g++) {
@@ -236,6 +250,9 @@ void SUCsubprob::formulate_production()
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
+		// ignore ramping constraints for generators that are not meant to be scheduled in DA-UC problem
+		if (probType == DayAhead && !genPtr->isDAUCGen)	continue;
+
 		/* t = 0 */
 		int t=0;
 		if (getGenProd(g, t-1) > -INFINITY) {	// prev generation is available
@@ -254,6 +271,9 @@ void SUCsubprob::formulate_production()
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
+		// ignore ramping constraints for generators that are not meant to be scheduled in DA-UC problem
+		if (probType == DayAhead && !genPtr->isDAUCGen)	continue;
+
 		// input-inconsistency check
 		int shutDownPeriod = checkShutDownRampDownInconsistency(g);
 		if (shutDownPeriod >= 0) {
@@ -275,6 +295,32 @@ void SUCsubprob::formulate_production()
 			cons.add(con);
 		}
 	}
+	
+	// battery state
+	for (int bt=0; bt<numBatteries; bt++) {
+		Battery* bat_ptr = &inst->powSys->batteries[bt];
+
+		double dissipationCoef = pow(bat_ptr->dissipationCoef, periodLength/60.0);
+		double conversionLossCoef = pow(bat_ptr->conversionLossCoef, periodLength/60.0);
+
+		int t=0;
+		model.add(I[bt][t] == getBatteryState(bat_ptr->id, -1) * dissipationCoef + v[bt][t] * conversionLossCoef);
+		for (t=1; t<numPeriods; t++) {
+			model.add(I[bt][t] == I[bt][t-1] * dissipationCoef + v[bt][t] * conversionLossCoef);
+		}
+	}
+
+	// battery capacity
+	for (int bt=0; bt<numBatteries; bt++) {
+		Battery* batPtr = &inst->powSys->batteries[bt];
+		
+		for (int t=0; t<numPeriods; t++) {
+			IloRange con (env, -IloInfinity, I[bt][t] - batPtr->maxCapacity, 0);
+//			IloRange con (env, -IloInfinity, I[bt][t] - 0, 0);
+			cons.add(con);
+		}
+	}
+
 }
 
 void SUCsubprob::formulate_nodebased_system()
@@ -373,6 +419,12 @@ void SUCsubprob::formulate_nodebased_system()
 				expr += p[ busPtr->connectedGenerators[g]->id ][t];
 			}
 
+			// storage
+			Bus* busPtr = &(inst->powSys->buses[b]);
+			for (int bt=0; bt < (int) busPtr->connectedBatteries.size(); bt++) {
+				expr -= v[ busPtr->connectedBatteries[bt]->id ][t];
+			}
+
 			// in/out flows (iterate over all arcs)
 			for (auto linePtr = inst->powSys->lines.begin(); linePtr != inst->powSys->lines.end(); ++linePtr) {
 				if (linePtr->orig->id == busPtr->id) {	// if line-origin and bus have same ids, then this is outgoing flow
@@ -435,6 +487,9 @@ void SUCsubprob::formulate_aggregate_system()
 	for (int t=0; t<numPeriods; t++) {
 		IloExpr expr (env);
 		for (int g=0; g<numGen; g++) expr += p[g][t];
+		for (int bt=0; bt<numBatteries; bt++) {
+			expr -= v[bt][t];
+		}
 		expr += L[t];
 		expr -= O[t];
 		IloRange con (env, sysLoad[t], expr, sysLoad[t]);
@@ -458,6 +513,7 @@ void SUCsubprob::formulate_aggregate_system()
 	}
 	
 	// prepare the model and the solver
+	duals = IloNumArray (env, cons.getSize());
 	model.add( IloMinimize(env, obj) );
 	model.add( cons );
 	cplex.extract(model);
@@ -466,14 +522,14 @@ void SUCsubprob::formulate_aggregate_system()
 void SUCsubprob::setMasterSoln () {
 	int c=0;
 
-	IloRangeArray stateCons (env);
-	IloNumArray stateVals (env);
+	IloRangeArray stateCons (env, numGen * numPeriods);
+	IloNumArray stateVals (env, numGen * numPeriods);
 	
 	// state constraints
 	for (int g=0; g<numGen; g++) {
 		for (int t=0; t<numPeriods; t++) {
-			stateCons.add(cons[c]);
-			stateVals.add( (double)(*genState)[g][t] );
+			stateCons[g * numPeriods + t] = cons[c];
+			stateVals[g * numPeriods + t] = (double)(*genState)[g][t];
 			c++;
 		}
 	}
@@ -485,7 +541,7 @@ void SUCsubprob::setMasterSoln () {
 	// rest of the constraints are not a function of x
 }
 
-bool SUCsubprob::solve(int mappedScen, BendersCutCoefs &cutCoefs, double &objValue, vector<double> &initGen) {
+bool SUCsubprob::solve(int mappedScen, BendersCutCoefs &cutCoefs, double &objValue, vector<double> &initGen, vector<vector<double>> &btStates) {
 	
 	cutCoefs.reset();
 	
@@ -512,6 +568,14 @@ bool SUCsubprob::solve(int mappedScen, BendersCutCoefs &cutCoefs, double &objVal
 void SUCsubprob::getInitGen(vector<double> &initGen) {
 	for (int g=0; g<numGen; g++) {
 		initGen[g] = cplex.getValue( p[g][0] );
+	}
+}
+
+void SUCsubprob::getBtStates(vector<vector<double>> &btStates) {
+	for (int bt=0; bt<numBatteries; bt++) {
+		for (int t=0; t<numPeriods; t++) {
+			btStates[bt][t] = cplex.getValue( I[bt][t] );
+		}
 	}
 }
 
@@ -590,7 +654,7 @@ void SUCsubprob::compute_optimality_cut_coefs(BendersCutCoefs &cutCoefs, int &s)
 	}
 	
 	// capacity
-	// Variant 1: Randomness is in the coefficient matrix
+//	// Variant 1: Randomness is in the coefficient matrix
 //	// skipped, as all necessary coefs are 0
 //	c += numGen * numPeriods;
 	
@@ -618,10 +682,14 @@ void SUCsubprob::compute_optimality_cut_coefs(BendersCutCoefs &cutCoefs, int &s)
 	
 	// minimum generation requirements
 	// skipped, as all necessary coefs are 0
+	// Note: they are not part of the cons object, therefore their dual multipliers are not collected.
 	
 	// ramp up constraints
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
+
+		// ignore ramping constraints for generators that are not meant to be scheduled in DA-UC problem
+		if (probType == DayAhead && !genPtr->isDAUCGen)	continue;
 
 		int t=0;
 		if (getGenProd(g, t-1) > -INFINITY) {	// prev generation is available
@@ -639,6 +707,9 @@ void SUCsubprob::compute_optimality_cut_coefs(BendersCutCoefs &cutCoefs, int &s)
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
+		// ignore ramping constraints for generators that are not meant to be scheduled in DA-UC problem
+		if (probType == DayAhead && !genPtr->isDAUCGen)	continue;
+
 		// input-inconsistency check
 		int shutDownPeriod = checkShutDownRampDownInconsistency(g);
 		
@@ -654,6 +725,19 @@ void SUCsubprob::compute_optimality_cut_coefs(BendersCutCoefs &cutCoefs, int &s)
 			rampDownRate = (shutDownPeriod != t) ? genPtr->rampDownLim*periodLength : genPtr->maxCapacity;
 //			displayDiscrepancy(cons[c].getUB(), rampDownRate);
 			cutCoefs.pi_b += duals[c] * rampDownRate;
+		}
+	}
+	
+	// battery state
+	// skipped, because the associated coefs are all 0
+	// Note: we haven't entered these constraints into the cons object, therefore their dual multipliers are not collected
+	
+	// battery capacity
+	for (int bt=0; bt<numBatteries; bt++) {
+		Battery* batPtr = &inst->powSys->batteries[bt];
+		
+		for (int t=0; t<numPeriods; t++, c++) {
+			cutCoefs.pi_b += duals[c] * batPtr->maxCapacity;
 		}
 	}
 	
@@ -782,6 +866,9 @@ void SUCsubprob::compute_feasibility_cut_coefs(BendersCutCoefs &cutCoefs, int &s
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
+		// ignore ramping constraints for generators that are not meant to be scheduled in DA-UC problem
+		if (probType == DayAhead && !genPtr->isDAUCGen)	continue;
+
 		int t=0;
 		if (getGenProd(g, t-1) > -INFINITY) {	// prev generation is available
 			cutCoefs.pi_b += farkasMap[ cons[c].getId() ] * (genPtr->rampUpLim*periodLength + getGenProd(g, t-1));
@@ -796,6 +883,9 @@ void SUCsubprob::compute_feasibility_cut_coefs(BendersCutCoefs &cutCoefs, int &s
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst->powSys->generators[g]);
 		
+		// ignore ramping constraints for generators that are not meant to be scheduled in DA-UC problem
+		if (probType == DayAhead && !genPtr->isDAUCGen)	continue;
+
 		// input-inconsistency check
 		int shutDownPeriod = checkShutDownRampDownInconsistency(g);
 		
@@ -951,6 +1041,22 @@ double SUCsubprob::getGenProd(int g, int t) {
 		return getEDGenProd(g, t);
 	}
 	return -INFINITY;
+}
+
+double SUCsubprob::getBatteryState(int batteryId, int period) {
+	// which Solution component is requested?
+	int reqSolnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
+	
+	// return the requested generator state
+	if (reqSolnComp > 0) {
+		return inst->solution.btState_ED[batteryId][reqSolnComp];
+	} else {
+		if (runParam.useGenHistory && inst->solList.size() > 0) {
+			return inst->solList.back().btState_ED[batteryId][runParam.numPeriods-1];	// the latest battery state
+		} else {
+			return 0.0;
+		}
+	}
 }
 
 /****************************************************************************

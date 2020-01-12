@@ -32,6 +32,7 @@ void LShapedCallback::invoke(const IloCplex::Callback::Context &context) {
 	mutex.unlock();	// unlock, so that a new thread may process above
 }
 
+/*** Randomized rounding heuristic ***/
 /* Something is wrong with this function
 inline void LShapedCallback::randomizedRounding(const IloCplex::Callback::Context &context) {
 	/* Heuristic frequency: Every 100 nodes, after node 10 *
@@ -83,15 +84,23 @@ inline void LShapedCallback::randomizedRounding(const IloCplex::Callback::Contex
 }
  */
 
+/*******************************************************************
+ Records the average of (i) initial generation levels, (ii) battery
+ states, across all scenarios. This information will then be fed to
+ the ED problem.
+ ******************************************************************/
 inline void LShapedCallback::setExpGenAmounts(const IloCplex::Callback::Context &context) {
-	/* record the new solution's expected initial generation amounts (to be fed to the ED problem) */
+	// avg initial generation amounts are only recorded in the DA-UC, and ST-UC at the beginning of the planning horizon
 	if (master->probType == DayAhead || (master->probType == ShortTerm && master->beginMin == 0) ) {
-		// initial generation amounts are only recorded in the DA-UC, and ST-UC at the planning horizon
-		
 		if (context.getCandidateObjective() < context.getIncumbentObjective()) {	// if this solution is improving the incumbent
 			// compute the expected initial generation
 			master->expInitGen = master->recourse.getExpInitGen();
 		}
+	}
+	
+	// avg battery states are only recorded in the DA-UC
+	if (context.getCandidateObjective() < context.getIncumbentObjective()) {	// if this solution is improving the incumbent
+		master->expBtState = master->recourse.getExpBtState();
 	}
 }
 

@@ -14,6 +14,7 @@
 #include "./powerSys/Generator.hpp"
 
 extern runType runParam;
+extern string outDir;
 
 EDmodel::EDmodel(instance &inst, int t0, int rep) {
 
@@ -23,14 +24,15 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 	//cplex.setOut(env.getNullStream());
 	cplex.setOut( inst.out() );
 	cplex.setWarning( inst.out() );
-	
-	
+
+
 	/* Pre-process to setup some parameters: generator status (ramping and capacity), load, and stochastic generation */
 	numBus = numLoad = inst.powSys->numBus;
 	numGen = inst.powSys->numGen;
 	numLine = inst.powSys->numLine;
 	this->rep = rep;
 	numPeriods = runParam.ED_numPeriods;
+	numBatteries = inst.powSys->numBatteries;
 
 	resize_matrix(busLoad, numBus, numPeriods);
 	resize_matrix(genMin, numGen, numPeriods);
@@ -39,24 +41,24 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 	resize_matrix(genRampUp, numGen, numPeriods);
 	resize_matrix(genAvail, numGen, numPeriods);
 	sysLoad.resize(numPeriods);
-	
+
 	/* Load */
 	fill( sysLoad.begin(), sysLoad.end(), 0.0 );
 	for (int b=0; b<numBus; b++) {
 		Bus *busPtr = &(inst.powSys->buses[b]);
-		
+
 		// use actual values of the load (assuming that load-forecasts are perfect)
 		auto it = inst.actuals.mapVarNamesToIndex.find( num2str(busPtr->regionId) );
-		
+
 		for (int t=0; t<numPeriods; t++) {
 			busLoad[b][t] = inst.actuals.vals[rep][t0+t][it->second] * busPtr->loadPercentage;
 			sysLoad[t] += busLoad[b][t];
 		}
 	}
-	
+
 	for ( int g = 0; g < numGen; g++ ) {
 		Generator genPtr = inst.powSys->generators[g];
-		
+
 		for (int t = 0; t < numPeriods; t++ ) {
 			/* If the model horizon exceeds the number of periods, then the last period commitment are repeated for the remainder of horizon */
 			int idxT = min(t0+t, runParam.numPeriods-1);
@@ -64,37 +66,37 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 			/* Make sure that the generation capacity limits are met. The minimum and maximum for generators which are turned off are set to zero during pre-processing */
 			genMax[g][t] = inst.solution.x[g][idxT] * genPtr.maxCapacity;
 			genMin[g][t] = inst.solution.x[g][idxT] * min(genPtr.minGenerationReq, min(genPtr.rampUpLim * runParam.ED_resolution, genPtr.rampDownLim * runParam.ED_resolution));
-			
+
 			// error check
 			if (genMax[g][t] < 0) {
 				ofstream errorlog;
-				open_file(errorlog, "error.log");
+				open_file(errorlog, outDir + "/error.log");
 				errorlog << "Error:" << endl;
 				errorlog << "genMax g: " << g << " t: " << t << " " << setprecision(10) << genMax[g][t] << endl;
 				errorlog << "genMin g: " << g << " t: " << t << " " << setprecision(10) << genMin[g][t] << endl;
 				errorlog << "x g: " << g << " t: " << t << " idxT " << idxT << " " << inst.solution.x[g][idxT] << endl;
 				errorlog << "maxCapacity: " << genPtr.maxCapacity << endl;
 				errorlog.close();
-				inst.printSolution("infeasRTED");
+				inst.printSolution(outDir + "/infeasRTED");
 			}
 			if (genMin[g][t] < 0) {
 				ofstream errorlog;
-				open_file(errorlog, "error.log");
+				open_file(errorlog, outDir + "/error.log");
 				errorlog << "Error:" << endl;
 				errorlog << "genMax g: " << g << " t: " << t << " " << setprecision(10) << genMax[g][t] << endl;
 				errorlog << "genMin g: " << g << " t: " << t << " " << setprecision(10) << genMin[g][t] << endl;
 				errorlog << "x g: " << g << " t: " << t << " idxT " << idxT << " " << inst.solution.x[g][idxT] << endl;
 				errorlog << "maxCapacity: " << genPtr.maxCapacity << endl;
 				errorlog.close();
-				inst.printSolution("infeasRTED");
+				inst.printSolution(outDir + "/infeasRTED");
 			}
-			
+
 			/* Stochastic generation set to what is available */
 			auto it = inst.actuals.mapVarNamesToIndex.find(genPtr.name);
 			if ( it != inst.actuals.mapVarNamesToIndex.end() ) {
 				/* supply info found within the time series */
-				
-				if ( t==0 ) {
+
+				if ( t == 0 ) {
 					it = inst.actuals.mapVarNamesToIndex.find(genPtr.name);
 					genAvail[g][t] = min( inst.actuals.vals[rep][t0+t][it->second], genMax[g][t] );
 				}
@@ -115,11 +117,11 @@ EDmodel::EDmodel(instance &inst, int t0, int rep) {
 //					}
 				}
 			}
-			
+
 			/* Ramping restrictions */
 			genRampUp[g][t]		= genPtr.rampUpLim * runParam.ED_resolution;
 			genRampDown[g][t]	= genPtr.rampDownLim * runParam.ED_resolution;
-			
+
 			// is the generator shutting down?
 			if ( max(inst.solution.x[g][idxT] - inst.solution.x[g][min(idxT+1,runParam.numPeriods-1)], 0.0) > 0.5 ) {
 				genRampDown[g][t] = genPtr.maxCapacity;
@@ -140,15 +142,26 @@ void EDmodel::formulate(instance &inst, int t0) {
 	timeRows = vector <string> ();
 	stocRows = vector <string> ();
 
-	/**** Decision variables *****/
+	/**** Decision variables *****
+	 * IMP: Declare every variable immediately in here if the variable
+	 * can appear in the first-stage problem.
+	 */
 	genUsed = IloArray< IloNumVarArray > (env, numGen);
 	overGen = IloArray< IloNumVarArray > (env, numGen);
 	demMet = IloArray< IloNumVarArray > (env, numLoad);
 	demShed = IloArray <IloNumVarArray> (env, numLoad);
 	theta = IloArray< IloNumVarArray > (env, numLoad);
 	flow = IloArray< IloNumVarArray > (env, numLine);
+
 	IloArray<IloNumVarArray> delta_pos (env, numGen);	// positive deviations from settled DA-UC generation amounts
 	IloArray<IloNumVarArray> delta_neg (env, numGen);	// negative deviations from settled DA-UC generation amounts
+  
+	btFlow 	= IloArray<IloNumVarArray> (env, numBatteries);
+	btState = IloArray<IloNumVarArray> (env, numBatteries);
+
+	IloArray<IloNumVarArray> gamma_pos (env, numBatteries);
+	IloArray<IloNumVarArray> gamma_neg (env, numBatteries);
+
 
 	for ( int t = 0; t < numPeriods; t++ ) {
 		/* Generation and over-generation */
@@ -205,22 +218,61 @@ void EDmodel::formulate(instance &inst, int t0) {
 			sprintf(elemName, "flow(%s)(%d)", lptr->name.c_str(), t);
 			flow[l][t].setName(elemName); model.add(flow[l][t]);
 		}
+
+		/* Batteries */
+		for (int bt=0; bt<numBatteries; bt++) {
+			Battery *btPtr = &(inst.powSys->batteries[bt]);
+			if ( t == 0 ) {
+				btFlow[bt] 	= IloNumVarArray(env, numPeriods, -btPtr->maxCapacity, btPtr->maxCapacity, ILOFLOAT);
+				btState[bt] = IloNumVarArray(env, numPeriods, 0, btPtr->maxCapacity, ILOFLOAT);
+				gamma_pos[bt] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+				gamma_neg[bt] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+			}
+
+			sprintf(elemName, "v(%d)(%d)", bt, t);
+			btFlow[bt][t].setName(elemName);
+			model.add(btFlow[bt][t]);
+
+			sprintf(elemName, "I(%d)(%d)", bt, t);
+			btState[bt][t].setName(elemName);
+			model.add(btState[bt][t]);
+
+			sprintf(elemName, "gamma_pos(%d)(%d)", bt, t);
+			gamma_pos[bt][t].setName(elemName);
+			model.add(gamma_pos[bt][t]);
+
+			sprintf(elemName, "gamma_neg(%d)(%d)", bt, t);
+			gamma_neg[bt][t].setName(elemName);
+			model.add(gamma_neg[bt][t]);
+		}
 	}
 
 	for (int g=0; g<numGen; g++) {
 		delta_pos[g] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
 		delta_neg[g] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
 	}
-	
-	/***** Constraints *****/
+  
+	/***** Constraints *****
+	 * IMP: Declare every constraint immediately in here, if the
+	 * constraint may appear in the first-stage.
+	 */
 	for (int t = 0; t < numPeriods; t++ ) {
 		/* Flow balance equation */
 		for ( int b = 0; b < numBus; b++ ) {
 			IloExpr expr (env);
 			sprintf(elemName, "flowBalance(%d)(%d)", b, t);
 
+			// production
 			for ( int g = 0; g < numGen; g++ )
 				if ( inst.powSys->generators[g].connectedBus->id == b ) expr += genUsed[g][t];
+
+			// storage
+			Bus* busPtr = &(inst.powSys->buses[b]);
+			for (int bt=0; bt < (int) busPtr->connectedBatteries.size(); bt++) {
+				expr -= btFlow[ busPtr->connectedBatteries[bt]->id ][t];
+			}
+
+			// in/out flow
 			for ( int l = 0; l < numLine; l++ ) {
 				if ( inst.powSys->lines[l].dest->id == b ) expr += flow[l][t];
 				if ( inst.powSys->lines[l].orig->id == b ) expr -= flow[l][t];
@@ -245,21 +297,21 @@ void EDmodel::formulate(instance &inst, int t0) {
 			IloExpr expr (env);
 			expr = flow[l][t] - inst.powSys->lines[l].susceptance*(theta[orig][t] - theta[dest][t]);
 
-			IloConstraint c( expr == 0); c.setName(elemName); model.add(c);
+			IloConstraint c(expr == 0); c.setName(elemName); model.add(c);
 		}
 
 		/* Generation ramping constraints: applicable only if the generator continues to be ON, i.e., x[g][t] = 1. */
 		int idx = min(t0+t, runParam.numPeriods-1);
-		
+
 		if ( t == 0 ) {
 			// Note: Generation amounts at time t-1 comes from:
 			// a) If t-1 is earlier than the planning horizon, 1st-period generation levels of the DA-UC problem,
 			// b) Otherwise, the ED solutions obtained earlier.
 			double prevGen;
-			
+
 			for (int g=0; g<numGen; g++) {
 				if (inst.solution.x[g][idx] < 0.5)	continue;		// generator is not operational
-				
+
 				// determine previous generation level
 				if ( t0 == 0 ) {
 					if (runParam.useGenHistory && inst.solList.size() > 0) {
@@ -276,7 +328,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 				sprintf(elemName, "rampUp(%d)(%d)", g, t);
 				IloConstraint c1( genUsed[g][t] + overGen[g][t] - prevGen <= genRampUp[g][t]);
 				c1.setName(elemName); model.add(c1);
-				
+
 				/* ramp-down */
 				sprintf(elemName, "rampDown(%d)(%d)", g, t);
 				IloConstraint c2( prevGen - genUsed[g][t] - overGen[g][t] <= genRampDown[g][t] );	// the latter
@@ -292,115 +344,21 @@ void EDmodel::formulate(instance &inst, int t0) {
 				sprintf(elemName, "rampUp(%d)(%d)", g, t);
 				IloConstraint c1( genUsed[g][t] + overGen[g][t] - genUsed[g][t-1] - overGen[g][t-1] <= genRampUp[g][t]);
 				c1.setName(elemName); model.add(c1);
-					
+
 				/* ramp-down */
 				sprintf(elemName, "rampDown(%d)(%d)", g, t);
 				IloConstraint c2( genUsed[g][t-1] + overGen[g][t-1] - genUsed[g][t] - overGen[g][t] <= genRampDown[g][t]);
 				c2.setName(elemName); model.add(c2);
 			}
 		}
-		
-		/* system-wide spinning-reserve constraints *
-		if (t != 0) {
-			IloExpr sysOverGen (env);
-			
-			for (int g=0; g<numGen; g++) {
-				sysOverGen += overGen[g][t];
-			}
-			sprintf(elemName, "reserve(%d)", t);
-			IloConstraint con ( sysOverGen >= sysLoad[t] * runParam.spinResPerc );
-			con.setName(elemName); model.add(con);
-			
-			sysOverGen.end();
-		}
-		/*	*/
-		
-//		// Stay within the ballpark of UC generation levels
-//		for (int g=0; g<numGen; g++) {
-//			Generator *genPtr = &(inst.powSys->generators[g]);
-//			if (genPtr->type != Generator::SOLAR && genPtr->type != Generator::WIND) {
-//				for (int t=0; t<numPeriods; t++) {
-//					const double percentage = 0.1;
-//
-//					model.add( genUsed[g][t] + overGen[g][t] <= inst.solution.g_UC[g][t0+t] * (1+percentage) );
-//					model.add( genUsed[g][t] + overGen[g][t] >= inst.solution.g_UC[g][t0+t] * (1-percentage) );
-//				}
-//			}
-//		}
 
-		/* system-wide ramping capability *
-		if (t==0) {
-			for (int t_future=t0+1; t_future<runParam.numPeriods; t_future++) {	// for every future period in the "whole" planning horizon
-				double sysRampUpCap = 0, predRenGen = 0, currentRenGen = 0;
-				int nbPeriodsOpen = 0;
-				for (int g=0; g<numGen; g++) {
-					Generator *genPtr = &(inst.powSys->generators[g]);
-					if ( genPtr->type == Generator::SOLAR || genPtr->type == Generator::WIND ) {
-						// solar and wind generators
-						
-						// get the actuals for the current time period
-						auto it = inst.actuals.mapVarNamesToIndex.find(genPtr->name);
-						currentRenGen += min(inst.actuals.vals[rep][t0][it->second], genMax[g][t]);
-						
-						// get the amount of predicted-supply at t_future
-						if (runParam.updateForecasts) {
-							auto it = inst.meanForecast["RT"].mapVarNamesToIndex.find(genPtr->name);
-							predRenGen += min(inst.meanForecast["RT"].vals[rep][t_future][it->second], genMax[g][t]);
-						}
-						else {
-							auto it = inst.meanForecast["DA"].mapVarNamesToIndex.find(genPtr->name);
-							predRenGen += min(inst.meanForecast["DA"].vals[rep][t_future][it->second], genMax[g][t]);
-						}
-					}
-					else {
-						// conventional generators
-						// count the # of periods generator can ramp up till t_future
-						nbPeriodsOpen = 0;
-						for (int l=t_future; l >= t0+1; l--) {
-							if ( inst.solution.x[g][l] <= EPSzero ) break;
-							
-							nbPeriodsOpen++;
-						}
-						
-						// calculate the ramping capability of the generator till t_future
-						sysRampUpCap += nbPeriodsOpen * inst.powSys->generators[g].rampUpLim * runParam.ED_resolution;
-					}
-				}
-				
-				// get the system load at time t_future
-				double futureSysLoad = 0, currentSysLoad = 0;
-				for (int r=0; r<3; r++)	{	// assuming 3 regions in here. TODO: generalize this
-					auto it = inst.actuals.mapVarNamesToIndex.find( num2str(r+1) );
-					futureSysLoad += inst.actuals.vals[rep][t_future][it->second];
-					currentSysLoad += inst.actuals.vals[rep][t0][it->second];
-				}
-				
-				// add the constraint
-				if (futureSysLoad-currentSysLoad > 0) {
-					cout << endl << "t=" << t0 << ", tf=" << t_future << ", Sys-RampUpReq = " << (futureSysLoad-predRenGen)-(currentSysLoad-currentRenGen) << ", " << "Sys-RampUpCap = " << sysRampUpCap + (predRenGen-currentRenGen);
-				}
-				if (futureSysLoad-currentSysLoad > sysRampUpCap + (predRenGen-currentRenGen)) {
-					IloExpr sysOverGen (env);
-					for (int g=0; g<numGen; g++) {
-						Generator *genPtr = &(inst.powSys->generators[g]);
-						if ( genPtr->type == Generator::SOLAR || genPtr->type == Generator::WIND )	continue;
-						
-						if (inst.solution.x[g][t_future] >= 1-EPSzero)	sysOverGen += overGen[g][t];
-					}
-					model.add( sysOverGen >= futureSysLoad-currentSysLoad - sysRampUpCap - (predRenGen-currentRenGen) );
-				}
-			}
-		}
-		/*  */
-		
-		
 		for ( int g = 0; g < numGen; g++ ) {
 			Generator genPtr = inst.powSys->generators[g];
 
 			/* Stochastic generation set to what is available */
 			auto it = inst.actuals.mapVarNamesToIndex.find(genPtr.name);
 			bool stocSupply = (it != inst.actuals.mapVarNamesToIndex.end()) ? true : false;
-			
+
 			if ( !stocSupply ) {
 				/* Deterministic-supply generator */
 				if (genPtr.isMustUse) {
@@ -412,7 +370,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 					sprintf(elemName, "maxGen(%d)(%d)", g, t);
 					IloConstraint c1( genUsed[g][t] + overGen[g][t] <= genMax[g][t]);
 					c1.setName(elemName); model.add(c1);
-					
+
 					if (genMin[g][t] >= EPSzero) {	// if no min-generation requirement, skip the constraint
 						sprintf(elemName, "minGen(%d)(%d)", g, t);
 						IloConstraint c2( genUsed[g][t] + overGen[g][t] >= genMin[g][t]);
@@ -434,7 +392,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 					stocRows.push_back(elemName);
 			}
 		}
-		
+
 		/* Demand consistency */
 		for ( int d = 0; d < numBus; d++ ) {
 			sprintf(elemName, "demConsist(%d)(%d)", d, t);
@@ -442,8 +400,101 @@ void EDmodel::formulate(instance &inst, int t0) {
 				IloConstraint c(demMet[d][t] + demShed[d][t] == busLoad[d][t]); c.setName(elemName); model.add(c);
 			} else {
 				/* Node-wise spinning reserves */
-				IloConstraint c(demMet[d][t] + demShed[d][t] == busLoad[d][t]*(1+runParam.spinResPerc)); c.setName(elemName); model.add(c);
+				IloConstraint c(demMet[d][t] + demShed[d][t] == busLoad[d][t]*(1+runParam.resPerc_ED)); c.setName(elemName); model.add(c);
 			}
+		}
+
+		// battery state
+		for (int bt = 0; bt < numBatteries; bt++) {
+			Battery* batPtr = &inst.powSys->batteries[bt];
+
+			double dissipationCoef = pow(batPtr->dissipationCoef, runParam.ED_resolution/60.0);
+			double conversionLossCoef = pow(batPtr->conversionLossCoef, runParam.ED_resolution/60.0);
+
+			if (t == 0) {
+				// determine previous battery state
+				double initBtState = 0;
+				if (t0 == 0) {
+					// TODO: What are the two cases here?
+					if (runParam.useGenHistory && inst.solList.size() > 0) {
+						initBtState = inst.solList.back().btState_ED[bt][runParam.numPeriods-1];
+					} else {
+						initBtState = inst.powSys->batteries[bt].maxCapacity / 2.0;
+					}
+				} else {
+					initBtState = inst.solution.btState_ED[bt][t0-1];
+				}
+				IloConstraint c (0 == -btState[bt][t] + initBtState * dissipationCoef + btFlow[bt][t] * conversionLossCoef);
+				sprintf(elemName, "Bt_%d_%d", bt, t); c.setName(elemName); model.add(c);
+			}
+			else {
+				IloConstraint c (0 == -btState[bt][t] + btState[bt][t-1] * dissipationCoef + btFlow[bt][t] * conversionLossCoef);
+				sprintf(elemName, "Bt_%d_%d", bt, t); c.setName(elemName); model.add(c);
+			}
+
+			/* TODO: battery state deviation from UC targets */
+			double target = 0;
+			int index;
+			if ( t0+t > (1+t0/runParam.ST_numPeriods) * runParam.ST_numPeriods - 1) {
+				index = (1+t0/runParam.ST_numPeriods) * runParam.ST_numPeriods - 1;
+			} else {
+				index = t0+t;
+			}
+
+			index = min(index, runParam.numPeriods-1);
+			target = inst.solution.btState_UC[bt][index];
+
+			IloConstraint c( btState[bt][t] + gamma_neg[bt][t] - gamma_pos[bt][t] == target );
+			sprintf(elemName, "BtDev(%d)(%d)", bt, t);
+			c.setName(elemName);
+			model.add(c);
+		}
+	}
+
+	/** Rampability to UC generation levels **/
+	/* IMP: These variables and constraints only appear in the second-stage
+	 * problem, therefore they can be declared after the above loop.
+	 */
+	IloNumVarArray delta_pos (env, numGen, 0, IloInfinity, ILOFLOAT);	// positive deviations from settled DA-UC generation amounts
+	IloNumVarArray delta_neg (env, numGen, 0, IloInfinity, ILOFLOAT);	// negative deviations from settled DA-UC generation amounts	
+	for (int g=0; g<numGen; g++) {
+		sprintf(elemName, "delta_pos(%d)", g);
+		delta_pos[g].setName(elemName);
+
+		sprintf(elemName, "delta_neg(%d)", g);
+		delta_neg[g].setName(elemName);
+	}
+	model.add(delta_pos); model.add(delta_neg);
+
+	for (int g=0; g<numGen; g++) {
+		Generator *genPtr = &(inst.powSys->generators[g]);
+
+		if (genPtr->type != Generator::SOLAR && genPtr->type != Generator::WIND) {
+			int t = numPeriods-1;
+			int tprime = numPeriods;
+
+			double target = 0;
+			int index;
+			if (t0+tprime > (1+t0/runParam.ST_numPeriods) * runParam.ST_numPeriods - 1) {
+				index = (1+t0/runParam.ST_numPeriods) * runParam.ST_numPeriods - 1;
+			} else {
+				index = t0+tprime;
+			}
+
+			index = min(index, runParam.numPeriods-1);
+			target = inst.solution.g_UC[g][index];
+
+			/* ramp-up */
+			IloConstraint c1( target - genUsed[g][t] - overGen[g][t] - delta_pos[g] <= genPtr->rampUpLim * runParam.ED_resolution);
+			sprintf(elemName, "UPrampability(%d)(%d)", g, t);
+			c1.setName(elemName);
+			model.add(c1);
+
+			/* ramp-down */
+			IloConstraint c2( genUsed[g][t] + overGen[g][t] - target - delta_neg[g] <= genPtr->rampDownLim * runParam.ED_resolution);
+			sprintf(elemName, "DNrampability(%d)(%d)", g, t);
+			c2.setName(elemName);
+			model.add(c2);
 		}
 	}
 
@@ -522,11 +573,24 @@ void EDmodel::formulate(instance &inst, int t0) {
 			}
 		}
 	}
+
+	/* Deviation penalties */
+	for (int g=0; g<numGen; g++) {
+		if ( inst.powSys->generators[g].type != Generator::SOLAR && inst.powSys->generators[g].type != Generator::WIND ) {
+			realTimeCost += 1000*(delta_pos[g] + delta_neg[g]);
+		}
+	}
+	for (int bt = 0; bt < numBatteries; bt++) {
+		for (int t = 0; t < numPeriods; t++) {
+			realTimeCost += (overGenPenaltyCoef+renCurtailPenaltyCoef)/2.0 * 0.25 * (gamma_pos[bt][t] + gamma_neg[bt][t]);
+		}
+	}
+
 	obj = IloMinimize(env, realTimeCost);
 	obj.setName(elemName);
 	model.add(obj);
 	realTimeCost.end();
-	
+
 #if defined(WRITE_PROB)
 	cplex.exportModel("rtED.lp");
 #endif
@@ -565,27 +629,34 @@ bool EDmodel::solve(instance &inst, int t0) {
 				cout << "[LS! " << totLoadShed << " MWs] ";
 			}
 		}
-		
+
 		if (!status) {
-			cplex.exportModel("infeasible_RTED.lp");
+			string fname = outDir + "infeasible_RTED.lp";
+			cplex.exportModel(fname.c_str());
 			exit(5);
 		}
-		
+
 		// record the solution
 		if (status) {
 			for (int t = 0; t < numPeriods; t++) {
 				if ( t0 + t < runParam.numPeriods ) {	// do not record for periods that exceed the planning horizon
-					// record used and over-generation amounts
+					// used and over-generation amounts
 					for (int g = 0; g < numGen; g++) {
 						inst.solution.usedGen_ED[g][t0+t] = cplex.getValue(genUsed[g][t]);
 						inst.solution.overGen_ED[g][t0+t] = cplex.getValue(overGen[g][t]);
 						inst.solution.g_ED[g][t0+t] = inst.solution.usedGen_ED[g][t0+t] + inst.solution.overGen_ED[g][t0+t];
 						inst.solution.g_ED[g][t0+t] = max(0.0, inst.solution.g_ED[g][t0+t]);	// numerical corrections
 					}
-					
-					// record load-shedding amounts
+
+					// load-shedding amounts
 					for (int b = 0; b < numBus; b++) {
 						inst.solution.loadShed_ED[b][t0+t] = cplex.getValue(demShed[b][t]);
+					}
+
+					// storage
+					for (int bt=0; bt<numBatteries; bt++) {
+						inst.solution.btState_ED[bt][t0+t] = cplex.getValue(btState[bt][t]);
+						inst.solution.btFlow_ED[bt][t0+t] = cplex.getValue(btFlow[bt][t]);
 					}
 				}
 			}

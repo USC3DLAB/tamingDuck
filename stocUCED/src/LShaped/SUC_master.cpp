@@ -9,6 +9,7 @@
 #include "SUC_master.hpp"
 
 extern runType runParam;
+extern string outDir;
 
 ILOHEURISTICCALLBACK2(rounding, IloArray<IloNumVarArray> &, x, SUCmaster &, me) {
 	
@@ -399,9 +400,10 @@ SUCmaster::~SUCmaster() {
 void SUCmaster::preprocessing ()
 {
 	/* basic parameters */
-	numGen	   = inst->powSys->numGen;
-	numLine    = inst->powSys->numLine;
-	numBus     = inst->powSys->numBus;
+	numGen	     = inst->powSys->numGen;
+	numLine      = inst->powSys->numLine;
+	numBus     	 = inst->powSys->numBus;
+	numBatteries = inst->powSys->numBatteries;
 	
 	numPeriods	 = (probType == DayAhead) ? runParam.DA_numPeriods : runParam.ST_numPeriods;
 	periodLength = (probType == DayAhead) ? runParam.DA_resolution : runParam.ST_resolution;
@@ -533,7 +535,7 @@ void SUCmaster::preprocessing ()
 	/* Spinning Reserve */
 	for (int b=0; b<numBus; b++) {
 		for (int t=0; t<numPeriods; t++) {
-			busLoad[b][t] *= (1+runParam.spinResPerc);
+			busLoad[b][t] *= (1+runParam.resPerc_UC);
 		}
 	}
 	
@@ -546,6 +548,54 @@ void SUCmaster::preprocessing ()
 	}
 }
 
+void SUCmaster::initializeVariables() {
+	eta = IloNumVarArray (env, multicut ? runParam.numLSScen : 1, 0, IloInfinity, ILOFLOAT);	// 2nd-stage approximation
+	
+	p = IloArray<IloNumVarArray> (env, numGen);	// production amounts
+	p_var = IloArray<IloNumVarArray> (env, numGen);	// variable-production amounts
+	
+	s = IloArray< IloNumVarArray > (env, numGen);
+	x = IloArray< IloNumVarArray > (env, numGen);
+	z = IloArray< IloNumVarArray > (env, numGen);
+	for (int g=0; g<numGen; g++) {
+		s[g] = IloNumVarArray(env, numPeriods, 0, 1, ILOBOOL);
+		x[g] = IloNumVarArray(env, numPeriods, 0, 1, ILOBOOL);
+		z[g] = IloNumVarArray(env, numPeriods, 0, 1, ILOBOOL);
+		p[g]	 = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+		p_var[g] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+		
+		sprintf(buffer, "s_%d", g);
+		s[g].setNames(buffer);
+		sprintf(buffer, "x_%d", g);
+		x[g].setNames(buffer);
+		sprintf(buffer, "z_%d", g);
+		z[g].setNames(buffer);
+		sprintf(buffer, "p_%d", g);
+		p[g].setNames(buffer);
+		sprintf(buffer, "pv_%d", g);
+		p_var[g].setNames(buffer);
+		
+		model.add(s[g]);
+		model.add(x[g]);
+		model.add(z[g]);
+	}
+	
+	v = IloArray<IloNumVarArray> (env, numBatteries);
+	I = IloArray<IloNumVarArray> (env, numBatteries);
+	for (int bt=0; bt<numBatteries; bt++) {
+		v[bt] = IloNumVarArray(env, numPeriods, -inst->powSys->batteries[bt].maxCapacity, inst->powSys->batteries[bt].maxCapacity, ILOFLOAT);
+		I[bt] = IloNumVarArray(env, numPeriods, 0, inst->powSys->batteries[bt].maxCapacity, ILOFLOAT);
+//		I[bt] = IloNumVarArray(env, numPeriods, 0, 0, ILOFLOAT);
+		
+		sprintf(buffer, "v_%d", bt);
+		v[bt].setNames(buffer);
+		sprintf(buffer, "I_%d", bt);
+		I[bt].setNames(buffer);
+		
+		model.add(v[bt]);
+		model.add(I[bt]);
+	}
+}
 
 void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep) {
 	
@@ -561,40 +611,8 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 	preprocessing();
 
 	/* Master Formulation */
-	// create the variables
-	eta = IloNumVarArray (env, multicut ? runParam.numLSScen : 1, 0, IloInfinity, ILOFLOAT);	// 2nd-stage approximation
+	initializeVariables();
 	
-	p = IloArray<IloNumVarArray> (env, numGen);	// production amounts
-	IloArray<IloNumVarArray> p_var (env, numGen);	// variable-production amounts
-
-    s = IloArray< IloNumVarArray > (env, numGen);
-	x = IloArray< IloNumVarArray > (env, numGen);
-	z = IloArray< IloNumVarArray > (env, numGen);
-	for (int g=0; g<numGen; g++) {
-		s[g] = IloNumVarArray(env, numPeriods, 0, 1, ILOBOOL);
-		x[g] = IloNumVarArray(env, numPeriods, 0, 1, ILOBOOL);
-		z[g] = IloNumVarArray(env, numPeriods, 0, 1, ILOBOOL);
-		p[g]	 = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
-		p_var[g] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
-
-		sprintf(buffer, "s_%d", g);
-		s[g].setNames(buffer);
-		sprintf(buffer, "x_%d", g);
-		x[g].setNames(buffer);
-		sprintf(buffer, "z_%d", g);
-		z[g].setNames(buffer);
-		sprintf(buffer, "p_%d", g);
-		p[g].setNames(buffer);
-		sprintf(buffer, "pv_%d", g);
-		p_var[g].setNames(buffer);
-
-		model.add(s[g]);
-		model.add(x[g]);
-		model.add(z[g]);
-	}
-	
-	// create the constraints
-
     // state constraints
     for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst.powSys->generators[g]);
@@ -656,19 +674,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 			lhs.end();
         }
     }
-    
-    /* demand-based valid inequality *
-    // the capacities of operational generators must exceed the system demand at any point
-    for (int t=0; t<numPeriods; t++) {
-        IloExpr expr (env);
-        for (int g=0; g<numGen; g++) {
-            expr += expCapacity[g][t] * x[g][t];
-        }
-        model.add( expr >= sysLoad[t] );
-        expr.end();
-    }
-	/*********************************/
-	
+    	
 	// must-run units must be committed
 	for (int g=0; g<numGen; g++) {
 		if ( inst.powSys->generators[g].isMustRun ) {
@@ -702,6 +708,23 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 					x[g][t].setBounds(genState, genState);
 				}
 			}
+		}
+	}
+	
+	// battery state
+	for (int bt=0; bt<numBatteries; bt++) {
+		Battery* bat_ptr = &inst.powSys->batteries[bt];
+		
+		double dissipationCoef = pow(bat_ptr->dissipationCoef, periodLength/60.0);
+		double conversionLossCoef = pow(bat_ptr->conversionLossCoef, periodLength/60.0);
+		
+		int t=0;
+		IloConstraint c (I[bt][t] == getBtState(bat_ptr->id, -1) * dissipationCoef + v[bt][t] * conversionLossCoef);
+		sprintf(buffer, "Bt_%d_%d", bt, t); c.setName(buffer); model.add(c);
+		
+		for (t=1; t<numPeriods; t++) {
+			IloConstraint c (I[bt][t] == I[bt][t-1] * dissipationCoef + v[bt][t] * conversionLossCoef);
+			sprintf(buffer, "Bt_%d_%d", bt, t); c.setName(buffer); model.add(c);
 		}
 	}
 	
@@ -782,6 +805,9 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst.powSys->generators[g]);
 		
+		// ignore ramping constraints for generators that are not meant to be scheduled in DA-UC problem
+		if (probType == DayAhead && !genPtr->isDAUCGen)	continue;
+
 		/* t = 0 */
 		int t=0;
 		if (getGenProd(g, t-1) > -INFINITY) {	// prev generation is available
@@ -804,6 +830,9 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 	for (int g=0; g<numGen; g++) {
 		Generator *genPtr = &(inst.powSys->generators[g]);
 		
+		// ignore ramping constraints for generators that are not meant to be scheduled in DA-UC problem
+		if (probType == DayAhead && !genPtr->isDAUCGen)	continue;
+
 		// input-inconsistency check
 		int shutDownPeriod = checkShutDownRampDownInconsistency(g);
 		
@@ -833,6 +862,9 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 			IloExpr expr (env);
 			for (int g=0; g<numGen; g++) {
 				expr += p[g][t];
+			}
+			for (int bt=0; bt<numBatteries; bt++) {
+				expr -= v[bt][t];
 			}
 			expr += L[t];
 			expr -= O[t];
@@ -911,6 +943,11 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 					expr += p[ busPtr->connectedGenerators[g]->id ][t];
 				}
 				
+				// storage (iterate over connected batteries)
+				for (int bt=0; bt < (int) busPtr->connectedBatteries.size(); bt++) {
+					expr -= v[ busPtr->connectedBatteries[bt]->id ][t];
+				}
+				
 				// in/out flows (iterate over all arcs)
 				for (auto linePtr = inst.powSys->lines.begin(); linePtr != inst.powSys->lines.end(); ++linePtr) {
 					if (linePtr->orig->id == busPtr->id) {	// if line-origin and bus have same ids, then this is outgoing flow
@@ -957,7 +994,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 	recourse.formulate(inst, probType, modelType, beginMin, rep, xvals, rndPermutation, expCapacity);
 	
 	// formulate the warm-up problem
-	warmUpProb.formulate(inst, probType, modelType, beginMin, rep);
+	warmUpProb.formulate(inst, probType, modelType, beginMin, rep, 0);
 	warmUpProb.cplex.setParam(IloCplex::SolnPoolGap, 5e-2);
 	warmUpProb.cplex.setParam(IloCplex::SolnPoolCapacity, 5);
 
@@ -1077,12 +1114,15 @@ bool SUCmaster::solve () {
 		/****** Process the MIP ******/
 		inst->out() << "****** SOLVING THE PROBLEM ******" << endl;
 		cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*7200 + (probType == ShortTerm)*1800);
+		
+		// Legacy callback routine
 //		cplex.use(LazySepCallback(env, *this));
 //		cplex.use(rounding(env, x, *this));
 //		if (probType == DayAhead) {
 //			cplex.use(IncCallback(env, *this));
 //		}
 		
+		// New callback routine
 		// create an LShapedCallback
 		LShapedCallback callback (*this);
 		CPXLONG contextMask = 0;
@@ -1097,8 +1137,9 @@ bool SUCmaster::solve () {
 			inst->out() << "Obj = \t" << cplex.getObjValue() << endl;
 			inst->out() << "LB = \t" << cplex.getBestObjValue() << endl;
 		} else {
-			cplex.exportModel("infeasible.lp");
-			inst->printSolution("infeasible");
+			string fname = outDir + "infeasible.lp";
+			cplex.exportModel(fname.c_str());
+			inst->printSolution(outDir + "/infeasible");
 			inst->out() << "Benders' decomposition has failed." << endl;
 			exit(1);
 		}
@@ -1115,6 +1156,14 @@ bool SUCmaster::solve () {
 				
 				if ( probType == DayAhead || (probType == ShortTerm && beginMin == 0) ) {
 					setUCGenProd(g, 0, expInitGen[g] * getGenState(g, 0));
+				}
+			}
+			
+			if (probType == DayAhead) {
+				for (int bt=0; bt<numBatteries; bt++) {
+					for (int t=0; t<numPeriods; t++) {
+						setBtState(bt, t, expBtState[bt][t]);
+					}
 				}
 			}
 		}
@@ -1298,6 +1347,37 @@ double SUCmaster::getGenProd(int g, int t) {
 		return getEDGenProd(g, t);
 	}
 	return -INFINITY;
+}
+
+double SUCmaster::getBtState(int batteryId, int period) {
+	// which Solution component is requested?
+	int reqSolnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
+	
+	// return the requested generator state
+	if (reqSolnComp > 0) {
+		return inst->solution.btState_ED[batteryId][reqSolnComp];
+	} else {
+		if (runParam.useGenHistory && inst->solList.size() > 0) {
+			return inst->solList.back().btState_ED[batteryId][runParam.numPeriods-1];	// the latest battery state
+		} else {
+			return 0.0;
+		}
+	}
+}
+
+void SUCmaster::setBtState(int btId, int period, double value) {
+	// which Solution component is being set?
+	int solnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
+	
+	// set the solution
+	if (solnComp >= 0 && solnComp < (int) inst->solution.btState_UC[btId].size()) {
+		for (int t=solnComp; t<solnComp+numBaseTimePerPeriod; t++) {
+			inst->solution.btState_UC[btId][t] = value;
+		}
+	}
+	else {
+		// Setting battery states at a time that is beyond the planning horizon
+	}
 }
 
 /****************************************************************************

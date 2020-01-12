@@ -28,7 +28,7 @@ public:
 	
 	void formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep, IloArray<IloNumArray> &masterSoln, vector<vector<double>> &expCapacity);
 	
-	bool solve (int mappedScen, BendersCutCoefs &cutCoefs, double &objValue, vector<double> &initGen);
+	bool solve (int mappedScen, BendersCutCoefs &cutCoefs, double &objValue, vector<double> &initGen, vector<vector<double>> &btStates);
 	
 	void setMasterSoln ();
 
@@ -53,14 +53,17 @@ private:
 	bool 	getGenState	 (int genId, int period);				// reads from inst->Solution.x
 	double	getDAUCGenProd (int genId, int period);				// reads from Solution.gUC
 	double	getGenProd   (int g, int t); 	// reads from Solution.gED, or gUC, and handles the beginning of the planning horizon
+	double	getBatteryState (int batteryId, int period);
 	
 	int	checkShutDownRampDownInconsistency (int g);	
 
 	void	setup_subproblem (int &s);
 	double	getRandomCoef (int &s, int &t, int &loc);
 	
-	/* Keep record of period 1 generation, later to be used by the ED model */
+	/* Keep record of (i) period 1 generation, (ii) battery states, later to be used by the ED model */
 	void getInitGen(vector<double> &initGen);
+	void getBtStates(vector<vector<double>> &btStates);
+
 	
 	// fixed master solution
 	IloArray<IloNumArray> *genState;
@@ -70,12 +73,12 @@ private:
 	void compute_feasibility_cut_coefs	(BendersCutCoefs &cutCoefs, int &s);
 	
 	// Variables
-    IloArray< IloNumVarArray > p, L, x;		// production, load-shedding, state-variables (latter to be fixed by the master problem)
+    IloArray< IloNumVarArray > p, L, x, v, I;		// production, load-shedding, state-variables (latter to be fixed by the master problem)
 	
 	// data
 	void preprocessing();
 	
-	int numGen, numLine, numBus, numPeriods, numBaseTimePerPeriod, beginMin, rep;
+	int numGen, numLine, numBus, numPeriods, numBaseTimePerPeriod, beginMin, rep, numBatteries;
 	double periodLength;
 	
 	vector<double> minGenerationReq;	// minimum production requirements (obeying assumptions)

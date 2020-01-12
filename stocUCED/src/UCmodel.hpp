@@ -23,7 +23,7 @@ public:
 	UCmodel ();
 	~UCmodel();
 
-	void formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep);
+	void formulate (instance &inst, ProblemType probType, ModelType modelType, int beginMin, int rep, int t0);
 	double getObjValue();
 	bool solve ();
 	bool solve (bool saveSolution);
@@ -34,7 +34,8 @@ private:
 	IloModel	model;
 	IloCplex	cplex;
 
-	IloArray<IloNumVarArray> s, x, z, p, p_var, L, O;
+	IloArray<IloNumVarArray> s, x, z, p, p_var, L, O, v, I;
+	void initializeVariables();
 
 	/* data */
 	instance*	inst;
@@ -49,6 +50,7 @@ private:
 	int numBus;					// ..
 	int numLine;
 	int numPeriods;
+	int numBatteries;
 	int rep;
 	
 	double periodLength;		// in minutes
@@ -57,10 +59,13 @@ private:
 
 	bool	getGenState(int genId, int period);					// reads from Solution.x
 	void	setGenState(int genId, int period, double value);	// writes to Solution.x
-	void	setUCGenProd(int genId, int period, double value);	// writes to Solution.g_STUC or Solution.g_DAUC, depending on the problem type
-	double	getEDGenProd(int genId, int period);				// reads from Solution.g_ED
-	double 	getDAUCGenProd(int genId, int period);				// reads from Solution.g_DAUC
-	double	getGenProd(int g, int t);		// reads from Solution.gED, or gUC, and handles the beginning of the planning horizon
+	void	setUCGenProd(int genId, int period, double value);	// writes to Solution.gUC
+	void 	setBtState(int btId, int period, double value);		// writes to Solution.btState_UC
+	double	getBatteryState (int genId, int period);			// reads from Solution.btState_ED
+	double	getEDGenProd(int genId, int period);				// reads from Solution.gED
+	double 	getUCGenProd(int genId, int period);				// reads from Solution.gUC
+
+  double	getGenProd(int g, int t);		// reads from Solution.gED, or gUC, and handles the beginning of the planning horizon
 	
 	void 	saveSolution();
 	

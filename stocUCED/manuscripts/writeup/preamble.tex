@@ -1,0 +1,215 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+%\usepackage{algorithmic}
+%\usepackage{algorithm}
+\usepackage{hyperref}
+%\usepackage[ruled,linesnumbered,procnumbered]{algorithm2e}
+
+\makeatletter
+\let\original@algocf@latexcaption\algocf@latexcaption
+\long\def\algocf@latexcaption#1[#2]{%
+  \@ifundefined{NR@gettitle}{%
+    \def\@currentlabelname{#2}%
+  }{%
+    \NR@gettitle{#2}%
+  }%
+  \original@algocf@latexcaption{#1}[{#2}]%
+}
+\makeatother
+
+\usepackage{xcolor}		% for adding colors to the text
+
+\usepackage[footnotesize, center]{caption}	
+\usepackage{subcaption}
+%\usepackage{subfigure}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{breakurl}	% fixes the problem of breaking long url into lines inside the bibliography (IMP: must be below the hyperref package)
+\hypersetup{
+    bookmarks=true,		% show bookmarks bar?
+    colorlinks=true,		% false: boxed links; true: colored links
+    linkcolor=blue,		% color of internal links
+    citecolor=blue,		% color of links to bibliography
+    filecolor=blue,		% color of file links
+    urlcolor=blue,		% color of external links
+    bookmarksopen=true,
+    breaklinks=true,
+}
+%\usepackage{natbib}			% bibliography
+%\setlength{\bibsep}{0pt}
+
+\usepackage[title]{appendix}
+
+\usepackage{longtable}
+
+% Page Setup
+
+% Margins
+	% MS Word (Default):		[margin=0.98in]
+	% MS Word (Narrow):		[margin=0.5in]
+\usepackage[margin=2cm]{geometry}
+\setlength{\parskip}{\medskipamount}
+
+\usepackage{setspace}
+%\onehalfspacing
+\setstretch{1.15}
+
+\usepackage{indentfirst}			% indent the first paragraph
+\allowdisplaybreaks				% break if equations take too much vertical space
+
+% Section Style
+\makeatletter
+\def\@seccntformat#1{\csname the#1\endcsname.\quad}		% put a fullstop after section numbers
+\makeatother
+
+% Optional packages
+\usepackage{xfrac}	% nicer fractional symbols (e.g., \sfrac{1}{2})
+\usepackage{fancyhdr}	% adding headers / footers
+
+% MACROS
+
+% mathematical
+\newcommand{\mathbold}[1]{\boldsymbol{#1}}		% for adding bold greek letters
+\newcommand{\binary}{\{ 0, 1 \} }
+
+\newcommand{\parentheses}[1]{\left( #1 \right) }	% auto-size parentheses
+\newcommand{\brackets}[1]{\left[ #1 \right] }		% auto-size brackets
+\newcommand{\curly}[1]{\left\{ #1 \right\} }		% auto-size curly brackets
+
+	% Nilay Noyan's commenting macros
+	% commentbox (adds black comments in a frame box)
+	% comment (adds red comments as a footnote)
+
+\newcounter{commentcounter}
+\setcounter{commentcounter}{1}
+
+\setlength{\fboxsep}{5pt}
+\setlength{\fboxrule}{0.1pt}
+
+\newcommand{\commentbox}[1]{
+% \hfill \newline \noindent
+%	\framebox[\textwidth]{
+%		\parbox{0.98\textwidth}{
+%			\footnotesize{
+%				\texttt{\textcolor{black}{(C.\arabic{commentcounter})~#1\hfill}}}}}
+%	\addtocounter{commentcounter}{1} 
+	}
+
+\long\def\symbolfootnote[#1]#2{\begingroup\def\thefootnote{\fnsymbol{footnote}}\footnote[#1]{#2}\endgroup}
+
+\newcommand{\comment}[2]{{\footnotesize\texttt{\textcolor{red}{(C.\arabic{commentcounter})}}\symbolfootnote[4]{\texttt{\textcolor{red}
+        {(C.\arabic{commentcounter}) [#1]: ~#2}}}}\addtocounter{commentcounter}{1}}
+%\newcommand{\comment}[2]{}
+
+% theorems
+% the subtheorem environment is used to generate theorem numbers 1a, 1b, etc.
+% Source: http://tex.stackexchange.com/questions/43346/how-do-i-get-sub-numbering-for-theorems-theorem-1-a-theorem-1-b-theorem-2
+\makeatletter
+\newenvironment{subtheorem}[1]{%
+  \def\subtheoremcounter{#1}%
+  \refstepcounter{#1}%
+  \protected@edef\theparentnumber{\csname the#1\endcsname}%
+  \setcounter{parentnumber}{\value{#1}}%
+  \setcounter{#1}{0}%
+  \expandafter\def\csname the#1\endcsname{\theparentnumber\alph{#1}}%
+  \ignorespaces
+}{%
+  \setcounter{\subtheoremcounter}{\value{parentnumber}}%
+  \ignorespacesafterend
+}
+\makeatother
+\newcounter{parentnumber}
+% end of subtheorem environment
+
+\newtheorem{theorem}{\bf Theorem}
+\newtheorem{lemma}{\bf Lemma}
+\newtheorem{proposition}{\bf Proposition}
+\newtheorem{corollary}{\bf Corollary}
+\newtheorem{definition}{\sc Definition}
+\newtheorem{fact}{\bf Fact}
+\newtheorem{claim}{\sc Claim}
+\newtheorem{case}{\sc Case}
+\newtheorem{observation}{\sc Observation}
+\renewcommand{\qedsymbol}{\hfill \tiny$\blacksquare$}		% symbol for proof environment
+\renewcommand{\proofname}{\textnormal{\textbf{Proof.}}}	% title in the proof environment
+
+\newtheoremstyle{mytheoremstyle} % name
+    {\topsep}                    % Space above
+    {\topsep}                    % Space below
+    {}                   % Body font
+    {}                           % Indent amount
+    {\scshape}                   % Theorem head font
+    {.}                          % Punctuation after theorem head
+    {.5em}                       % Space after theorem head
+    {}  % Theorem head spec (can be left empty, meaning ‘normal’)
+\theoremstyle{mytheoremstyle}
+\newtheorem{example}{Example}
+
+\newtheoremstyle{myassumptionstyle} % name
+    {\smallskipamount}                    % Space above
+    {0}                    % Space below
+    {}                   % Body font
+    {}                     	% Indent amount
+    {\upshape}              % Theorem head font
+    {.}                          	% Punctuation after theorem head
+    {.5em}                      % Space after theorem head
+    {}  				% Theorem head spec (can be left empty, meaning ‘normal’)
+\theoremstyle{myassumptionstyle}
+\newtheorem{assumption}{\bf A\ignorespaces}
+\newtheorem{remark}{\bf Remark}
+
+\DeclareMathOperator*{\argmin}{arg\,min} 
+\DeclareMathOperator*{\argmax}{arg\,max} 
+
+
+% narrative
+\newcommand{\ie}{\textit{i.e.}}		% id est, that is to say
+\newcommand{\ex}{\textit{ex.}}		% example
+\newcommand{\eg}{\textit{e.g.}}	% exempli gratia, for the sake of example
+
+\newcommand{\st}{\text{subject to:}\qquad}	% subject to
+\newcommand{\mathbi}[1]{\boldsymbol{#1}}	% \boldsymbol{ any character } // makes both italic and bold
+
+\newcommand{\cplex}{\texttt{CPLEX}}
+
+\newcommand{\question}[1]{\vspace{\baselineskip}\noindent\pdfbookmark{Question #1}{Question #1}\textbf{\large{Question #1}} \normalsize\medskip\newline}
+\newcommand{\qpart}[1]{\indent\textbf{#1)}}	% i.e., a), b), ...
+
+\newcommand{\inlinecomment}[1]{{\color[rgb]{0.13,0.57,0.4} \textbf{#1}}}
+
+% algorithmic
+\newcommand{\np}{$\mathcal{NP}$}	% e.g., as in NP-hard
+
+\usepackage{enumitem}	% for aligned descriptions
+\usepackage{calc} 		% for aligned descriptions
+
+\setenumerate{
+itemsep=0pt,
+partopsep=0pt,
+parsep=0pt,
+topsep=0pt,
+labelindent=4pt,
+font=\normalfont
+}
+
+\setdescription{
+itemsep=0pt,
+partopsep=0pt,
+parsep=0pt,
+topsep=0pt,
+labelindent=4pt,
+font=\normalfont
+}
+
+\setitemize{
+itemsep=0pt,
+partopsep=0pt,
+parsep=0pt,
+topsep=0pt,
+labelindent=4pt,
+font=\normalfont
+}

@@ -18,7 +18,7 @@ struct Solution {
     
     Solution () {}
     
-    void allocateMem (int numGen, int periods, int numBus) {
+    void allocateMem (int numGen, int periods, int numBus, int numBatteries) {
         resize_matrix(x,	numGen, periods);
 		resize_matrix(g_DAUC, numGen, periods);
 		resize_matrix(g_STUC, numGen, periods);
@@ -26,9 +26,12 @@ struct Solution {
 		resize_matrix(overGen_ED, numGen, periods);
 		resize_matrix(usedGen_ED, numGen, periods);
 		resize_matrix(loadShed_ED, numBus, periods);
+		resize_matrix(btState_ED, numBatteries, periods);
+		resize_matrix(btState_UC, numBatteries, periods);
+		resize_matrix(btFlow_ED, numBatteries, periods);
     }
-	//TODO: g_UC should be deprecated
-    vector< vector<double> > x, g_STUC, g_DAUC, g_ED, overGen_ED, usedGen_ED, loadShed_ED;
+    
+    vector< vector<double> > x, g_UC, g_ED, overGen_ED, usedGen_ED, loadShed_ED, btState_ED, btState_UC, btFlow_ED;
 };
 
 #endif /* solution_hpp */

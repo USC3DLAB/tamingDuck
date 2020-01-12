@@ -20,6 +20,7 @@
 
 extern runType runParam;
 extern vector<Setting> settings;
+extern string outDir;
 
 ofstream timeLog;
 
@@ -37,7 +38,8 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc, string &RScriptsPath) {
 	double begin_t;
 	
 	/* logging */
-	open_file(timeLog, "time.log");
+	string fname = outDir + "/time.log";
+	open_file(timeLog, fname);
 	
 	/* time visualization */
 	time_t rawTime;
@@ -65,7 +67,7 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc, string &RScriptsPath) {
 
 		begin_t = get_wall_time();
 		
-		inst.openLogFile( ("./solver_rep" + num2str(rep) + ".log") );
+		inst.openLogFile( (outDir + "/solver_rep" + num2str(rep) + ".log") );
 		
 		/* Long-term unit commitment */
 		for ( h = 0; h < runParam.DA_numSolves; h++ ) {
@@ -73,7 +75,7 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc, string &RScriptsPath) {
 			fflush(stdout);
 			
 			UCmodel DAmodel;
-			DAmodel.formulate(inst, DayAhead, Transmission, beginMin, rep);
+			DAmodel.formulate(inst, DayAhead, Transmission, beginMin, rep, 0);
 			
 			status = DAmodel.solve();
 			if (status)	printf("Success (Obj= %.2f).\n", DAmodel.getObjValue());
@@ -88,7 +90,7 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc, string &RScriptsPath) {
 				fflush(stdout);
 				
 				UCmodel STmodel;
-				STmodel.formulate(inst, ShortTerm, Transmission, beginMin, rep);
+				STmodel.formulate(inst, ShortTerm, Transmission, beginMin, rep, t);
 				
 				status = STmodel.solve();
 				if (status)	printf("Success (Obj= %.2f).\n", STmodel.getObjValue());
@@ -122,7 +124,7 @@ int setup_DUCDED(PowSys &powSys, StocProcess &stocProc, string &RScriptsPath) {
 				}
 			}
 		}
-		inst.printSolution( ("./" + timeStamp + "_rep" + num2str(rep)) );
+		inst.printSolution( (outDir + "/" + timeStamp + "_rep" + num2str(rep)) );
 		timeLog << "------------------------------------------------------------------" << endl;
 		
 		inst.closeLogFile();
@@ -140,7 +142,8 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 	double begin_t;
 	
 	/* logging */
-	open_file(timeLog, "time.log");
+	string fname = outDir + "/time.log";
+	open_file(timeLog, fname);
 
 	/* time visualization */
 	time_t rawTime;
@@ -189,7 +192,7 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 		bool status;
 		
 		begin_t = get_wall_time();
-		inst.openLogFile( ("./solver_rep" + num2str(rep) + ".log") );
+		inst.openLogFile( (outDir + "/solver_rep" + num2str(rep) + ".log") );
 		
 		/* Long-term unit commitment */
 		for ( h = 0; h < runParam.DA_numSolves; h++ ) {
@@ -202,7 +205,7 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 			timeLog << get_wall_time() - begin_t << endl;
 
 			UCmodel DAmodel;
-			DAmodel.formulate(inst, DayAhead, Transmission, beginMin, rep);
+			DAmodel.formulate(inst, DayAhead, Transmission, beginMin, rep, 0);
 			status = DAmodel.solve();
 			if (status)	printf("Success (Obj= %.2f).\n", DAmodel.getObjValue());
 			else		printf("Failed.\n");
@@ -216,7 +219,7 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 				fflush(stdout);
 				
 				UCmodel STmodel;
-				STmodel.formulate(inst, ShortTerm, Transmission, beginMin, rep);
+				STmodel.formulate(inst, ShortTerm, Transmission, beginMin, rep, t);
 				status = STmodel.solve();
 				if (status)	printf("Success (Obj= %.2f).\n", STmodel.getObjValue());
 				else		printf("Failed.\n");
@@ -258,7 +261,7 @@ int setup_DUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 				}
 			}
 		}
-		inst.printSolution( ("./" + timeStamp + "_rep" + num2str(rep)) );
+		inst.printSolution( (outDir + "/" + timeStamp + "_rep" + num2str(rep)) );
 		timeLog << "------------------------------------------------------------------" << endl;
 		
 		inst.closeLogFile();
@@ -276,7 +279,8 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 	double begin_t;
 	
 	/* logging */
-	open_file(timeLog, "time.log");
+	string fname = outDir + "/time.log";
+	open_file(timeLog, fname);
 	
 	/* time visualization */
 	time_t rawTime;
@@ -306,7 +310,7 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 		bool status;
 		
 		begin_t = get_wall_time();
-		inst.openLogFile( ("./solver_rep" + num2str(rep) + ".log") );
+		inst.openLogFile( (outDir + "/solver_rep" + num2str(rep) + ".log") );
 		
 		/* Long-term unit commitment */
 		for ( h = 0; h < runParam.DA_numSolves; h++ ) {
@@ -384,7 +388,7 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 				}
 			}
 		}
-		inst.printSolution( ("./" + timeStamp + "_rep" + num2str(rep)) );
+		inst.printSolution( (outDir + "/" + timeStamp + "_rep" + num2str(rep)) );
 		timeLog << "------------------------------------------------------------------" << endl;
 		
 		inst.closeLogFile();
@@ -398,8 +402,10 @@ int setup_SUCSED(PowSys &powSys, StocProcess &stocProc, string &configPath, stri
 
 
 int setup (PowSys &powSys, StocProcess &stocProc, string &configPath, string &RScriptsPath) {
+
 	/* logging */
-	open_file(timeLog, "time.log");
+	string fname = outDir + "/time.log";
+	open_file(timeLog, fname);
 	
 	/* time visualization */
 	time_t rawTime;
@@ -465,11 +471,13 @@ int setup (PowSys &powSys, StocProcess &stocProc, string &configPath, string &RS
 		bool status;
 		
 		double begin_t = get_wall_time();
-		inst.openLogFile( ("./solver_rep" + num2str(rep+1) + ".log") );
+		inst.openLogFile( (outDir + "/solver_rep" + num2str(rep+1) + ".log") );
 		
-		/* simulate scenarios */
-		inst.simulateScenarios(runParam.numTotScen, false, rep);
-		cout << endl;
+		if ( settings[0] == STOCHASTIC || settings[1] == STOCHASTIC || settings[2] == STOCHASTIC ) {
+			/* simulate scenarios */
+			inst.simulateScenarios(runParam.numTotScen, false, rep);
+			cout << endl;
+		}
 
 		/* Long-term unit commitment */
 		for (int h = 0; h < runParam.DA_numSolves; h++) {
@@ -480,7 +488,7 @@ int setup (PowSys &powSys, StocProcess &stocProc, string &configPath, string &RS
 			timeLog << get_wall_time() - begin_t << endl;
 			if (settings[0] == DETERMINISTIC) {
 				UCmodel DAmodel;
-				DAmodel.formulate(inst, DayAhead, Transmission, beginMin, rep);
+				DAmodel.formulate(inst, DayAhead, Transmission, beginMin, rep, 0);
 				
 				status = DAmodel.solve();
 				if (status)	printf("Success (Obj= %.2f).\n", DAmodel.getObjValue());
@@ -515,7 +523,7 @@ int setup (PowSys &powSys, StocProcess &stocProc, string &configPath, string &RS
 				/* solve the problem */
 				if (settings[1] == DETERMINISTIC) {
 					UCmodel STmodel;
-					STmodel.formulate(inst, ShortTerm, Transmission, beginMin, rep);
+					STmodel.formulate(inst, ShortTerm, Transmission, beginMin, rep, t);
 					
 					status = STmodel.solve();
 					if (status)	printf("Success (Obj= %.2f).\n", STmodel.getObjValue());
@@ -580,7 +588,7 @@ int setup (PowSys &powSys, StocProcess &stocProc, string &configPath, string &RS
 				}
 			}
 		}
-		inst.printSolution( ("./Day" + num2str(rep+1)) );
+		inst.printSolution( (outDir + "/Day" + num2str(rep+1)) );
 		inst.addCurrentSolToSolList();
 		
 		timeLog << "------------------------------------------------------------------" << endl;

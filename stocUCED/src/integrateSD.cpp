@@ -47,7 +47,7 @@ int integrateSD(instance &inst, EDmodel &rtED, string probName, string &configPa
 #if defined(WRITE_PROB)
 	testIntegrateSD(orig);
 #endif
-
+	
 	/* Build the timeType structure */
 	if ( (tim = buildTimeType(rtED.model, rtED.timeRows, rtED.timeCols)) == NULL) {
 		perror("Failed to build the timeType structure for 2SD.\n");
@@ -70,19 +70,36 @@ int integrateSD(instance &inst, EDmodel &rtED, string probName, string &configPa
 	// Important: Variable declaration order must not be altered.
 	j=0;
 	for (int g=0; j<inst.powSys->numGen*2; g++, j=j+2) {
+		// usedGen (extracted)
+		// overGen (extracted)
 		inst.solution.usedGen_ED[g][t0] = edSols[j];
 		inst.solution.overGen_ED[g][t0] = edSols[j+1];
 		inst.solution.g_ED[g][t0] = edSols[j] + edSols[j+1];
 		inst.solution.g_ED[g][t0] = max(0.0, inst.solution.g_ED[g][t0]);	// correcting numerical errors
 	}
-	
-	totalLoadShed = 0.0;
-	for (int b=0; j<inst.powSys->numGen*2+inst.powSys->numBus*3; b++, j=j+3) {
+	for (int b=0; b<inst.powSys->numBus; b++, j=j+3) {
+		// demMet (skipped)
+		// demShed (extracted)
 		inst.solution.loadShed_ED[b][t0] = edSols[j+1];
+		// theta (skipped)
+	}
+	for (int l=0; l<inst.powSys->numLine; l++, j++) {
+		// flow (skipped)
+	}
+	for (int bt=0; bt<inst.powSys->numBatteries; bt++, j=j+4) {
+		// btFlow (extracted)
+		// btState (extracted)
+		// gamma_pos (not extracted)
+		// gamma_neg (not extracted)
+		inst.solution.btFlow_ED[bt][t0] = edSols[j];
+		inst.solution.btState_ED[bt][t0] = edSols[j+1];
+	}
+	totalLoadShed = 0.0;
+	for (int b=0; b<inst.powSys->numBus; b++) {
 		if (inst.solution.loadShed_ED[b][t0] > EPSzero)	totalLoadShed += inst.solution.loadShed_ED[b][t0];
 	}
 	if (totalLoadShed > EPSzero)	printf("[LS! %.1f MWs] ", totalLoadShed);
-	
+
 	/* free memory */
 	mem_free(edSols);
 	freeOneProblem(orig);
@@ -243,7 +260,7 @@ oneProblem *buildOneProblem(IloModel &model, IloCplex &cplex, string probName) {
 			else if ( (*it).isVariable() ) {
 				/* Decision variable */
 				IloNumVar var = (*it).asVariable();
-
+				
 				orig->bdl[c] = var.getLB();
 				orig->bdu[c] = var.getUB();
 
