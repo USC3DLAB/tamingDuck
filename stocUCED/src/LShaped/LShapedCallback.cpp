@@ -27,7 +27,7 @@ void LShapedCallback::invoke(const IloCplex::Callback::Context &context) {
 		bool cutAdded = addLShapedCuts (context);
 			
 		// if no cut is added, this master-solution's recourse obj value is accurately evaluated.
-		if (!cutAdded) setExpGenAmounts(context);
+		if (!cutAdded) saveSubprobSolns(context);
 	}
 	mutex.unlock();	// unlock, so that a new thread may process above
 }
@@ -89,7 +89,7 @@ inline void LShapedCallback::randomizedRounding(const IloCplex::Callback::Contex
  states, across all scenarios. This information will then be fed to
  the ED problem.
  ******************************************************************/
-inline void LShapedCallback::setExpGenAmounts(const IloCplex::Callback::Context &context) {
+inline void LShapedCallback::saveSubprobSolns(const IloCplex::Callback::Context &context) {
 	// avg initial generation amounts are only recorded in the DA-UC, and ST-UC at the beginning of the planning horizon
 	if (master->probType == DayAhead || (master->probType == ShortTerm && master->beginMin == 0) ) {
 		if (context.getCandidateObjective() < context.getIncumbentObjective()) {	// if this solution is improving the incumbent
@@ -99,8 +99,10 @@ inline void LShapedCallback::setExpGenAmounts(const IloCplex::Callback::Context 
 	}
 	
 	// avg battery states are only recorded in the DA-UC
-	if (context.getCandidateObjective() < context.getIncumbentObjective()) {	// if this solution is improving the incumbent
-		master->expBtState = master->recourse.getExpBtState();
+	if (master->probType == DayAhead) {
+		if (context.getCandidateObjective() < context.getIncumbentObjective()) {	// if this solution is improving the incumbent
+			master->expBtState = master->recourse.getExpBtState();
+		}
 	}
 }
 

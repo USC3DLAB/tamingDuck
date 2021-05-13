@@ -1113,7 +1113,7 @@ bool SUCmaster::solve () {
 
 		/****** Process the MIP ******/
 		inst->out() << "****** SOLVING THE PROBLEM ******" << endl;
-		cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*7200 + (probType == ShortTerm)*1800);
+		cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*14400 + (probType == ShortTerm)*3600);
 		
 		// Legacy callback routine
 //		cplex.use(LazySepCallback(env, *this));

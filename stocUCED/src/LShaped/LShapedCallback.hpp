@@ -35,7 +35,7 @@ public:
 	inline bool addLShapedCuts (const IloCplex::Callback::Context &context);
 	
 	// set expected generation amounts
-	inline void setExpGenAmounts (const IloCplex::Callback::Context &context);
+	inline void saveSubprobSolns (const IloCplex::Callback::Context &context);
 	
 //	// randomized-rounding heuristic
 //	inline void randomizedRounding (const IloCplex::Callback::Context &context);

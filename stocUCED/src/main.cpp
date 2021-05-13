@@ -110,21 +110,22 @@ void parseCmdLine(int argc, const char *argv[], string &inputDir, string &config
 		cout << "Missing inputs. Please provide the following in the given order:\n"
 				"(1) input directory path,\n "
 				"(2) output directory path,\n"
-				"(3) SD config.sd path,\n  "
-				"(4) R scripts path,\n  "
-				"(5) system name,\n  "
+				"(3) SD config.sd path,\n"
+				"(4) R scripts path,\n"
+				"(5) system name,\n"
 				"(6) framework setting." << endl;
-		cout << "Instead of (6), you can type ""-setting"" followed by three modeling settings, i.e., ""-setting deterministic na stochastic""" << endl;
+		cout << "Instead of (6), you can type ""-setting"" followed by three modeling settings, i.e., ""-setting d na s (aka, deterministic N/A stochastic)""" << endl;
 		exit(1);
 	}
 	
 	/* Create output folder */
+	// SA: The below commands are not properly working on Mac
 	string cmdStr;
 	outDir = tempDir + sysName;
 	cmdStr = "mkdir " +  outDir;
 	system(cmdStr.c_str());
 	cout << "\nAll output files will be written to " << outDir << endl;
-
+	
 	/*
 	switch (argc) {
 	case 2:
