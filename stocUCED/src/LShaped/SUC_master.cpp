@@ -1316,9 +1316,10 @@ void SUCmaster::setUCGenProd(int genId, int period, double value) {
 	value = max(0.0, value);
 
 	// set the solution
-	if (solnComp >= 0 && solnComp < (int) inst->solution.g_UC[genId].size()) {
+	if (solnComp >= 0 && solnComp < (int) inst->solution.g_DAUC[genId].size()) {
 		for (int t=solnComp; t<solnComp+numBaseTimePerPeriod; t++) {
-			inst->solution.g_UC[genId][t] = value;
+			if (probType == DayAhead)	inst->solution.g_DAUC[genId][t] = value;
+			else						inst->solution.g_STUC[genId][t] = value;
 		}
 	}
 	else {
@@ -1341,7 +1342,7 @@ double SUCmaster::getGenProd(int g, int t) {
 			return getEDGenProd(g, -1);	// this will return the final ED gen levels from the prev day sol
 		}
 		else if (probType == ShortTerm && inst->powSys->generators[g].isDAUCGen){
-			return getUCGenProd(g, 0);
+			return getDAUCGenProd(g, 0);
 		}
 	} else {
 		return getEDGenProd(g, t);
@@ -1424,7 +1425,7 @@ int SUCmaster::checkShutDownRampDownInconsistency (int g) {
  * - Converts the model period, into the desired component of the Solution
  * object. Returns the recorded generation of the generator by the DA model.
  ****************************************************************************/
-double SUCmaster::getUCGenProd(int genId, int period) {
+double SUCmaster::getDAUCGenProd(int genId, int period) {
 	// which Solution component is requested?
 	int reqSolnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
 	
@@ -1434,7 +1435,7 @@ double SUCmaster::getUCGenProd(int genId, int period) {
 		exit(1);
 	}
 	else if (reqSolnComp < (int) inst->solution.x[genId].size()) {	// return the corresponding solution
-		return inst->solution.g_UC[genId][reqSolnComp];
+		return inst->solution.g_DAUC[genId][reqSolnComp];
 	}
 	else {														// asking what's beyond the planning horizon, we return the last solution
 		cout << "Error: Production levels beyond the planning horizon are not available" << endl;

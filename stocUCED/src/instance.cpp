@@ -32,27 +32,18 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, string RScriptsPath
 	int numSimLengthInDays = ceil( (double)(runParam.numPeriods+maxLookAhead)/(60.0/runParam.baseTime) );
 	int dataPeriodLengthInMins = runParam.baseTime;
 	
-	vector<int> idx;
-	string filename;
-	
-	/* actual observations */
-	filename = "RT";
-	idx.clear();
-	
-	// find the indices
-	for (auto it=stoc->mapTypeToIndex[filename].begin(); it != stoc->mapTypeToIndex[filename].end(); ++it) {
-		if (find(elems.begin(), elems.end(), stoc->sp[*it].name) != elems.end()) {	// find the stoc process, and push its index to the list
-			idx.push_back(*it);
-		}
+	{/* actual observations */
+		string filename = "RT";
+		vector<int> idx = filename2idx(filename);
+		
+		// initialize the data structures
+		actuals = createScenarioList(stoc, idx, numSimLengthInDays, runParam.numPeriods/(60.0/runParam.baseTime), runParam.numRep, dataPeriodLengthInMins);
+		actuals.name = filename + "_obs";
+		
+		// post-processing
+		boostRenewableSupply(actuals);
+		correctSupplyExceedingCapacity(actuals);
 	}
-	
-	// initialize the data structures
-	actuals = createScenarioList(stoc, idx, numSimLengthInDays, runParam.numPeriods/(60.0/runParam.baseTime), runParam.numRep, dataPeriodLengthInMins);
-	actuals.name = filename + "_obs";
-	
-	// post-processing
-	boostRenewableSupply(actuals);
-	correctSupplyExceedingCapacity(actuals);
 	
 //	// print out summary
 //	cout << actuals.name << ":" << endl;
@@ -62,9 +53,50 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, string RScriptsPath
 //	}
 //	cout << endl;
 
-	/* mean forecasts */
-	filename = "DA";
-	idx.clear();
+	{	/* forecasts */
+		vector<string> filenames = {"DA", "4HA"};
+
+		for (int f=0; f<filenames.size(); f++) {
+			string filename = filenames[f];
+			vector<int> idx = filename2idx(filename);
+
+			// initialize the data structures
+			meanForecast.insert( pair<string, ScenarioType> (filename,
+															 createScenarioList(stoc, idx, numSimLengthInDays, runParam.numPeriods/(60.0/runParam.baseTime), runParam.numRep, dataPeriodLengthInMins)) );
+			meanForecast[filename].name = filename + "_forecasts";
+			
+			// post-processing
+			boostRenewableSupply(meanForecast[filename]);
+			correctSupplyExceedingCapacity(meanForecast[filename]);
+			
+			//	// print out summary
+			//	cout << meanForecast[filename].name << ":" << endl;
+			//	i=0;
+			//	for (auto it=meanForecast[filename].mapVarNamesToIndex.begin(); it!=meanForecast[filename].mapVarNamesToIndex.end(); ++it, ++i) {
+			//		cout << setw(4) << left << i << setw(30) << it->first << " (" << setprecision(2) << runParam.renewableCoef << "x)\t[OK]" << endl;
+			//	}
+			//	cout << endl;
+		}
+	}
+	
+//		The assumption here was a single forecast mechanism, that was updated during the day.
+//		the "RT" forecast meant to be updated versions of the "DA" forecast.
+//		We can keep with this tradition and only update "4HA" forecasts during the day, we
+//		don't need "DA" forecasts during the day anyways.
+//		// if updated forecasts are requested, initialize its structure
+//		if (runParam.updateForecasts) {
+//			filename = "RT";
+//			meanForecast.insert( pair<string, ScenarioType> (filename, meanForecast["DA"]) );
+//			meanForecast[filename].name = filename + "_forecasts";
+//		}
+
+	summary();
+
+	return true;
+}//END instance()
+
+vector<int> instance::filename2idx(string filename) {
+	vector<int> idx;
 	
 	// find the indices
 	for (auto it=stoc->mapTypeToIndex[filename].begin(); it != stoc->mapTypeToIndex[filename].end(); ++it) {
@@ -73,35 +105,8 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, string RScriptsPath
 		}
 	}
 	
-	// initialize the data structures
-	meanForecast.insert( pair<string, ScenarioType> (filename,
-													 createScenarioList(stoc, idx, numSimLengthInDays, runParam.numPeriods/(60.0/runParam.baseTime), runParam.numRep, dataPeriodLengthInMins)) );
-	meanForecast[filename].name = filename + "_forecasts";
-	
-	// post-processing
-	boostRenewableSupply(meanForecast[filename]);
-	correctSupplyExceedingCapacity(meanForecast[filename]);
-	
-//	// print out summary
-//	cout << meanForecast[filename].name << ":" << endl;
-//	i=0;
-//	for (auto it=meanForecast[filename].mapVarNamesToIndex.begin(); it!=meanForecast[filename].mapVarNamesToIndex.end(); ++it, ++i) {
-//		cout << setw(4) << left << i << setw(30) << it->first << " (" << setprecision(2) << runParam.renewableCoef << "x)\t[OK]" << endl;
-//	}
-//	cout << endl;
-
-	// if updated forecasts are requested, initialize its structure
-	if (runParam.updateForecasts) {
-		filename = "RT";
-		meanForecast.insert( pair<string, ScenarioType> (filename, meanForecast["DA"]) );
-		meanForecast[filename].name = filename + "_forecasts";
-	}
-
-	summary();
-
-	return true;
-}//END instance()
-
+	return idx;
+}
 
 void instance::summary() {
 	cout << "------------------------------------------------------------------" << endl;
@@ -156,8 +161,7 @@ void instance::simulateScenarios(int numScen, bool fitModel, int rep) {
 	
 	// updated forecasts
 	if (runParam.updateForecasts) {
-		simulations.insert( pair<string, ScenarioType> ("RT",
-														simulations["DA"]) );
+		simulations.insert( pair<string, ScenarioType> ("RT", simulations["DA"]) );
 		simulations["RT"].name = "RT_simulations";
 	}
 }
@@ -340,7 +344,13 @@ bool instance::printSolution(string filepath) {
 	status = open_file(output, filepath + "_genSTUC.sol");
 	if (!status) goto finalize;
 
-	print_matrix(output, solution.g_UC, delimiter, 2);
+	print_matrix(output, solution.g_STUC, delimiter, 2);
+	output.close();
+
+	status = open_file(output, filepath + "_genDAUC.sol");
+	if (!status) goto finalize;
+	
+	print_matrix(output, solution.g_DAUC, delimiter, 2);
 	output.close();
 
 	status = open_file(output, filepath + "_genED.sol");
@@ -378,6 +388,10 @@ bool instance::printSolution(string filepath) {
 	}
 	output << endl;
 
+	if(runParam.useGenHistory) {
+		cout << "Start up costs may be underestimated" << endl;
+	}
+
 	// data
 	for (int t=0; t<runParam.numPeriods; t++) {
 		output << setfill('0') << setw(2) << timeInfo->tm_hour << ":" << setfill('0') << setw(2) << timeInfo->tm_min << "\t";
@@ -411,6 +425,8 @@ bool instance::printSolution(string filepath) {
 			
 			if (t > 0) {
 				stats["StartUpCost"] += powSys->generators[g].startupCost * max(solution.x[g][t]-solution.x[g][t-1], 0.0);
+			} else if(runParam.useGenHistory) {
+//				cout << "Start up costs may be underestimated" << endl;
 			}
 			
 			// emissions
