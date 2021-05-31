@@ -21,7 +21,7 @@ extern FILE *file;
  * 		2. If dual solution set is stable, the pre-test checks for "convergence" of objective function estimate.
  * 		3. Full test is based on boot-strapping, and checks the gap between primal (upper) and dual (lower) values.
  * The pre-test is performed only after the dual solution set has stabilized, and the full test is performed only if the pre-test is successful. */
-BOOL optimal(probType **prob, cellType *cell) {
+CBOOL optimal(probType **prob, cellType *cell) {
 
 	/* ensure that the minimum number of iterations have been completed */
 	if (cell->k > config.MIN_ITER && cell->dualStableFlag ) {
@@ -46,7 +46,7 @@ BOOL optimal(probType **prob, cellType *cell) {
 
 /* Because checking optimality is an arduous task, we first do a pre-check to determine if the full test is worthwhile. This function
  * determines whether the height at the candidate is close enough to the height at the incumbent to warrant an optimality test. */
-BOOL preTest(cellType *cell) {
+CBOOL preTest(cellType *cell) {
 
 	/* The candidate must be within some small percentage of incumbent cut */
 	/* rare situation for cell->candid_est < 0 and cell->incumb_est > 0 */
@@ -81,7 +81,7 @@ BOOL preTest(cellType *cell) {
  * Single-cut version first selects "good" cuts in the master prob. Then by using the information of these "good" cuts to find the
  * corresponding cuts in each agent. After reforming these agent cuts, aggregated these reformed cuts as one single cut and add it to the
  * master problem */
-BOOL fullTest(probType **prob, cellType *cell) {
+CBOOL fullTest(probType **prob, cellType *cell) {
 	cutsType *gCuts;
 	intvec  cdf, observ;
 	double  est, ht, LB=0.0;

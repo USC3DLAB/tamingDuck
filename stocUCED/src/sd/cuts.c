@@ -13,7 +13,7 @@
 
 extern configType config;
 
-int formSDCut(probType *prob, cellType *cell, vectorC Xvect, int omegaIdx, BOOL newOmegaFlag) {
+int formSDCut(probType *prob, cellType *cell, vectorC Xvect, int omegaIdx, CBOOL newOmegaFlag) {
 	oneCut *cut;
 	int    cutIdx;
 
@@ -39,13 +39,13 @@ int formSDCut(probType *prob, cellType *cell, vectorC Xvect, int omegaIdx, BOOL 
 }//END formCut()
 
 oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, omegaType *omega, vectorC Xvect, int numSamples,
-		BOOL *dualStableFlag, vectorC pi_ratio, double lb) {
+		CBOOL *dualStableFlag, vectorC pi_ratio, double lb) {
 	oneCut *cut;
 	iType istar_new;
 	iType istar_old;
 	iType 	istar;
 	vectorC 	piCbarX, beta;
-	BOOL    pi_eval_flag = CFALSE;
+	CBOOL    pi_eval_flag = CFALSE;
 	double  argmax_all;
 	double  argmax_new;
 	double  argmax_old;
@@ -147,7 +147,7 @@ oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta
  * containing two indices.  (While both indices point to pieces of the dual vectors, sigma and delta may not be in sync with one
  * another due to elimination of non-distinct or redundant vectors. */
 iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, vectorC Xvect, vectorC PiCbarX, int obs,
-		int ictr, BOOL pi_eval, vectorC argmax) {
+		int ictr, CBOOL pi_eval, vectorC argmax) {
 	iType 	ans;
 	ans.delta = 0;
 	ans.sigma = 0;
@@ -319,7 +319,7 @@ int dropCut(cellType *cell, int cutIdx) {
 
 	deletedRow = cell->cuts->vals[cutIdx]->rowNum;
 	/* Get rid of the indexed cut on the solver */
-	if (  removeRow(cell->master->lp, deletedRow, deletedRow) ) {
+	if (  removeRow(CPXLPptr(cell->master->lp), deletedRow, deletedRow) ) {
 		printf("stopped at %d",cell->k);
 		errMsg("solver", "dropCut", "failed to remove a row from master problem", 0);
 		return 1;

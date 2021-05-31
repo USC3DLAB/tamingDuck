@@ -1,0 +1,15 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/.vs
+/stocUCED/src/.vs/duck/v16
+/stocUCED/src/Debug
+/stocUCED/src/Simulations
+/stocUCED/src/x64
+/stocUCED/src/sd.log
+/stocUCED/src/duck.vcxproj.user
+/stocUCED/src/duck.vcxproj.filters
+/stocUCED/src/duck.vcxproj
+/stocUCED/src/duck.sln
+/stocUCED/datasets/3d-nrel118-feb-curtail/Batteries1.csv

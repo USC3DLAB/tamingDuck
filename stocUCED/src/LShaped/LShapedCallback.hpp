@@ -14,6 +14,9 @@
 #include <stdio.h>
 #include <ilcplex/ilocplex.h>
 #include "../config.hpp"
+#ifdef BOOST_PARALLEL_LIBS
+#include "boost/asio.hpp" // resolves issues pertaining to WinSock.h
+#endif
 #include "ilconcert/ilothread.h"		// for mutex (must be included below boost libraries to avoid errors)
 
 using namespace std;
@@ -35,7 +38,7 @@ public:
 	inline bool addLShapedCuts (const IloCplex::Callback::Context &context);
 	
 	// set expected generation amounts
-	inline void setExpGenAmounts (const IloCplex::Callback::Context &context);
+	inline void saveSubprobSolns (const IloCplex::Callback::Context &context);
 	
 //	// randomized-rounding heuristic
 //	inline void randomizedRounding (const IloCplex::Callback::Context &context);

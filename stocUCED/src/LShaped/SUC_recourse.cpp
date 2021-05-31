@@ -174,6 +174,9 @@ vector<double> SUCrecourse::getExpInitGen() {
  * recorded in the Benders' subproblems.
  ****************************************************************************/
 vector<vector<double>> SUCrecourse::getExpBtState() {
+	if (btStates[0].size() == 0) {
+		return vector<vector<double>>(0);
+	}
 	vector<vector<double>> expBtState (btStates[0].size(), vector<double> (btStates[0][0].size(), 0.0));	// # of (batteries x periods)-many
 	
 	for (int s=0; s<numScen; s++) {

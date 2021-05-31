@@ -962,7 +962,7 @@ void UCmodel::setBtState(int btId, int period, double value) {
 	// set the solution
 	if (solnComp >= 0 && solnComp < (int) inst->solution.btState_UC[btId].size()) {
 		for (int t = solnComp; t < solnComp+numBaseTimePerPeriod; t++) {
-			inst->solution.btState_UC[btId][solnComp] = value;
+			inst->solution.btState_UC[btId][t] = value;
 		}
 	}
 	else {

@@ -1015,7 +1015,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 	cplex.setOut( inst.out() );
 	cplex.setWarning( inst.out() );
 	cplex.setParam(IloCplex::Threads, LShapedMasterCPXThreads);
-//	cplex.setParam(IloCplex::ParallelMode, IloCplex::Opportunistic);
+	cplex.setParam(IloCplex::ParallelMode, IloCplex::Opportunistic);
 	cplex.setParam(IloCplex::FPHeur, 1);
 	cplex.setParam(IloCplex::MIPEmphasis, IloCplex::MIPEmphasisBestBound);
     cplex.setParam(IloCplex::EpGap, 1e-2);
@@ -1113,7 +1113,7 @@ bool SUCmaster::solve () {
 
 		/****** Process the MIP ******/
 		inst->out() << "****** SOLVING THE PROBLEM ******" << endl;
-		cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*7200 + (probType == ShortTerm)*1800);
+		cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*60 + (probType == ShortTerm)*60);
 		
 		// Legacy callback routine
 //		cplex.use(LazySepCallback(env, *this));
@@ -1155,7 +1155,8 @@ bool SUCmaster::solve () {
 				}
 				
 				if ( probType == DayAhead || (probType == ShortTerm && beginMin == 0) ) {
-					setUCGenProd(g, 0, expInitGen[g] * getGenState(g, 0));
+					//for (int t=0; t<numPeriods; t++) setUCGenProd(g, t, cplex.getValue(p[g][t]) * getGenState(g, t)); 
+					//setUCGenProd(g, 0, expInitGen[g] * getGenState(g, 0));
 				}
 			}
 			

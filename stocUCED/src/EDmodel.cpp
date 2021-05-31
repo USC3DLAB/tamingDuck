@@ -511,7 +511,7 @@ void EDmodel::formulate(instance &inst, int t0) {
 	}
 	for (int bt = 0; bt < numBatteries; bt++) {
 		for (int t = 0; t < numPeriods; t++) {
-			realTimeCost += (overGenPenaltyCoef+renCurtailPenaltyCoef)/2.0 * 0.25 * (gamma_pos[bt][t] + gamma_neg[bt][t]);
+			realTimeCost += (overGenPenaltyCoef+renCurtailPenaltyCoef)/2.0 * runParam.storageCoef * (gamma_pos[bt][t] + gamma_neg[bt][t]);
 		}
 	}
 

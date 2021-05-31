@@ -20,6 +20,7 @@ SUCsubprob::SUCsubprob () {
 	cplex.setWarning(env.getNullStream());
 	cplex.setParam(IloCplex::Threads, LShapedSubprobCPXThreads);
 	cplex.setParam(IloCplex::PreInd, 0);
+	cplex.setParam(IloCplex::AdvInd, 2);
 	//cplex.setParam(IloCplex::RootAlg, IloCplex::Dual);	// Important
 	
 	solve_t = 0;
@@ -191,7 +192,7 @@ void SUCsubprob::formulate_production()
 	v = IloArray<IloNumVarArray> (env, numBatteries);
 	I = IloArray<IloNumVarArray> (env, numBatteries);
 	for (int bt=0; bt<numBatteries; bt++) {
-		v[bt] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
+		v[bt] = IloNumVarArray(env, numPeriods, -IloInfinity, IloInfinity, ILOFLOAT);
 		I[bt] = IloNumVarArray(env, numPeriods, 0, IloInfinity, ILOFLOAT);
 		
 		sprintf(buffer, "v_%d", bt);
@@ -469,6 +470,7 @@ void SUCsubprob::formulate_nodebased_system()
 	}
 	
 	/** Finalize **/
+	duals = IloNumArray(env, cons.getSize());
 	model.add( IloMinimize(env, obj) );
 	model.add( cons );
 	cplex.extract(model);
@@ -554,6 +556,7 @@ bool SUCsubprob::solve(int mappedScen, BendersCutCoefs &cutCoefs, double &objVal
 		objValue = cplex.getObjValue();
 		
 		if (probType==DayAhead || (probType==ShortTerm && beginMin==0))	getInitGen(initGen);
+		if (probType == DayAhead) getBtStates(btStates);
 	}
 	
 	// infeasibility
@@ -1054,7 +1057,7 @@ double SUCsubprob::getBatteryState(int batteryId, int period) {
 		if (runParam.useGenHistory && inst->solList.size() > 0) {
 			return inst->solList.back().btState_ED[batteryId][runParam.numPeriods-1];	// the latest battery state
 		} else {
-			return 0.0;
+			return inst->powSys->batteries[batteryId].maxCapacity / 2.0;
 		}
 	}
 }
