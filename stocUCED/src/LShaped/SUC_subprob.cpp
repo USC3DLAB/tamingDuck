@@ -20,10 +20,7 @@ SUCsubprob::SUCsubprob () {
 	cplex.setWarning(env.getNullStream());
 	cplex.setParam(IloCplex::Threads, LShapedSubprobCPXThreads);
 	cplex.setParam(IloCplex::PreInd, 0);
-<<<<<<< HEAD:stocUCED/src/LShaped/SUC_subprob.cpp
-=======
 	cplex.setParam(IloCplex::AdvInd, 2);
->>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e:stocUCED/src/SUC_subprob.cpp
 	//cplex.setParam(IloCplex::RootAlg, IloCplex::Dual);	// Important
 	
 	solve_t = 0;
@@ -473,11 +470,7 @@ void SUCsubprob::formulate_nodebased_system()
 	}
 	
 	/** Finalize **/
-<<<<<<< HEAD:stocUCED/src/LShaped/SUC_subprob.cpp
-	duals = IloNumArray (env, cons.getSize());
-=======
 	duals = IloNumArray(env, cons.getSize());
->>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e:stocUCED/src/SUC_subprob.cpp
 	model.add( IloMinimize(env, obj) );
 	model.add( cons );
 	cplex.extract(model);
@@ -563,11 +556,7 @@ bool SUCsubprob::solve(int mappedScen, BendersCutCoefs &cutCoefs, double &objVal
 		objValue = cplex.getObjValue();
 		
 		if (probType==DayAhead || (probType==ShortTerm && beginMin==0))	getInitGen(initGen);
-<<<<<<< HEAD:stocUCED/src/LShaped/SUC_subprob.cpp
-		if (probType==DayAhead) getBtStates(btStates);
-=======
 		if (probType == DayAhead) getBtStates(btStates);
->>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e:stocUCED/src/SUC_subprob.cpp
 	}
 	
 	// infeasibility
@@ -1049,11 +1038,7 @@ double SUCsubprob::getGenProd(int g, int t) {
 			return getEDGenProd(g, -1);	// this will return the final ED gen levels from the prev day sol
 		}
 		else if (probType == ShortTerm && inst->powSys->generators[g].isDAUCGen){
-<<<<<<< HEAD:stocUCED/src/LShaped/SUC_subprob.cpp
 			return getUCGenProd(g, 0);
-=======
-			return getDAUCGenProd(g, 0);
->>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e:stocUCED/src/SUC_subprob.cpp
 		}
 	} else {
 		return getEDGenProd(g, t);
@@ -1120,11 +1105,7 @@ int SUCsubprob::checkShutDownRampDownInconsistency (int g) {
  * - Converts the model period, into the desired component of the Solution
  * object. Returns the recorded generation of the generator by the DA model.
  ****************************************************************************/
-<<<<<<< HEAD:stocUCED/src/LShaped/SUC_subprob.cpp
 double SUCsubprob::getUCGenProd(int genId, int period) {
-=======
-double SUCsubprob::getDAUCGenProd(int genId, int period) {
->>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e:stocUCED/src/SUC_subprob.cpp
 	// which Solution component is requested?
 	int reqSolnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
 	
@@ -1134,11 +1115,7 @@ double SUCsubprob::getDAUCGenProd(int genId, int period) {
 		exit(1);
 	}
 	else if (reqSolnComp < (int) inst->solution.x[genId].size()) {	// return the corresponding solution
-<<<<<<< HEAD:stocUCED/src/LShaped/SUC_subprob.cpp
 		return inst->solution.g_UC[genId][reqSolnComp];
-=======
-		return inst->solution.g_DAUC[genId][reqSolnComp];
->>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e:stocUCED/src/SUC_subprob.cpp
 	}
 	else {														// asking what's beyond the planning horizon, we return the last solution
 		cout << "Error: Production levels beyond the planning horizon are not available" << endl;

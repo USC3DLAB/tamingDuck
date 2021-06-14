@@ -19,14 +19,14 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, int IniRow, 
 	double 	d2 = 0.0; /* height at the candidate solution. */
 	int 	status, stat1, i;
 
-	if( changeEtaCol(CPXLPptr(cell->master->lp), num->rows, num->cols, cell->k, cell->cuts, lb) ) {
+	if( changeEtaCol((CPXLPptr)(cell->master->lp), num->rows, num->cols, cell->k, cell->cuts, lb) ) {
 		errMsg("algorithm", "solveMaster", "failed to change the eta column coefficients", 0);
 		return 1;
 	}
 
 	if ( cell->lbType == NONTRIVIAL ) {
 		/* update the right-hand side of cuts to reflect the non-trivial lower bound */
-		if ( updateRHS(CPXLPptr(cell->master->lp), cell->cuts, cell->k, cell->lb) ) {
+		if ( updateRHS((CPXLPptr)(cell->master->lp), cell->cuts, cell->k, cell->lb) ) {
 			errMsg("algorithm", "solveQPMaster", "failed to update right-hand side with lower bound information", 0);
 			return 1;
 		}
@@ -37,8 +37,8 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, int IniRow, 
 #endif
 
 	/* solve the master problem */
-	if ( solveProblem(CPXLPptr(cell->master->lp), cell->master->name, config.MASTERTYPE, &stat1) ) {
-		writeProblem(CPXLPptr(cell->master->lp), "error.lp");
+	if ( solveProblem((CPXLPptr)(cell->master->lp), cell->master->name, config.MASTERTYPE, &stat1) ) {
+		writeProblem((CPXLPptr)(cell->master->lp), "error.lp");
 		errMsg("algorithm", "solveMaster", "failed to solve the master problem", 0);
 		return 1;
 	}
@@ -47,7 +47,7 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, int IniRow, 
 	cell->LPcnt++;
 
 	/* Get the most recent optimal solution to master program */
-	status = getPrimal(CPXLPptr(cell->master->lp), cell->candidX, num->cols);
+	status = getPrimal((CPXLPptr)(cell->master->lp), cell->candidX, num->cols);
 	if ( status ) {
 		errMsg("algorithm", "solveMaster", "failed to obtain the primal solution for master", 0);
 		return 1;
@@ -64,12 +64,12 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, int IniRow, 
 	cell->normDk = d2;
 
 	/* Get the dual solution too */
-	status = getDual(CPXLPptr(cell->master->lp), cell->piM, cell->master->mar);
+	status = getDual((CPXLPptr)(cell->master->lp), cell->piM, cell->master->mar);
 	if ( status ) {
 		errMsg("solver", "solveQPMaster", "failed to obtain dual solutions to master", 0);
 		return 1;
 	}
-	status = getDualSlacks(CPXLPptr(cell->master->lp), cell->djM, num->cols);
+	status = getDualSlacks((CPXLPptr)(cell->master->lp), cell->djM, num->cols);
 	if ( status ) {
 		errMsg("solver", "solveQPMaster", "failed to obtain dual slacks for master", 0);
 		return 1;
@@ -108,7 +108,7 @@ int addCut2Master(cellType *cell, oneCut *cut, int lenX, double lb) {
 
 	/* add the cut to the cell cuts structure as well as on the solver */
 	cell->cuts->vals[cell->cuts->cnt] = cut;
-	if ( addRow(CPXLPptr(cell->master->lp), lenX + 1, cut->alphaIncumb, GE, 0, indices, cut->beta) ) {
+	if ( addRow((CPXLPptr)(cell->master->lp), lenX + 1, cut->alphaIncumb, GE, 0, indices, cut->beta) ) {
 		errMsg("solver", "addcut2Master", "failed to add new row to problem in solver", 0);
 		return -1;
 	}
@@ -287,7 +287,7 @@ int changeQPrhs(probType *prob, cellType *cell) {
 	writeProblem(cell->master->lp, "QPchangeRHSBef.lp");
 #endif
 	/* Now we change the right-hand of the master problem. */
-	status = changeRHS(CPXLPptr(cell->master->lp), offset, indices, rhs + 1);
+	status = changeRHS((CPXLPptr)(cell->master->lp), offset, indices, rhs + 1);
 	if ( status ) {
 		errMsg("algorithm", "changeRhs", "failed to change the rhs", 0);
 		return 1;

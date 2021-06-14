@@ -1015,11 +1015,7 @@ void SUCmaster::formulate (instance &inst, ProblemType probType, ModelType model
 	cplex.setOut( inst.out() );
 	cplex.setWarning( inst.out() );
 	cplex.setParam(IloCplex::Threads, LShapedMasterCPXThreads);
-<<<<<<< HEAD:stocUCED/src/LShaped/SUC_master.cpp
-//	cplex.setParam(IloCplex::ParallelMode, IloCplex::Opportunistic);
-=======
 	cplex.setParam(IloCplex::ParallelMode, IloCplex::Opportunistic);
->>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e:stocUCED/src/SUC_master.cpp
 	cplex.setParam(IloCplex::FPHeur, 1);
 	cplex.setParam(IloCplex::MIPEmphasis, IloCplex::MIPEmphasisBestBound);
     cplex.setParam(IloCplex::EpGap, 1e-2);
@@ -1117,11 +1113,7 @@ bool SUCmaster::solve () {
 
 		/****** Process the MIP ******/
 		inst->out() << "****** SOLVING THE PROBLEM ******" << endl;
-<<<<<<< HEAD:stocUCED/src/LShaped/SUC_master.cpp
 		cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*14400 + (probType == ShortTerm)*3600);
-=======
-		cplex.setParam(IloCplex::TiLim, (probType == DayAhead)*60 + (probType == ShortTerm)*60);
->>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e:stocUCED/src/SUC_master.cpp
 		
 		// Legacy callback routine
 //		cplex.use(LazySepCallback(env, *this));
@@ -1163,12 +1155,7 @@ bool SUCmaster::solve () {
 				}
 				
 				if ( probType == DayAhead || (probType == ShortTerm && beginMin == 0) ) {
-<<<<<<< HEAD:stocUCED/src/LShaped/SUC_master.cpp
 					setUCGenProd(g, 0, expInitGen[g] * getGenState(g, 0));
-=======
-					//for (int t=0; t<numPeriods; t++) setUCGenProd(g, t, cplex.getValue(p[g][t]) * getGenState(g, t)); 
-					//setUCGenProd(g, 0, expInitGen[g] * getGenState(g, 0));
->>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e:stocUCED/src/SUC_master.cpp
 				}
 			}
 			
@@ -1330,12 +1317,7 @@ void SUCmaster::setUCGenProd(int genId, int period, double value) {
 	// set the solution
 	if (solnComp >= 0 && solnComp < (int) inst->solution.g_UC[genId].size()) {
 		for (int t=solnComp; t<solnComp+numBaseTimePerPeriod; t++) {
-<<<<<<< HEAD:stocUCED/src/LShaped/SUC_master.cpp
 			inst->solution.g_UC[genId][t] = value;
-=======
-			if (probType == DayAhead)	inst->solution.g_DAUC[genId][t] = value;
-			else						inst->solution.g_STUC[genId][t] = value;
->>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e:stocUCED/src/SUC_master.cpp
 		}
 	}
 	else {
@@ -1358,11 +1340,7 @@ double SUCmaster::getGenProd(int g, int t) {
 			return getEDGenProd(g, -1);	// this will return the final ED gen levels from the prev day sol
 		}
 		else if (probType == ShortTerm && inst->powSys->generators[g].isDAUCGen){
-<<<<<<< HEAD:stocUCED/src/LShaped/SUC_master.cpp
 			return getUCGenProd(g, 0);
-=======
-			return getDAUCGenProd(g, 0);
->>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e:stocUCED/src/SUC_master.cpp
 		}
 	} else {
 		return getEDGenProd(g, t);
@@ -1445,11 +1423,7 @@ int SUCmaster::checkShutDownRampDownInconsistency (int g) {
  * - Converts the model period, into the desired component of the Solution
  * object. Returns the recorded generation of the generator by the DA model.
  ****************************************************************************/
-<<<<<<< HEAD:stocUCED/src/LShaped/SUC_master.cpp
 double SUCmaster::getUCGenProd(int genId, int period) {
-=======
-double SUCmaster::getDAUCGenProd(int genId, int period) {
->>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e:stocUCED/src/SUC_master.cpp
 	// which Solution component is requested?
 	int reqSolnComp = beginMin/runParam.ED_resolution + period*numBaseTimePerPeriod;
 	
@@ -1459,11 +1433,7 @@ double SUCmaster::getDAUCGenProd(int genId, int period) {
 		exit(1);
 	}
 	else if (reqSolnComp < (int) inst->solution.x[genId].size()) {	// return the corresponding solution
-<<<<<<< HEAD:stocUCED/src/LShaped/SUC_master.cpp
 		return inst->solution.g_UC[genId][reqSolnComp];
-=======
-		return inst->solution.g_DAUC[genId][reqSolnComp];
->>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e:stocUCED/src/SUC_master.cpp
 	}
 	else {														// asking what's beyond the planning horizon, we return the last solution
 		cout << "Error: Production levels beyond the planning horizon are not available" << endl;

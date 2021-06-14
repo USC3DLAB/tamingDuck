@@ -493,7 +493,7 @@ vectorC meanProblem(oneProblem *orig, stocType *stoc) {
 
 	/* change the coefficients and right-hand side to mean values */
 	for (n = 0; n < stoc->numOmega; n++ ) {
-		status = changeCoef(CPXLPptr(orig->lp), stoc->row[n], stoc->col[n], stoc->mean[n]);
+		status = changeCoef((CPXLPptr)(orig->lp), stoc->row[n], stoc->col[n], stoc->mean[n]);
 		if ( status ) {
 			errMsg("setup", "meanProblem", "failed to change the coefficients with mean values", 0);
 			return NULL;
@@ -502,7 +502,7 @@ vectorC meanProblem(oneProblem *orig, stocType *stoc) {
 
 	/* change the problem type to solve the relaxed mean value problem */
 	if ( orig->type == PROB_MILP || orig->type == PROB_MIQP ) {
-		status = changeProbType(CPXLPptr(orig->lp), PROB_LP);
+		status = changeProbType((CPXLPptr)(orig->lp), PROB_LP);
 		if ( status ) {
 			errMsg("solver", "meanProblem", "failed to relax the mixed-integer program", 0);
 			return NULL;
@@ -518,7 +518,7 @@ vectorC meanProblem(oneProblem *orig, stocType *stoc) {
 
 	/* solve the mean value problem */
 	//MARK: PROB_LP is changed to PROB_Qp
-	status = solveProblem(CPXLPptr(orig->lp), orig->name, PROB_QP, &status);
+	status = solveProblem((CPXLPptr)(orig->lp), orig->name, PROB_QP, &status);
 	if ( status ) {
 		errMsg("setup", "meanProblem", "failed to solve mean value problem", 0);
 		return NULL;
@@ -529,13 +529,13 @@ vectorC meanProblem(oneProblem *orig, stocType *stoc) {
 		errMsg("allocation", "meanProblem", "sol", 0);
 
 	/* print results */
-	obj = getObjective(CPXLPptr(orig->lp), PROB_LP);
+	obj = getObjective((CPXLPptr)(orig->lp), PROB_LP);
 #if defined (VERBOSE)
 	printf("Optimal objective function value for (relaxed) mean value problem = %lf\n", obj);
 #endif
 
 	/* obtain the primal solution */
-	getPrimal(CPXLPptr(orig->lp),	xk, orig->mac);
+	getPrimal((CPXLPptr)(orig->lp),	xk, orig->mac);
 
 	return xk;
 }//END meanProblem()
@@ -576,7 +576,7 @@ vectorC calcLowerBound(oneProblem *orig, timeType *tim, stocType *stoc) {
 		errMsg("allocation", "getLowerBound", "beta", 0);
 
 	/* obtain dual solutions from the mean value solve */
-	status = getDual(CPXLPptr(orig->lp), duals, orig->mar);
+	status = getDual((CPXLPptr)(orig->lp), duals, orig->mar);
 	if ( status ) {
 		errMsg("setup", "getLowerBound", "failed to obtain dual for the mean value problem", 0);
 		return NULL;
@@ -602,7 +602,7 @@ vectorC calcLowerBound(oneProblem *orig, timeType *tim, stocType *stoc) {
 		}
 		if ( !(zeroLB) ) {
 			/* clone to problem to be used for computing the lower bound */
-			lpClone = cloneProblem(CPXLPptr(orig->lp));
+			lpClone = cloneProblem((CPXLPptr)(orig->lp));
 
 			/* extract bBar */
 			m = 0;
@@ -697,7 +697,7 @@ vectorC calcLowerBound(oneProblem *orig, timeType *tim, stocType *stoc) {
 
 	/* change the problem type back to its original form */
 	if ( orig->type == PROB_MILP ) {
-		status = changeProbType(CPXLPptr(orig->lp), PROB_MILP);
+		status = changeProbType((CPXLPptr)(orig->lp), PROB_MILP);
 		if ( status ) {
 			errMsg("solver", "calcLowerBound", "failed to relax the mean value problem", 0);
 			return NULL;

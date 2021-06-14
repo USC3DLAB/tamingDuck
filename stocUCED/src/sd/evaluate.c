@@ -39,12 +39,12 @@ int evaluate(FILE **soln, stocType *stoc, probType **prob, cellType *cell, vecto
 			observ[m] -= stoc->mean[m];          /* store the mean rv in observ */
 
 		/* Change right-hand side with random observation */
-		if ( chgRHSwObserv(CPXLPptr(cell->subprob->lp), prob[1]->num, prob[1]->coord, observ-1, rhs, Xvect) ) {
+		if ( chgRHSwObserv((CPXLPptr)(cell->subprob->lp), prob[1]->num, prob[1]->coord, observ-1, rhs, Xvect) ) {
 			errMsg("algorithm", "evaluateOpt", "failed to setup the subproblem",0);
 			return 1;
 		}
 
-		if ( solveProblem(CPXLPptr(cell->subprob->lp), cell->subprob->name, cell->subprob->type, &status) ) {
+		if ( solveProblem((CPXLPptr)(cell->subprob->lp), cell->subprob->name, cell->subprob->type, &status) ) {
 			if ( status == STAT_INFEASIBLE ) {
 				/* subproblem is infeasible */
 				printf("Warning:: Subproblem is infeasible: need to create feasibility cut.\n");
@@ -57,7 +57,7 @@ int evaluate(FILE **soln, stocType *stoc, probType **prob, cellType *cell, vecto
 		}
 
 		/* use subproblem objective and compute evaluation statistics */
-		obj = getObjective(CPXLPptr(cell->subprob->lp), PROB_LP);
+		obj = getObjective((CPXLPptr)(cell->subprob->lp), PROB_LP);
 
 		if ( cnt == 0 )
 			mean = obj;

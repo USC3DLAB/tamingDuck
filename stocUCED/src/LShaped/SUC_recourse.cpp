@@ -175,11 +175,7 @@ vector<double> SUCrecourse::getExpInitGen() {
  ****************************************************************************/
 vector<vector<double>> SUCrecourse::getExpBtState() {
 	if (btStates[0].size() == 0) {
-<<<<<<< HEAD:stocUCED/src/LShaped/SUC_recourse.cpp
-		return vector<vector<double>> (0);
-=======
 		return vector<vector<double>>(0);
->>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e:stocUCED/src/SUC_recourse.cpp
 	}
 	vector<vector<double>> expBtState (btStates[0].size(), vector<double> (btStates[0][0].size(), 0.0));	// # of (batteries x periods)-many
 	

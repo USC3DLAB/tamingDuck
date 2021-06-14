@@ -50,7 +50,7 @@ int checkImprovement(probType *prob, cellType *cell, int candidCut) {
 		cell->normDk_1 = cell->normDk;
 	}
 
-	if ( changeQPproximal(CPXLPptr(cell->master->lp), prob->num->cols, cell->quadScalar) ) {
+	if ( changeQPproximal((CPXLPptr)(cell->master->lp), prob->num->cols, cell->quadScalar) ) {
 		errMsg("setup", "newCell", "failed to add the proximal term to QP", 0);
 		return 1;
 	}
@@ -77,7 +77,7 @@ int replaceIncumbent(probType *prob, cellType *cell, double candidEst) {
 		errMsg("algorithm", "replaceIncumbent", "failed to change the right-hand side after incumbent change", 0);
 		return 1;
 	}
-	if ( changeQPbds(CPXLPptr(cell->master->lp), prob->num->cols, prob->sp->bdl, prob->sp->bdu, cell->incumbX) ) {
+	if ( changeQPbds((CPXLPptr)(cell->master->lp), prob->num->cols, prob->sp->bdl, prob->sp->bdu, cell->incumbX) ) {
 		errMsg("algorithm", "replaceIncumbent", "failed to change the bounds after incumbent update", 0);
 		return 1;
 	}

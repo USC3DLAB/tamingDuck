@@ -319,7 +319,7 @@ int dropCut(cellType *cell, int cutIdx) {
 
 	deletedRow = cell->cuts->vals[cutIdx]->rowNum;
 	/* Get rid of the indexed cut on the solver */
-	if (  removeRow(CPXLPptr(cell->master->lp), deletedRow, deletedRow) ) {
+	if (  removeRow((CPXLPptr)(cell->master->lp), deletedRow, deletedRow) ) {
 		printf("stopped at %d",cell->k);
 		errMsg("solver", "dropCut", "failed to remove a row from master problem", 0);
 		return 1;

@@ -64,12 +64,7 @@ private:
 	double	getBatteryState (int genId, int period);			// reads from Solution.btState_ED
 	double	getEDGenProd(int genId, int period);				// reads from Solution.gED
 	double 	getUCGenProd(int genId, int period);				// reads from Solution.gUC
-<<<<<<< HEAD
-	double	getGenProd(int g, int t);		// reads from Solution.gED, or gUC, and handles the beginning of the planning horizon
-=======
-
   double	getGenProd(int g, int t);		// reads from Solution.gED, or gUC, and handles the beginning of the planning horizon
->>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e
 	
 	void 	saveSolution();
 	

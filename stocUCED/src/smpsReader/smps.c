@@ -1171,7 +1171,7 @@ int readScenarios(FILE *fptr, stringC *fields, oneProblem *orig, timeType *tim, 
 void freeOneProblem(oneProblem *p) {
 
 	if(p){
-		if ( p->lp ) freeProblem(CPXLPptr(p->lp));
+		if(p->lp) freeProblem((CPXLPptr)(p->lp));
 		if(p->name) mem_free(p->name);
 		if(p->objx) mem_free(p->objx);
 		if(p->rhsx) mem_free(p->rhsx);

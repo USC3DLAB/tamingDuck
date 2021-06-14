@@ -34,7 +34,7 @@ int solveSubprob(probType *prob, cellType *cell, vectorC Xvect, int omegaIdx, CB
     }
 
     /* change the right-hand side in the solver */
-    if ( changeRHS(CPXLPptr(cell->subprob->lp), prob->num->rows, indices, rhs + 1) ) {
+    if ( changeRHS((CPXLPptr)(cell->subprob->lp), prob->num->rows, indices, rhs + 1) ) {
         errMsg("solver", "solve_subprob", "failed to change the right-hand side in the solver",0);
         return 1;
     }
@@ -44,7 +44,7 @@ int solveSubprob(probType *prob, cellType *cell, vectorC Xvect, int omegaIdx, CB
 #endif
 
     /* (c) Solve the subproblem to obtain the optimal dual solution. */
-    if ( solveProblem(CPXLPptr(cell->subprob->lp), cell->subprob->name, cell->subprob->type, &status) ) {
+    if ( solveProblem((CPXLPptr)(cell->subprob->lp), cell->subprob->name, cell->subprob->type, &status) ) {
         if ( status == STAT_INFEASIBLE ) {
             printf("Subproblem is infeasible: need to create feasibility cut.\n");
             return 1;
@@ -61,11 +61,11 @@ int solveSubprob(probType *prob, cellType *cell, vectorC Xvect, int omegaIdx, CB
     printf("Objective value of Subproblem  = %lf\n", obj);
 #endif
 
-    if ( getDual(CPXLPptr(cell->subprob->lp), cell->piS, prob->num->rows) ) {
+    if ( getDual((CPXLPptr)(cell->subprob->lp), cell->piS, prob->num->rows) ) {
         errMsg("algorithm", "solveSubprob", "failed to get the dual", 0);
         return 1;
     }
-    if ( computeMU(CPXLPptr(cell->subprob->lp), prob->num->cols, &cell->mubBar) ) {
+    if ( computeMU((CPXLPptr)(cell->subprob->lp), prob->num->cols, &cell->mubBar) ) {
         errMsg("algorithm", "solveSubprob", "failed to compute mubBar for subproblem", 0);
         return 1;
     }
