@@ -7,7 +7,7 @@
 
 #include "utils.h"
 
-extern long MEM_USED;
+extern long long MEM_USED;
 
 FILE *openFile(stringC outputDir, stringC fname, char *mode) {
 	FILE *fptr;
@@ -299,7 +299,7 @@ vectorC expandVector(vectorC red, intvec col, int redElems, int expElems){
 	return exp;
 }//END expandVector
 
-BOOL equalVector(vectorC a, vectorC b, int len, double tolerance) {
+CBOOL equalVector(vectorC a, vectorC b, int len, double tolerance) {
 	int		cnt;
 
 	for (cnt = 1; cnt <= len; cnt++)
@@ -309,7 +309,7 @@ BOOL equalVector(vectorC a, vectorC b, int len, double tolerance) {
 	return CTRUE;
 }//END equalVector()
 
-BOOL equalIntvec(intvec a, intvec b, int len) {
+CBOOL equalIntvec(intvec a, intvec b, int len) {
 	int		cnt;
 
 	for (cnt = 1; cnt <= len; cnt++)
@@ -319,7 +319,7 @@ BOOL equalIntvec(intvec a, intvec b, int len) {
 	return CTRUE;
 }//END equalIntvec()
 
-BOOL isZeroVector(vectorC a, int len, double tolerance) {
+CBOOL isZeroVector(vectorC a, int len, double tolerance) {
 	int		cnt;
 
 	for (cnt = 0; cnt < len; cnt++) {
@@ -333,7 +333,7 @@ BOOL isZeroVector(vectorC a, int len, double tolerance) {
 }//END equalVector()
 
 /*This function will check if a vectorC is integer with a predefined gap */
-BOOL isInteger(vectorC x, int length, int startIdx, int endIdx, double tolerance){
+CBOOL isInteger(vectorC x, int length, int startIdx, int endIdx, double tolerance){
 	int i;
 
 	for (i = startIdx+1; i < endIdx; i++)
@@ -373,7 +373,7 @@ intvec duplicIntvec(intvec a, int len) {
 	return b;
 }//END duplicArray()
 
-void copyVector(vectorC a, vectorC b, int len, BOOL isOneNorm){
+void copyVector(vectorC a, vectorC b, int len, CBOOL isOneNorm){
 	int n;
 
 	if (isOneNorm)

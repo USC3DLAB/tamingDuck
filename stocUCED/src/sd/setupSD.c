@@ -156,14 +156,14 @@ cellType *newCell(stocType *stoc, probType **prob, vectorC xk) {
 			errMsg("setup", "newCell", "failed to change the right-hand side after incumbent change", 0);
 			return NULL;
 		}
-		if ( changeQPbds(cell->master->lp, prob[0]->num->cols, prob[0]->sp->bdl, prob[0]->sp->bdu, cell->incumbX) ) {
+		if ( changeQPbds(CPXLPptr(cell->master->lp), prob[0]->num->cols, prob[0]->sp->bdl, prob[0]->sp->bdu, cell->incumbX) ) {
 			errMsg("setup", "newCell", "failed to change the bounds after incumbent update", 0);
 			return NULL;
 		}
 		cell->incumbChg = CFALSE;
 
 		/* change the proximal term */
-		if ( changeQPproximal(cell->master->lp, prob[0]->num->cols, config.MIN_QUAD_SCALAR) ) {
+		if ( changeQPproximal(CPXLPptr(cell->master->lp), prob[0]->num->cols, config.MIN_QUAD_SCALAR) ) {
 			errMsg("setup", "newCell", "failed to add the proximal term to QP", 0);
 			return NULL;
 		}

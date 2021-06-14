@@ -27,7 +27,7 @@ extern "C" {
 #define		LE					'L'
 #define		EQ					'E'
 
-typedef 	enum {CFALSE, CTRUE} 	BOOL;
+typedef 	enum {CFALSE, CTRUE} 	CBOOL;
 
 #define 	mem_malloc(n) 		log_alloc("malloc : " #n,malloc((n)), (n))
 #define 	mem_calloc(n,size) 	log_alloc("calloc : " #n " : " #size, calloc((n),(size)), ((n) * size))
@@ -83,13 +83,13 @@ double smooth(double newVal, double oldVal, double factor);
 
 vectorC reduceVector(double *f_vect, int *row, int num_elem);
 vectorC expandVector(vectorC red, intvec col, int redElems, int expElems);
-BOOL equalVector(vectorC a, vectorC b, int len, double tolerance);
-BOOL equalIntvec(intvec a, intvec b, int len);
-BOOL isZeroVector(vectorC a, int len, double tolerance);
-BOOL isInteger(vectorC x, int length, int startIdx, int endIdx, double tolerance);
+CBOOL equalVector(vectorC a, vectorC b, int len, double tolerance);
+CBOOL equalIntvec(intvec a, intvec b, int len);
+CBOOL isZeroVector(vectorC a, int len, double tolerance);
+CBOOL isInteger(vectorC x, int length, int startIdx, int endIdx, double tolerance);
 vectorC duplicVector(double *a, int len);
 intvec duplicIntvec(intvec a, int len);
-void copyVector(vectorC a, vectorC b, int len, BOOL isOneNorm);
+void copyVector(vectorC a, vectorC b, int len, CBOOL isOneNorm);
 void copyIntvec (intvec a, intvec b, int len);
 void addVectors(vectorC a, vectorC b, intvec indices, int len);
 

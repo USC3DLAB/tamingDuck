@@ -32,6 +32,7 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, string RScriptsPath
 	int numSimLengthInDays = ceil( (double)(runParam.numPeriods+maxLookAhead)/(60.0/runParam.baseTime) );
 	int dataPeriodLengthInMins = runParam.baseTime;
 	
+<<<<<<< HEAD
 	vector<int> idx;
 	string filename;
 	
@@ -96,12 +97,83 @@ bool instance::initialize(PowSys *powSys, StocProcess *stoc, string RScriptsPath
 		meanForecast.insert( pair<string, ScenarioType> (filename, meanForecast["DA"]) );
 		meanForecast[filename].name = filename + "_forecasts";
 	}
+=======
+	{/* actual observations */
+		string filename = "RT";
+		vector<int> idx = filename2idx(filename);
+		
+		// initialize the data structures
+		actuals = createScenarioList(stoc, idx, numSimLengthInDays, runParam.numPeriods/(60.0/runParam.baseTime), runParam.numRep, dataPeriodLengthInMins);
+		actuals.name = filename + "_obs";
+		
+		// post-processing
+		boostRenewableSupply(actuals);
+		correctSupplyExceedingCapacity(actuals);
+	}
+	
+//	// print out summary
+//	cout << actuals.name << ":" << endl;
+//	int i=0;
+//	for (auto it=actuals.mapVarNamesToIndex.begin(); it!=actuals.mapVarNamesToIndex.end(); ++it, ++i) {
+//		cout << setw(4) << left << i << setw(30) << it->first << " (" << setprecision(2) << runParam.renewableCoef << "x)\t[OK]" << endl;
+//	}
+//	cout << endl;
+
+	{	/* forecasts */
+		vector<string> filenames = {"DA", "4HA"};
+
+		for (int f=0; f<filenames.size(); f++) {
+			string filename = filenames[f];
+			vector<int> idx = filename2idx(filename);
+
+			// initialize the data structures
+			meanForecast.insert( pair<string, ScenarioType> (filename,
+															 createScenarioList(stoc, idx, numSimLengthInDays, runParam.numPeriods/(60.0/runParam.baseTime), runParam.numRep, dataPeriodLengthInMins)) );
+			meanForecast[filename].name = filename + "_forecasts";
+			
+			// post-processing
+			boostRenewableSupply(meanForecast[filename]);
+			correctSupplyExceedingCapacity(meanForecast[filename]);
+			
+			//	// print out summary
+			//	cout << meanForecast[filename].name << ":" << endl;
+			//	i=0;
+			//	for (auto it=meanForecast[filename].mapVarNamesToIndex.begin(); it!=meanForecast[filename].mapVarNamesToIndex.end(); ++it, ++i) {
+			//		cout << setw(4) << left << i << setw(30) << it->first << " (" << setprecision(2) << runParam.renewableCoef << "x)\t[OK]" << endl;
+			//	}
+			//	cout << endl;
+		}
+	}
+	
+//		The assumption here was a single forecast mechanism, that was updated during the day.
+//		the "RT" forecast meant to be updated versions of the "DA" forecast.
+//		We can keep with this tradition and only update "4HA" forecasts during the day, we
+//		don't need "DA" forecasts during the day anyways.
+//		// if updated forecasts are requested, initialize its structure
+//		if (runParam.updateForecasts) {
+//			filename = "RT";
+//			meanForecast.insert( pair<string, ScenarioType> (filename, meanForecast["DA"]) );
+//			meanForecast[filename].name = filename + "_forecasts";
+//		}
+>>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e
 
 	summary();
 
 	return true;
 }//END instance()
 
+vector<int> instance::filename2idx(string filename) {
+	vector<int> idx;
+	
+	// find the indices
+	for (auto it=stoc->mapTypeToIndex[filename].begin(); it != stoc->mapTypeToIndex[filename].end(); ++it) {
+		if (find(elems.begin(), elems.end(), stoc->sp[*it].name) != elems.end()) {	// find the stoc process, and push its index to the list
+			idx.push_back(*it);
+		}
+	}
+	
+	return idx;
+}
 
 void instance::summary() {
 	cout << "------------------------------------------------------------------" << endl;
@@ -156,13 +228,18 @@ void instance::simulateScenarios(int numScen, bool fitModel, int rep) {
 	
 	// updated forecasts
 	if (runParam.updateForecasts) {
+<<<<<<< HEAD
 		simulations.insert( pair<string, ScenarioType> ("RT",
 														simulations["DA"]) );
+=======
+		simulations.insert( pair<string, ScenarioType> ("RT", simulations["DA"]) );
+>>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e
 		simulations["RT"].name = "RT_simulations";
 	}
 }
 
 void instance::updateForecasts(int rep, int beginMin, int endMin) {
+<<<<<<< HEAD
 	
 	// initializations
 	const vector<double> weights = {
@@ -172,6 +249,17 @@ void instance::updateForecasts(int rep, int beginMin, int endMin) {
 		0.600, 0.575, 0.550, 0.525,
 		0.500, 0.500, 0.500, 0.500};
 	
+=======
+	
+	// initializations
+	const vector<double> weights = {
+		0.900, 0.875, 0.850, 0.825,
+		0.800, 0.775, 0.750, 0.725,
+		0.700, 0.675, 0.650, 0.625,
+		0.600, 0.575, 0.550, 0.525,
+		0.500, 0.500, 0.500, 0.500};
+	
+>>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e
 	int DAIdx, RTIdx;
 	int beg = beginMin/runParam.baseTime;	// current period
 	int end = endMin/runParam.baseTime;		// period until updates will be done
@@ -340,7 +428,17 @@ bool instance::printSolution(string filepath) {
 	status = open_file(output, filepath + "_genSTUC.sol");
 	if (!status) goto finalize;
 
+<<<<<<< HEAD
 	print_matrix(output, solution.g_UC, delimiter, 2);
+=======
+	print_matrix(output, solution.g_STUC, delimiter, 2);
+	output.close();
+
+	status = open_file(output, filepath + "_genDAUC.sol");
+	if (!status) goto finalize;
+	
+	print_matrix(output, solution.g_DAUC, delimiter, 2);
+>>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e
 	output.close();
 
 	status = open_file(output, filepath + "_genED.sol");
@@ -378,6 +476,13 @@ bool instance::printSolution(string filepath) {
 	}
 	output << endl;
 
+<<<<<<< HEAD
+=======
+	if(runParam.useGenHistory) {
+		cout << "Start up costs may be underestimated" << endl;
+	}
+
+>>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e
 	// data
 	for (int t=0; t<runParam.numPeriods; t++) {
 		output << setfill('0') << setw(2) << timeInfo->tm_hour << ":" << setfill('0') << setw(2) << timeInfo->tm_min << "\t";
@@ -411,6 +516,11 @@ bool instance::printSolution(string filepath) {
 			
 			if (t > 0) {
 				stats["StartUpCost"] += powSys->generators[g].startupCost * max(solution.x[g][t]-solution.x[g][t-1], 0.0);
+<<<<<<< HEAD
+=======
+			} else if(runParam.useGenHistory) {
+//				cout << "Start up costs may be underestimated" << endl;
+>>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e
 			}
 			
 			// emissions
@@ -425,6 +535,7 @@ bool instance::printSolution(string filepath) {
 		// shed demand
 		for (int b = 0; b < powSys->numBus; b++) {
 			stats["LoadShed"] += solution.loadShed_ED[b][t];
+<<<<<<< HEAD
 		}
 		
 		// storage
@@ -438,12 +549,28 @@ bool instance::printSolution(string filepath) {
 			output << stats[fields[f]];
 			if (f != fields.size()-1) output << "\t";
 		}
+=======
+		}
+		
+		// storage
+		for (int bt=0; bt<powSys->numBatteries; bt++) {
+			stats["Storage (MW)"] += solution.btState_ED[bt][t];
+			stats["Storage Use (MW)"] += solution.btFlow_ED[bt][t];
+		}
+		
+		// print
+		for (int f=0; f<fields.size(); f++) {
+			output << stats[fields[f]];
+			if (f != fields.size()-1) output << "\t";
+		}
+>>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e
 		output << endl;
 		
 		timeInfo->tm_min += runParam.baseTime;
 		mktime(timeInfo);
 	}
 	output.close();
+<<<<<<< HEAD
 	
 	/* print summarized statistics (to csv) */
 	status = open_file(output, filepath + "_stats.csv");
@@ -456,6 +583,20 @@ bool instance::printSolution(string filepath) {
 	}
 	output << endl;
 	
+=======
+	
+	/* print summarized statistics (to csv) */
+	status = open_file(output, filepath + "_stats.csv");
+	if (!status) goto finalize;
+	
+	// headers
+	output << "Time";
+	for (int f=0; f<fields.size(); f++) {
+		output << "," << fields[f];
+	}
+	output << endl;
+	
+>>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e
 	// data
 	for (int t=0; t<runParam.numPeriods; t++) {
 		output << setfill('0') << setw(2) << timeInfo->tm_hour << ":" << setfill('0') << setw(2) << timeInfo->tm_min << ",";

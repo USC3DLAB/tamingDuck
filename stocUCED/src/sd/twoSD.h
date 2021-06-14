@@ -60,7 +60,7 @@ typedef struct {
 	int 	cutObs;					/* number of samples on which the given cut was based */
 	int 	omegaCnt;				/* number of *distinct* observations on which the cut is based (this is also the length of istar) */
 	intvec	iStar;					/* indices of maximal pi for each distint observation */
-	BOOL	isIncumb;				/* indicates if the cut is an incumbent cut */
+	CBOOL	isIncumb;				/* indicates if the cut is an incumbent cut */
 	double 	alphaIncumb;			/* right-hand side when using QP master, this is useful for quick updates */
 	int 	slackCnt;				/* number of times a cut has been slack, used in deciding when the cut needs to be dropped */
 	int 	rowNum;					/* row number for master problem in solver */
@@ -183,7 +183,7 @@ typedef struct {
 	vectorC      incumbX;			/* incumbent master solution */
 	double      incumbEst;			/* estimate at incumbent solution */
 	double 		quadScalar; 		/* the proximal parameter/quadratic scalar 'sigma' */
-	BOOL        incumbChg;			/* set to be true if the incumbent solution has changed in an iteration */
+	CBOOL        incumbChg;			/* set to be true if the incumbent solution has changed in an iteration */
 	int         iCutIdx;			/* index of incumbent cut in cell->cuts structure */
 	int         iCutUpdt;			/* iteration number when incumbent cut is updated */
 	double      gamma;				/* improvement in objective function value */
@@ -204,12 +204,12 @@ typedef struct {
 	deltaType   *delta;				/* calculations based on realization and dual solutions observed */
 	omegaType 	*omega;				/* all realizations observed during the algorithm */
 
-    BOOL        optFlag;
+    CBOOL        optFlag;
 	vectorC      pi_ratio;
-    BOOL        dualStableFlag; 	/* indicates if dual variables are stable */
+    CBOOL        dualStableFlag; 	/* indicates if dual variables are stable */
 
 	int			feasCnt;			/* keeps track of the number of times infeasible candidate solution was encountered */
-	BOOL		infeasIncumb;		/* indicates if the incumbent solution is infeasbible */
+	CBOOL		infeasIncumb;		/* indicates if the incumbent solution is infeasbible */
 }cellType;
 
 /* twoSD.c */
@@ -240,11 +240,11 @@ int changeQPbds(LPptr lp, int numCols, vectorC bdl, vectorC bdu, vectorC xk);
 oneProblem *newMaster(probType *prob, vectorC xk);
 
 /* cuts.c */
-int formSDCut(probType *prob, cellType *cell, vectorC Xvect, int omegaIdx, BOOL newOmegaFlag);
+int formSDCut(probType *prob, cellType *cell, vectorC Xvect, int omegaIdx, CBOOL newOmegaFlag);
 oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, omegaType *omega, vectorC Xvect, int numSamples,
-		BOOL *dualStableFlag, vectorC pi_ratio, double lb);
+		CBOOL *dualStableFlag, vectorC pi_ratio, double lb);
 iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, vectorC Xvect, vectorC PiCbarX, int obs,
-		int ictr, BOOL pi_eval, double *argmax);
+		int ictr, CBOOL pi_eval, double *argmax);
 iType compute_new_istar(int obs, oneCut *cut, sigmaType *sigma, deltaType *delta, vectorC Xvect, numType *num, coordType *coord,
 		vectorC PiCbarX, double *argmax, int ictr);
 oneCut *newCut(int numX, int numIstar, int numSamples);
@@ -258,7 +258,7 @@ void freeCutsType(cutsType *cuts);
 double calc_var(double *x, double *mean_value, double *stdev_value, int batch_size);
 
 /* subprob.c */
-int solveSubprob(probType *prob, cellType *cell, vectorC Xvect, int omegaIdx, BOOL newOmegaFlag);
+int solveSubprob(probType *prob, cellType *cell, vectorC Xvect, int omegaIdx, CBOOL newOmegaFlag);
 vectorC computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, vectorC X, vectorC obs);
 void chgRHSwSoln(sparseVector *bBar, sparseMatrix *Cbar, vectorC rhs, vectorC X) ;
 int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, vectorC observ, vectorC spRHS, vectorC X);
@@ -266,13 +266,13 @@ oneProblem *newSubprob(probType *subprob);
 
 /* stocUpdate.c */
 int stochasticUpdates(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, lambdaType *lambda, sigmaType *sigma,
-                       deltaType *delta, omegaType *omega, BOOL newOmegaFlag, int omegaIdx, int maxIter, int iter, vectorC pi, double mubBar);
+                       deltaType *delta, omegaType *omega, CBOOL newOmegaFlag, int omegaIdx, int maxIter, int iter, vectorC pi, double mubBar);
 void calcDeltaCol(numType *num, coordType *coord, lambdaType *lambda, vectorC observ, int omegaIdx, deltaType *delta);
-int calcLambda(numType *num, coordType *coord, vectorC Pi, lambdaType *lambda, BOOL *newLambdaFlag);
+int calcLambda(numType *num, coordType *coord, vectorC Pi, lambdaType *lambda, CBOOL *newLambdaFlag);
 int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, vectorC pi, double mubBar,
-              int idxLambda, BOOL newLambdaFlag, int iter, sigmaType *sigma, BOOL *newSigmaFlag);
+              int idxLambda, CBOOL newLambdaFlag, int iter, sigmaType *sigma, CBOOL *newSigmaFlag);
 int calcDeltaRow(int maxIter, numType *num, coordType *coord, omegaType *omega, lambdaType *lambda, int lambdaIdx, deltaType *delta);
-int calcOmega(vectorC observ, int begin, int end, omegaType *omega, BOOL *newOmegaFlag);
+int calcOmega(vectorC observ, int begin, int end, omegaType *omega, CBOOL *newOmegaFlag);
 int computeMU(LPptr lp, int numCols, double *mubBar);
 lambdaType *newLambda(int num_iter, int numLambda, int numRVrows);
 sigmaType *newSigma(int numIter, int numNzCols, int numPi);
@@ -290,9 +290,9 @@ double maxCutHeight(cutsType *cuts, int currIter, vectorC xk, int betaLen, doubl
 double cutHeight(oneCut *cut, int currIter, vectorC xk, int betaLen, double lb);
 
 /* optimal.c */
-BOOL optimal(probType **prob, cellType *cell);
-BOOL preTest(cellType *cell);
-BOOL fullTest(probType **prob, cellType *cell);
+CBOOL optimal(probType **prob, cellType *cell);
+CBOOL preTest(cellType *cell);
+CBOOL fullTest(probType **prob, cellType *cell);
 cutsType *chooseCuts(cutsType *cuts, vectorC pi, int lenX);
 void reformCuts(sigmaType *sigma, deltaType *delta, omegaType *omega, numType *num, coordType *coord, cutsType *gCuts, int *observ, int k, int lbType, int lb, int lenX);
 double calcBootstrpLB(probType *prob, vectorC incumbX, vectorC piM, vectorC djM, int currIter, double quadScalar, cutsType *cuts);

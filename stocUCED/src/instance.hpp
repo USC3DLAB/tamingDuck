@@ -64,6 +64,12 @@ private:
 	
 	void correctSupplyExceedingCapacity(ScenarioType &scenarioType);
 	void boostRenewableSupply(ScenarioType &scenarioType);
+<<<<<<< HEAD
+=======
+	
+	vector<int> filename2idx (string filename);
+	
+>>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e
 };
 
 #endif

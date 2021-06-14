@@ -86,7 +86,11 @@ void parseCmdLine(int argc, const char *argv[], string &inputDir, string &config
 	}
 	else if (argc == 10 && strcmp(argv[6], "-setting") == 0) {
 		inputDir	= argv[1];
+<<<<<<< HEAD
 		tempDir      = argv[2];
+=======
+		tempDir     = argv[2];
+>>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e
 		configPath	= argv[3];
 		RScriptsPath= argv[4];
 		sysName		= argv[5];
@@ -108,24 +112,39 @@ void parseCmdLine(int argc, const char *argv[], string &inputDir, string &config
 	}
 	else {
 		cout << "Missing inputs. Please provide the following in the given order:\n"
+<<<<<<< HEAD
 				"(1) input directory path,\n "
+=======
+				"(1) input directory path,\n"
+>>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e
 				"(2) output directory path,\n"
 				"(3) SD config.sd path,\n"
 				"(4) R scripts path,\n"
 				"(5) system name,\n"
 				"(6) framework setting." << endl;
+<<<<<<< HEAD
 		cout << "Instead of (6), you can type ""-setting"" followed by three modeling settings, i.e., ""-setting d na s (aka, deterministic N/A stochastic)""" << endl;
+=======
+		cout << "Instead of (6), you can type ""-setting"" followed by three modeling settings, i.e., ""-setting deterministic na stochastic""" << endl;
+>>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e
 		exit(1);
 	}
 	
 	/* Create output folder */
+<<<<<<< HEAD
 	// SA: The below commands are not properly working on Mac
+=======
+>>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e
 	string cmdStr;
 	outDir = tempDir + sysName;
 	cmdStr = "mkdir " +  outDir;
 	system(cmdStr.c_str());
 	cout << "\nAll output files will be written to " << outDir << endl;
+<<<<<<< HEAD
 	
+=======
+
+>>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e
 	/*
 	switch (argc) {
 	case 2:

@@ -51,7 +51,11 @@ private:
 	
 	double 	getEDGenProd (int genId, int period);				// reads from inst->Solution.gED
 	bool 	getGenState	 (int genId, int period);				// reads from inst->Solution.x
+<<<<<<< HEAD:stocUCED/src/LShaped/SUC_subprob.hpp
 	double	getUCGenProd (int genId, int period);				// reads from Solution.gUC
+=======
+	double	getDAUCGenProd (int genId, int period);				// reads from Solution.gUC
+>>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e:stocUCED/src/SUC_subprob.hpp
 	double	getGenProd   (int g, int t); 	// reads from Solution.gED, or gUC, and handles the beginning of the planning horizon
 	double	getBatteryState (int batteryId, int period);
 	

@@ -20,7 +20,12 @@ struct Solution {
     
     void allocateMem (int numGen, int periods, int numBus, int numBatteries) {
         resize_matrix(x,	numGen, periods);
+<<<<<<< HEAD
         resize_matrix(g_UC, numGen, periods);
+=======
+		resize_matrix(g_DAUC, numGen, periods);
+		resize_matrix(g_STUC, numGen, periods);
+>>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e
         resize_matrix(g_ED, numGen, periods);
 		resize_matrix(overGen_ED, numGen, periods);
 		resize_matrix(usedGen_ED, numGen, periods);

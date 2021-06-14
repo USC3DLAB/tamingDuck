@@ -10,7 +10,11 @@
  */
 
 #include "twoSD.h"
+<<<<<<< HEAD
 #include "sys/time.h"
+=======
+#include "time.h"
+>>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e
 
 extern stringC outputDir;
 extern configType config;
@@ -23,7 +27,11 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC probName, vect
 	probType **prob = NULL;
 	double	 totalTime;
 	FILE 	*soln;
+<<<<<<< HEAD
 	struct timeval time;
+=======
+	//struct timeval time;
+>>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e
 	
 	/* open solver */
 	openSolver();
@@ -35,15 +43,25 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC probName, vect
 	if ( setupAlgo(orig, stoc, tim, &prob, &cell) )
 		goto TERMINATE;
 
+<<<<<<< HEAD
 	gettimeofday(&time,NULL);	// gets wall-time
 	totalTime = (double)time.tv_sec + (double)time.tv_usec * .000001;
+=======
+	//gettimeofday(&time,NULL);	// gets wall-time
+	totalTime = 0; // (double)time.tv_sec + (double)time.tv_usec * .000001;
+>>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e
 	/* Use two-stage algorithm to solve the problem */
 	if ( solveCell(stoc, prob, cell, probName) ) {
 		errMsg("algorithm", "algo", "failed to solve the cells using 2SD algorithm", 0);
 		goto TERMINATE;
 	}
+<<<<<<< HEAD
 	gettimeofday(&time,NULL);
 	totalTime = (double)time.tv_sec + (double)time.tv_usec * .000001 - totalTime;
+=======
+	//gettimeofday(&time,NULL);
+	totalTime = 0; // SMH (double)time.tv_sec + (double)time.tv_usec * .000001 - totalTime;
+>>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e
 	
 	/* Write solution statistics for optimization process */
 	fprintf(file, "\n\nLower bound estimate                   : %f\n", cell->incumbEst);
@@ -89,7 +107,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, stringC probName, vect
 int solveCell(stocType *stoc, probType **prob, cellType *cell, stringC probName) {
 	vectorC 	observ;
 	int		m, omegaIdx, candidCut;
-	BOOL 	newOmegaFlag;
+	CBOOL 	newOmegaFlag;
 
 	/* -+-+-+-+-+-+-+-+-+-+-+-+-+-+- Main Algorithm -+-+-+-+-+-+-+-+-+-+-+-+-+-+- */
 	if ( !(observ = (vectorC) arr_alloc(stoc->numOmega + 1, double)) )

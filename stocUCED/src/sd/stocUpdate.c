@@ -19,9 +19,9 @@ extern configType config;
  * Note that the new column of delta is computed before a new row in lambda is calculated and before the new row in delta is completed,
  * so that the intersection of the new row and new column in delta is only computed once (they overlap at the bottom, right-hand corner). */
 int stochasticUpdates(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, lambdaType *lambda, sigmaType *sigma,
-                       deltaType *delta, omegaType *omega, BOOL newOmegaFlag, int omegaIdx, int maxIter, int iter, vectorC pi, double mubBar) {
+                       deltaType *delta, omegaType *omega, CBOOL newOmegaFlag, int omegaIdx, int maxIter, int iter, vectorC pi, double mubBar) {
     int 	lambdaIdx, sigmaIdx;
-    BOOL 	newLambdaFlag= CFALSE, newSigmaFlag= CFALSE;
+    CBOOL 	newLambdaFlag= CFALSE, newSigmaFlag= CFALSE;
 
     /* Only need to calculate column if new observation of omega found */
     if (newOmegaFlag)
@@ -85,7 +85,7 @@ void calcDeltaCol(numType *num, coordType *coord, lambdaType *lambda, vectorC ob
  * This vector is then compared with all previous lambda_pi vectors, searching for a duplication. If a duplicate is found, the vector is not added
  * to the structure, and the function returns the index of the duplicate vector. Otherwise, it adds the vector to the end of the structure,
  *and returns an index to the last element in lambda. */
-int calcLambda(numType *num, coordType *coord, vectorC Pi, lambdaType *lambda, BOOL *newLambdaFlag) {
+int calcLambda(numType *num, coordType *coord, vectorC Pi, lambdaType *lambda, CBOOL *newLambdaFlag) {
     int 	pi_idx;
     vectorC	lambda_pi;
 
@@ -108,7 +108,7 @@ int calcLambda(numType *num, coordType *coord, vectorC Pi, lambdaType *lambda, B
 }//END calcLambda
 
 int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, vectorC pi, double mubBar,
-              int idxLambda, BOOL newLambdaFlag, int iter, sigmaType *sigma, BOOL *newSigmaFlag) {
+              int idxLambda, CBOOL newLambdaFlag, int iter, sigmaType *sigma, CBOOL *newSigmaFlag) {
     vectorC	piCBar, temp;
     double 	pibBar;
     int 	cnt;
@@ -187,7 +187,7 @@ int calcDeltaRow(int maxIter, numType *num, coordType *coord, omegaType *omega, 
  * a duplication.  If it finds a duplicate, it returns the index of that duplicate; otherwise, it adds the vector to the list of distinct realizations
  * and returns the index of that realization. Note that the simulated observation does not have contain one-norm, while the values stored in
  * omegaType do */
-int calcOmega(vectorC observ, int begin, int end, omegaType *omega, BOOL *newOmegaFlag) {
+int calcOmega(vectorC observ, int begin, int end, omegaType *omega, CBOOL *newOmegaFlag) {
     int cnt;
 
     /* Compare vector with all the previous observations */

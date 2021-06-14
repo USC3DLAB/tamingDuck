@@ -14,6 +14,12 @@
 #include <stdio.h>
 #include <ilcplex/ilocplex.h>
 #include "../config.hpp"
+<<<<<<< HEAD
+=======
+#ifdef BOOST_PARALLEL_LIBS
+#include "boost/asio.hpp" // resolves issues pertaining to WinSock.h
+#endif
+>>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e
 #include "ilconcert/ilothread.h"		// for mutex (must be included below boost libraries to avoid errors)
 
 using namespace std;

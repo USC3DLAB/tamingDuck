@@ -78,7 +78,7 @@ typedef struct {
 
 typedef struct {
 	stringC	type;				/* type of stocType being used */
-	BOOL	sim;				/* set to TRUE if an external simulator is used */
+	CBOOL	sim;				/* set to TRUE if an external simulator is used */
 	int		numOmega; 			/* number of stochastic elements stored in structure */
 	int 	numCipher; 			/* number of ints needed to encode an observation */
 	int		numGroups;
@@ -100,7 +100,7 @@ timeType *readTime(stringC inputDir, stringC probName, oneProblem *orig);
 stocType *readStoc(stringC inputDir, stringC probName, oneProblem *orig, timeType *tim);
 int readIndep(FILE *fptr, stringC *fields, oneProblem *orig, int maxOmegas, int maxVals, stocType *stoc);
 int readBlocks(FILE *fptr, stringC *fields, oneProblem *orig, int maxOmegas, int maxVals, stocType *stoc);
-int readBlk(FILE *fptr, stringC *fields, oneProblem *orig, int maxOmegas, int maxVals, BOOL origRV, stocType *stoc);
+int readBlk(FILE *fptr, stringC *fields, oneProblem *orig, int maxOmegas, int maxVals, CBOOL origRV, stocType *stoc);
 int readARMA(FILE *fptr, stringC *fields, oneProblem *orig, stocType *stoc, int maxOmegas);
 int readScenarios(FILE *fptr, stringC *fields, oneProblem *orig, timeType *tim, int maxOmegas, int maxVals, stocType *stoc);
 

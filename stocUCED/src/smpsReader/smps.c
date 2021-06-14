@@ -673,11 +673,11 @@ int readBlocks(FILE *fptr, stringC *fields, oneProblem *orig, int maxOmegas, int
 	return 0;
 }//END readBlocks()
 
-int readBlk(FILE *fptr, stringC *fields, oneProblem *orig, int maxOmegas, int maxVals, BOOL origRV, stocType *stoc) {
+int readBlk(FILE *fptr, stringC *fields, oneProblem *orig, int maxOmegas, int maxVals, CBOOL origRV, stocType *stoc) {
 	stringC 	*rvRows, *rvCols;
 	char 	strType, currBlock[NAMESIZE] = "\0";
 	int		numFields, numRV=0, n;
-	BOOL	newBlk = CFALSE;
+	CBOOL	newBlk = CFALSE;
 
 	/* allocate memory to hold the names of random variable */
 	if ( !(rvRows = (stringC *) arr_alloc(maxOmegas, stringC)) )
@@ -811,7 +811,7 @@ int readARMA(FILE *fptr, stringC *fields, oneProblem *orig, stocType *stoc, int 
 	armaType *arma;
 	char 	strType, currBlock[NAMESIZE] = "\0";
 	int		numFields, numRV = 0, maxP = 10, maxQ = 10, maxEps = 10, maxT = 365, armaR = 0, armaE = 0, armaS = 0, j, n;
-	BOOL	newBlk = CFALSE;
+	CBOOL	newBlk = CFALSE;
 
 	/* set up elements of stocType. Free-up elements not used, and trim down the number of groups to two (one for problem stochastic elements and
 	 * one for the residuals) */
@@ -1171,7 +1171,7 @@ int readScenarios(FILE *fptr, stringC *fields, oneProblem *orig, timeType *tim, 
 void freeOneProblem(oneProblem *p) {
 
 	if(p){
-		if ( p->lp ) freeProblem(p->lp);
+		if ( p->lp ) freeProblem(CPXLPptr(p->lp));
 		if(p->name) mem_free(p->name);
 		if(p->objx) mem_free(p->objx);
 		if(p->rhsx) mem_free(p->rhsx);

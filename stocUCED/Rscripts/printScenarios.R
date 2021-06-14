@@ -2,8 +2,13 @@
 rm(list=ls(all=TRUE))
 set.seed(0)
 numScenarios = 1000
+<<<<<<< HEAD
 nRep = 7
 today = 45  # Feb 14, we will plan, starting with this day...  
+=======
+nRep = 8
+today = 44  # Feb 13, we will plan, starting with this day...  
+>>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e
 #today = 197 # Jul 15"
 forecastWindow = 14 # we will look 14 days of history for fitting the models...
 
@@ -30,6 +35,7 @@ printTS <- function(srcType, fileType) {
     }
   }
   write.csv(data[,,1], sprintf("%s_%s.csv", fileType, srcType))
+<<<<<<< HEAD
 }
 printTS("Load", "DA")
 printTS("Load", "RT")
@@ -37,13 +43,53 @@ printTS("Solar", "DA")
 printTS("Solar", "RT")
 printTS("Wind", "DA")
 printTS("Wind", "RT")
+=======
+  
+  return(data[,,1]);
+}
+printTS("Load", "DA");
+printTS("Load", "RT");
+printTS("Solar", "DA");
+printTS("Solar", "RT");
+printTS("Wind", "DA");
+printTS("Wind", "RT");
+>>>>>>> 2247e8a849f9d0cf0fc44445ea459889ee1f793e
 
 ### MAIN LOOP ###
 meanDailyWTrend <- NULL; meanDailySTrend <- NULL;
 rep = 1; # dummy assignment
 for (rep in 1:nRep) {
   # set the seed
-  set.seed(rep)
+  set.seed(rep-1)
+  
+  ### FIT THE MODEL ###
+  source("runModel.R")
+  
+  # ~ mean scenario ~
+  # compute the mean scenario (inc. lookahead)
+  meanDailyWTrendtmp <- wModel$model$dailyTrend
+  meanDailyWTrendtmp <- abind::abind(meanDailyWTrendtmp, wModel$model$dailyTrend[1:lookahead,], along = 1)
+
+  meanDailySTrendtmp <- sModel$model$avgSky
+  meanDailySTrendtmp <- abind::abind(meanDailySTrendtmp, sModel$model$avgSky[1:lookahead,], along = 1)
+
+  # interpolate
+  meanDailyWTrendtmp <- interpolate(simLength = simLength, lookahead = lookahead, wModel$numLoc, meanDailyWTrendtmp, 1)
+  meanDailySTrendtmp <- interpolate(simLength = simLength, lookahead = lookahead, sModel$numLoc, meanDailySTrendtmp, 1)
+  
+  # clean up
+  sunrise = (sModel$model$dayTime[1]-1-1)*4+2
+  sunset = sModel$model$dayTime[ length(sModel$model$dayTime) ]*4
+  meanDailySTrendtmp[-(sunrise:sunset),,] = 0
+  
+  meanDailyWTrendtmp <- meanDailyWTrendtmp[1:96,,1]
+  meanDailySTrendtmp <- meanDailySTrendtmp[1:96,,1]
+  
+  # append
+  meanDailyWTrend <- abind::abind(meanDailyWTrend, meanDailyWTrendtmp, along = 1)
+  meanDailySTrend <- abind::abind(meanDailySTrend, meanDailySTrendtmp, along = 1)
+  
+  ### SIMULATE ###
   
   ### FIT THE MODEL ###
   source("runModel.R")
